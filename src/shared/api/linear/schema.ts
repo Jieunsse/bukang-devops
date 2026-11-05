@@ -53,7 +53,7 @@ export type Snapshot = z.infer<typeof snapshotSchema>
 // Linear GraphQL이 돌려주는 모양
 const pageInfo = z.object({ hasNextPage: z.boolean(), endCursor: z.string().nullable() })
 
-const rawIssueSchema = issueSchema
+export const rawIssueSchema = issueSchema
   .omit({ labels: true, milestone: true })
   .extend({
     labels: z.object({ nodes: issueSchema.shape.labels }),

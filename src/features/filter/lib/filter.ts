@@ -17,9 +17,10 @@ export function parseFilters(params: URLSearchParams): Filters {
   return filters
 }
 
-/** '?'를 뺀 주소 뒷부분. 고른 것이 없으면 빈 문자열 */
-export function toSearch(filters: Filters): string {
-  const params = new URLSearchParams()
+/** '?'를 뺀 주소 뒷부분. current에 있던 필터 밖의 값(완료·취소 기간 등)은 남긴다. */
+export function toSearch(filters: Filters, current?: URLSearchParams): string {
+  const params = new URLSearchParams(current)
+  for (const key of FILTER_KEYS) params.delete(key)
   for (const key of FILTER_KEYS) {
     const value = filters[key]
     if (value) params.set(key, value)
@@ -30,7 +31,7 @@ export function toSearch(filters: Filters): string {
 const matches = (id: string | undefined, wanted: string | undefined) =>
   wanted === undefined || (wanted === NONE ? id === undefined : id === wanted)
 
-export function applyFilters(issues: Issue[], filters: Filters): Issue[] {
+export function applyFilters<T extends Issue>(issues: T[], filters: Filters): T[] {
   return issues.filter(
     (issue) =>
       matches(issue.assignee?.id, filters.assignee) &&
