@@ -1,4 +1,3 @@
-import type { DueTone } from '@/entities/ticket'
 import type { Issue } from '@/shared/api/linear'
 import type { DateString } from '@/shared/lib/date'
 
@@ -9,9 +8,4 @@ export function dueCountsByDate(issues: Issue[]): Map<DateString, number> {
     if (dueDate) counts.set(dueDate, (counts.get(dueDate) ?? 0) + 1)
   }
   return counts
-}
-
-export function dayTone(date: DateString, today: DateString): DueTone {
-  if (date < today) return 'danger'
-  return date === today ? 'warning' : 'default'
 }

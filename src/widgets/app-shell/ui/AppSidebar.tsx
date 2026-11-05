@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 
 import { ThemeToggle } from '@/features/theme'
+import { LogoMark } from '@/shared/ui'
 
 import { NAV_ITEMS } from './nav'
 
@@ -28,7 +29,14 @@ export function AppSidebar() {
   const links = useNavLinks()
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-6 border-r border-separator bg-background-secondary p-3 md:flex">
-      <p className="px-3 pt-2 text-lg font-semibold">bukang-devops</p>
+      {/* NAV_ITEMS 첫 칸이 대시보드라서, 로고도 같은 주소로 보내 필터를 그대로 남긴다. */}
+      <Link
+        href={links[0]?.href ?? '/'}
+        className="flex items-center gap-2 rounded-lg px-3 pt-2 text-lg font-semibold"
+      >
+        <LogoMark size={28} />
+        bukang-devops
+      </Link>
       <nav aria-label="페이지" className="flex flex-col gap-1">
         {links.map((l) => (
           <Link
