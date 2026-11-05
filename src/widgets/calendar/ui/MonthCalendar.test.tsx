@@ -120,6 +120,8 @@ describe('달력 페이지', () => {
         now={NOW}
       />,
     )
+    // React Aria는 마우스가 한 번 움직인 뒤에만 툴팁을 연다.
+    await userEvent.hover(document.body)
     await userEvent.hover(screen.getByRole('link', { name: /BUK-1/ }))
     const tip = await screen.findByRole('tooltip')
     expect(within(tip).getByText('BUK-1')).toBeInTheDocument()

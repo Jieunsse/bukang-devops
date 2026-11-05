@@ -37,23 +37,3 @@ export function issuesByDate(issues: Issue[]): Map<DateString, Issue[]> {
   }
   return byDate
 }
-
-// 담당자를 구분하는 색. 기한 상태 색(빨강·주황)과 섞이지 않는 색만 쓴다.
-const PALETTE = [
-  'bg-sky-500',
-  'bg-violet-500',
-  'bg-emerald-500',
-  'bg-pink-500',
-  'bg-cyan-500',
-  'bg-lime-500',
-  'bg-indigo-500',
-  'bg-fuchsia-500',
-]
-export const NO_ASSIGNEE_COLOR = 'bg-muted'
-
-/** 담당자 id 순서로 색을 준다. 필터 전 전체 목록으로 만들어 필터를 바꿔도 색이 그대로다. */
-// shortcut: 남은 티켓이 있는 담당자가 바뀌면 다른 사람 색도 밀린다. 팀원 명단을 받게 되면 명단 순서로 고정한다.
-export function assigneeColors(issues: Issue[]): Map<string, string> {
-  const ids = [...new Set(issues.flatMap((i) => (i.assignee ? [i.assignee.id] : [])))].sort()
-  return new Map(ids.map((id, n) => [id, PALETTE[n % PALETTE.length] ?? NO_ASSIGNEE_COLOR]))
-}
