@@ -1,0 +1,86 @@
+'use client'
+
+import { Button, Popover } from '@heroui/react'
+import { buttonVariants } from '@heroui/styles'
+import Link from 'next/link'
+import { usePathname, useSearchParams } from 'next/navigation'
+
+import { NAV_ITEMS } from './nav'
+
+/** 페이지를 옮겨도 필터가 남도록 지금 주소의 뒷부분을 그대로 붙인다. */
+function useNavLinks() {
+  const pathname = usePathname()
+  const search = useSearchParams().toString()
+  return NAV_ITEMS.map((item) => ({
+    ...item,
+    href: `${item.href}${search ? `?${search}` : ''}`,
+    isCurrent: pathname === item.href,
+  }))
+}
+
+const linkClass = (isCurrent: boolean) =>
+  buttonVariants({ variant: isCurrent ? 'secondary' : 'ghost', fullWidth: true }) + ' justify-start'
+
+export function AppSidebar() {
+  const links = useNavLinks()
+  return (
+    <aside className="hidden w-60 shrink-0 flex-col gap-6 p-4 md:flex">
+      <p className="px-3 pt-2 text-lg font-semibold">bukang-devops</p>
+      <nav aria-label="페이지" className="flex flex-col gap-1">
+        {links.map((l) => (
+          <Link
+            key={l.label}
+            href={l.href}
+            aria-current={l.isCurrent ? 'page' : undefined}
+            className={linkClass(l.isCurrent)}
+          >
+            {l.label}
+          </Link>
+        ))}
+      </nav>
+      <div className="mt-auto">
+        <HelpPopover />
+      </div>
+    </aside>
+  )
+}
+
+/** 휴대폰에서는 왼쪽 메뉴 대신 위쪽에 가로로 보여 준다. */
+export function MobileNav() {
+  const links = useNavLinks()
+  return (
+    <nav aria-label="페이지" className="flex gap-1 overflow-x-auto md:hidden">
+      {links.map((l) => (
+        <Link
+          key={l.label}
+          href={l.href}
+          aria-current={l.isCurrent ? 'page' : undefined}
+          className={buttonVariants({ variant: l.isCurrent ? 'secondary' : 'ghost', size: 'sm' })}
+        >
+          {l.label}
+        </Link>
+      ))}
+    </nav>
+  )
+}
+
+function HelpPopover() {
+  return (
+    <Popover>
+      <Button variant="ghost" fullWidth className="justify-start">
+        도움말
+      </Button>
+      <Popover.Content placement="top start" className="max-w-xs">
+        <Popover.Dialog>
+          <Popover.Heading>이 화면은 보기 전용이에요</Popover.Heading>
+          <ul className="mt-2 flex list-disc flex-col gap-1 pl-4 text-sm text-muted">
+            <li>티켓 수정은 Linear에서 해 주세요.</li>
+            <li>날짜는 모두 한국 시간 기준이에요.</li>
+            <li>서버가 10분마다 Linear에서 새로 받아요.</li>
+            <li>새로고침 버튼은 1분에 한 번만 Linear를 불러요.</li>
+          </ul>
+        </Popover.Dialog>
+      </Popover.Content>
+    </Popover>
+  )
+}
