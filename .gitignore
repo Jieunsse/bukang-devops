@@ -1,0 +1,13 @@
+node_modules
+.next
+out
+build
+coverage
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+.vercel
+
+# 환경변수: 키 값은 커밋하지 않는다. 이름은 .env.example에 있다.
+.env*
+!.env.example
