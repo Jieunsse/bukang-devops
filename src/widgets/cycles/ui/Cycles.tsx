@@ -37,7 +37,9 @@ export function Cycles({ snapshot, now }: { snapshot: Snapshot; now: number }) {
   )
   const fallback = defaultTabKey(tabs, snapshot.cycles, now)
   const [picked, setPicked] = useState<string | null>(null)
-  // 새로 받은 목록에서 고른 탭이 사라지면 지금 기간 탭으로 돌아간다.
+  // 새로 받은 목록에서 고른 탭이 사라지면 고른 것을 잊고 지금 기간 탭으로 돌아간다.
+  // 그래야 나중에 그 탭이 다시 생겨도 저절로 넘어가지 않는다.
+  if (picked !== null && !tabs.some((t) => t.key === picked)) setPicked(null)
   const selected = tabs.find((t) => t.key === picked) ?? tabs.find((t) => t.key === fallback)
 
   if (!selected) {
@@ -177,8 +179,9 @@ function Board({ tab, issues, today }: { tab: CycleTab; issues: Issue[]; today: 
 }
 
 function Column({ group, today }: { group: AssigneeGroup; today: string }) {
-  const [shown, setShown] = useState(PAGE)
-  const hidden = group.issues.length - shown
+  const [expanded, setExpanded] = useState(false)
+  const visible = expanded ? group.issues : group.issues.slice(0, PAGE)
+  const hidden = group.issues.length - visible.length
   const ticket = cardVariants({ variant: 'secondary' })
   return (
     <Card>
@@ -190,11 +193,11 @@ function Column({ group, today }: { group: AssigneeGroup; today: string }) {
             <MemberAvatar name={group.name} avatarUrl={group.avatarUrl} />
           )}
           <Card.Title className="truncate">{group.name}</Card.Title>
-          <Chip size="sm">{group.issues.length}</Chip>
+          <Chip size="sm">{group.issues.length}건</Chip>
         </Card.Header>
         <Card.Content>
           <ul className="flex flex-col gap-2">
-            {group.issues.slice(0, shown).map((issue) => {
+            {visible.map((issue) => {
               const due = dueLabel(issue.dueDate, today)
               return (
                 <li key={issue.id}>
@@ -233,7 +236,7 @@ function Column({ group, today }: { group: AssigneeGroup; today: string }) {
               variant="tertiary"
               size="sm"
               className="mt-2 self-start"
-              onPress={() => setShown(group.issues.length)}
+              onPress={() => setExpanded(true)}
             >
               {hidden}건 더 보기
             </Button>

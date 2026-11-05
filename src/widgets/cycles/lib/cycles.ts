@@ -111,7 +111,7 @@ export function tabSummary(tab: CycleTab, cycles: Cycle[], now: Instant): TabSum
   const counts = { overdue: 0, today: 0, thisWeek: 0 }
   for (const issue of tab.issues) {
     const bucket = bucketOf(issue.dueDate, { today, end: current.end })
-    if (bucket in counts) counts[bucket as keyof typeof counts]++
+    if (bucket === 'overdue' || bucket === 'today' || bucket === 'thisWeek') counts[bucket]++
   }
   return {
     period: days && {
