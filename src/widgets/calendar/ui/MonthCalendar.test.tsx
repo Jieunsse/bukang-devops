@@ -1,10 +1,9 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Cycle, Issue, Snapshot } from '@/shared/api/linear'
 
-import { NO_ASSIGNEE_COLOR } from '../lib/month'
 import { MonthCalendar } from './MonthCalendar'
 
 let search = ''
@@ -35,12 +34,29 @@ const snapshot = (issues: Issue[], cycles: Cycle[] = []): Snapshot => ({
   cycles,
   issues,
 })
+/** 기한 색이 붙는 이슈 번호 글자 */
+const number = (identifier: string, scope: HTMLElement = document.body) =>
+  within(scope).getByText(identifier)
+
+/** 휴대폰처럼 마우스를 올릴 수 없는 기기로 바꾼다. */
+const useTouchDevice = () => {
+  window.matchMedia = vi.fn().mockReturnValue({
+    matches: false,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  })
+}
+
 // 칸 이름은 「11월 12일 목요일」이다. 요일까지 맞추는 테스트는 따로 둔다.
 const day = (name: string) => screen.getByRole('listitem', { name: new RegExp(`^${name} `) })
 
 describe('달력 페이지', () => {
   beforeEach(() => {
     search = ''
+  })
+  afterEach(() => {
+    // jsdom에는 matchMedia가 없다. 없으면 마우스를 쓰는 기기로 본다.
+    delete (window as { matchMedia?: unknown }).matchMedia
   })
 
   it('달력 위 도구 줄에 넘겨받은 버튼을 둔다', () => {
@@ -55,14 +71,79 @@ describe('달력 페이지', () => {
     expect(within(bar).getByRole('button', { name: '필터' })).toBeInTheDocument()
   })
 
-  it('오늘이 든 달을 열고, 날짜 칸에 「이슈 번호 + 제목」을 Linear 링크로 보여 준다', () => {
-    render(<MonthCalendar snapshot={snapshot([issue(1, '2026-11-12')])} now={NOW} />)
+  it('오늘이 든 달을 열고, 날짜 칸 한 줄에 「프로필 + 담당자 이름 + 이슈 번호」를 Linear 링크로 보여 준다', () => {
+    render(
+      <MonthCalendar
+        snapshot={snapshot([
+          issue(1, '2026-11-12', {
+            assignee: { id: 'u1', name: '지훈', avatarUrl: 'https://example.com/a.png' },
+          }),
+        ])}
+        now={NOW}
+      />,
+    )
     expect(screen.getByRole('heading', { name: '2026년 11월' })).toBeInTheDocument()
-    const link = within(day('11월 12일')).getByRole('link', { name: /BUK-1 티켓 1/ })
+    const cell = day('11월 12일')
+    const link = within(cell).getByRole('link', { name: /BUK-1 티켓 1/ })
     expect(link).toHaveAttribute('href', 'https://linear.app/bukang/issue/BUK-1')
     expect(link).toHaveAttribute('target', '_blank')
     expect(link.className).toMatch(/cursor-pointer/)
-    expect(link.lastElementChild!.className).toMatch(/truncate/)
+    expect(within(link).getByText('지훈').className).toMatch(/truncate/)
+    expect(within(link).getByText('BUK-1')).toBeInTheDocument()
+    // 프로필은 공통 프로필 컴포넌트(얇은 테두리)를 쓴다.
+    expect(link.querySelector('.ring-1.ring-border')).not.toBeNull()
+    // 제목은 줄에 적지 않는다. 화면 낭독기용 이름에만 남긴다.
+    expect(within(cell).queryByText(/티켓 1/)).not.toBeInTheDocument()
+  })
+
+  it('담당자 없는 티켓은 회색 기본 아이콘과 「담당 없음」으로 적는다', () => {
+    render(
+      <MonthCalendar snapshot={snapshot([issue(1, '2026-11-12', { assignee: null })])} now={NOW} />,
+    )
+    const link = screen.getByRole('link', { name: /티켓 1/ })
+    expect(within(link).getByText('담당 없음')).toBeInTheDocument()
+    expect(link.querySelector('.ring-1.ring-border svg')).not.toBeNull()
+    expect(link).toHaveAccessibleName(/담당 없음/)
+  })
+
+  it('줄에 마우스를 올리면 번호·제목 전체·상태·기한(년도 포함)·라벨·마일스톤을 보여 준다', async () => {
+    render(
+      <MonthCalendar
+        snapshot={snapshot([
+          issue(1, '2026-11-12', {
+            title: '아주 긴 제목이라 칸에는 들어가지 않는 티켓',
+            state: { name: 'In Progress', type: 'started' },
+            labels: [{ id: 'l1', name: '프론트', color: '#4ea7fc' }],
+            milestone: { id: 'm1', name: '세미 발표', progress: 0.5 },
+          }),
+        ])}
+        now={NOW}
+      />,
+    )
+    // React Aria는 마우스가 한 번 움직인 뒤에만 툴팁을 연다.
+    await userEvent.hover(document.body)
+    await userEvent.hover(screen.getByRole('link', { name: /BUK-1/ }))
+    const tip = await screen.findByRole('tooltip')
+    expect(within(tip).getByText('BUK-1')).toBeInTheDocument()
+    expect(within(tip).getByText('아주 긴 제목이라 칸에는 들어가지 않는 티켓')).toBeInTheDocument()
+    expect(within(tip).getByText('진행 중')).toBeInTheDocument()
+    expect(within(tip).getByText('2026년 11월 12일 (목)')).toBeInTheDocument()
+    expect(within(tip).getByText('프론트').closest('.chip')).not.toBeNull()
+    expect(within(tip).getByText('세미 발표').closest('.chip')).not.toBeNull()
+  })
+
+  it('마우스가 없는 기기에서는 줄을 누르면 상세를 보여 주고 「Linear에서 열기」로 이동한다', async () => {
+    useTouchDevice()
+    render(<MonthCalendar snapshot={snapshot([issue(1, '2026-11-12')])} now={NOW} />)
+    const row = within(day('11월 12일')).getByRole('button', { name: /BUK-1 티켓 1/ })
+    expect(row.className).toMatch(/cursor-pointer/)
+    await userEvent.click(row)
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('티켓 1')).toBeInTheDocument()
+    expect(within(dialog).getByRole('link', { name: 'Linear에서 열기' })).toHaveAttribute(
+      'href',
+      'https://linear.app/bukang/issue/BUK-1',
+    )
   })
 
   it('날짜 칸 이름에 요일을 넣어 화면 낭독기로도 요일을 알 수 있다', () => {
@@ -83,11 +164,11 @@ describe('달력 페이지', () => {
         now={NOW}
       />,
     )
-    expect(within(day('10월 31일')).getByText(/티켓 1/)).toBeInTheDocument()
-    expect(within(day('12월 5일')).getByText(/티켓 2/)).toBeInTheDocument()
+    expect(within(day('10월 31일')).getByText('BUK-1')).toBeInTheDocument()
+    expect(within(day('12월 5일')).getByText('BUK-2')).toBeInTheDocument()
   })
 
-  it('기한 지난 날 티켓은 빨강, 오늘은 주황, 그 밖은 색이 없다', () => {
+  it('기한 지난 날 티켓 번호는 빨강, 오늘은 주황, 그 밖은 기본 색이다', () => {
     render(
       <MonthCalendar
         snapshot={snapshot([
@@ -98,17 +179,16 @@ describe('달력 페이지', () => {
         now={NOW}
       />,
     )
-    expect(screen.getByRole('link', { name: /티켓 1/ }).className).toMatch(/text-danger/)
-    expect(screen.getByRole('link', { name: /티켓 2/ }).className).toMatch(/text-warning/)
-    const later = screen.getByRole('link', { name: /티켓 3/ }).className
-    expect(later).not.toMatch(/text-danger|text-warning/)
+    expect(number('BUK-1').className).toMatch(/text-danger/)
+    expect(number('BUK-2').className).toMatch(/text-warning/)
+    expect(number('BUK-3').className).not.toMatch(/text-danger|text-warning/)
     expect(day('11월 5일')).toHaveAttribute('aria-current', 'date')
   })
 
   it('한국 시간 자정이 지나면 어제 기한 티켓이 빨강이 된다', () => {
     const midnight = new Date('2026-11-05T15:00:00.000Z').getTime()
     render(<MonthCalendar snapshot={snapshot([issue(1, '2026-11-05')])} now={midnight} />)
-    expect(screen.getByRole('link', { name: /티켓 1/ }).className).toMatch(/text-danger/)
+    expect(number('BUK-1').className).toMatch(/text-danger/)
     expect(day('11월 6일')).toHaveAttribute('aria-current', 'date')
   })
 
@@ -124,6 +204,11 @@ describe('달력 페이지', () => {
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('11/12 기한 5건')).toBeInTheDocument()
     expect(within(dialog).getAllByRole('link')).toHaveLength(5)
+    // 창 안의 줄도 날짜 칸과 같은 모양이다.
+    const first = within(dialog).getByRole('link', { name: /BUK-1 티켓 1/ })
+    expect(within(first).getByText('지훈')).toBeInTheDocument()
+    expect(within(first).getByText('BUK-1')).toBeInTheDocument()
+    expect(within(dialog).queryByText('티켓 1')).not.toBeInTheDocument()
   })
 
   it('휴대폰 폭에서 보여 줄 날짜별 티켓 수를 함께 둔다', () => {
@@ -132,29 +217,11 @@ describe('달력 페이지', () => {
     expect(within(day('11월 12일')).getByText('5건').className).toMatch(/md:hidden/)
   })
 
-  it('담당자마다 색 막대를 붙이고, 담당자 없는 티켓은 회색 막대다', () => {
-    render(
-      <MonthCalendar
-        snapshot={snapshot([
-          issue(1, '2026-11-12'),
-          issue(2, '2026-11-12', { assignee: { id: 'u2', name: '소희' } }),
-          issue(3, '2026-11-12', { assignee: null }),
-        ])}
-        now={NOW}
-      />,
-    )
-    const bar = (name: RegExp) =>
-      screen.getByRole('link', { name }).querySelector('[data-assignee-bar]')!.className
-    expect(bar(/티켓 1/)).not.toBe(bar(/티켓 2/))
-    expect(bar(/티켓 3/)).toContain(NO_ASSIGNEE_COLOR)
-    expect(screen.getByRole('link', { name: /티켓 3/ })).toHaveAccessibleName(/담당 없음/)
-  })
-
   it('이전 달·다음 달로 옮기고 「오늘」로 돌아온다', async () => {
     render(<MonthCalendar snapshot={snapshot([issue(1, '2026-12-20')])} now={NOW} />)
     await userEvent.click(screen.getByRole('button', { name: '다음 달' }))
     expect(screen.getByRole('heading', { name: '2026년 12월' })).toBeInTheDocument()
-    expect(within(day('12월 20일')).getByText(/티켓 1/)).toBeInTheDocument()
+    expect(within(day('12월 20일')).getByText('BUK-1')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: '오늘' }))
     await userEvent.click(screen.getByRole('button', { name: '이전 달' }))
@@ -183,8 +250,8 @@ describe('달력 페이지', () => {
         now={NOW}
       />,
     )
-    expect(screen.queryByText(/티켓 1/)).not.toBeInTheDocument()
-    expect(screen.getByText(/티켓 2/)).toBeInTheDocument()
+    expect(screen.queryByText('BUK-1')).not.toBeInTheDocument()
+    expect(screen.getByText('BUK-2')).toBeInTheDocument()
   })
 
   it('이 달에 기한인 티켓이 없으면 빈 안내를 보여 준다', () => {

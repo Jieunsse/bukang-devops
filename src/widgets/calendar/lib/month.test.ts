@@ -2,14 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Issue } from '@/shared/api/linear'
 
-import {
-  assigneeColors,
-  issuesByDate,
-  monthLabel,
-  monthWeeks,
-  NO_ASSIGNEE_COLOR,
-  shiftMonth,
-} from './month'
+import { issuesByDate, monthLabel, monthWeeks, shiftMonth } from './month'
 
 const issue = (n: number, dueDate: string | null, assigneeId: string | null = 'u1'): Issue => ({
   id: `i${n}`,
@@ -58,24 +51,5 @@ describe('날짜별 티켓', () => {
     const byDate = issuesByDate([issue(1, '2026-11-05'), issue(2, '2026-11-05'), issue(3, null)])
     expect(byDate.get('2026-11-05')?.map((i) => i.identifier)).toEqual(['BUK-1', 'BUK-2'])
     expect(byDate.size).toBe(1)
-  })
-})
-
-describe('담당자 색', () => {
-  it('담당자마다 다른 색을 주고, 담당자 없는 티켓은 색을 받지 않는다', () => {
-    const colors = assigneeColors([
-      issue(1, null, 'u1'),
-      issue(2, null, 'u2'),
-      issue(3, null, 'u1'),
-      issue(4, null, null),
-    ])
-    expect(colors.size).toBe(2)
-    expect(colors.get('u1')).not.toBe(colors.get('u2'))
-    expect([...colors.values()]).not.toContain(NO_ASSIGNEE_COLOR)
-  })
-
-  it('필터와 상관없이 같은 사람은 늘 같은 색이다', () => {
-    const all = [issue(1, null, 'u2'), issue(2, null, 'u1'), issue(3, null, 'u3')]
-    expect(assigneeColors(all).get('u3')).toBe(assigneeColors([...all].reverse()).get('u3'))
   })
 })

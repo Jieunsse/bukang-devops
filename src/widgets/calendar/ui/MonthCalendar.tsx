@@ -1,22 +1,29 @@
 'use client'
 
 import { ChevronLeft, ChevronRight } from '@gravity-ui/icons'
-import { Button, Card, Popover } from '@heroui/react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { Button, Card, Popover, Tooltip } from '@heroui/react'
+import { buttonVariants } from '@heroui/styles'
+import { useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 
-import { dayTone, inCycle, type DueTone } from '@/entities/ticket'
+import { MemberAvatar } from '@/entities/member'
+import {
+  dayTone,
+  inCycle,
+  LabelChip,
+  MilestoneChip,
+  stateLabel,
+  type DueTone,
+} from '@/entities/ticket'
 import { applyFilters, FilterChips, useFilters } from '@/features/filter'
 import type { Issue, Snapshot } from '@/shared/api/linear'
 import { PageToolbar } from '@/shared/ui'
 import { formatMonthDay, kstDate, weekdayOf, type DateString } from '@/shared/lib/date'
 
 import {
-  assigneeColors,
   FINAL_PRESENTATION,
   issuesByDate,
   monthLabel,
   monthWeeks,
-  NO_ASSIGNEE_COLOR,
   shiftMonth,
   type Month,
 } from '../lib/month'
@@ -33,6 +40,23 @@ const TONE_TEXT: Record<DueTone, string> = {
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
 const cellLabel = (date: DateString) =>
   `${Number(date.slice(5, 7))}월 ${Number(date.slice(8))}일 ${DAY_NAMES[weekdayOf(date)]}요일`
+/** '2026-11-12' → '2026년 11월 12일 (목)' */
+const fullDate = (date: DateString) =>
+  `${date.slice(0, 4)}년 ${Number(date.slice(5, 7))}월 ${Number(date.slice(8))}일 (${DAY_NAMES[weekdayOf(date)]})`
+
+// 마우스를 올릴 수 있는 기기인지. 휴대폰은 올릴 수 없어서 누르면 상세를 보여 준다.
+const HOVER_QUERY = '(hover: hover)'
+const subscribeHover = (onChange: () => void) => {
+  const query = window.matchMedia?.(HOVER_QUERY)
+  query?.addEventListener('change', onChange)
+  return () => query?.removeEventListener('change', onChange)
+}
+const useCanHover = () =>
+  useSyncExternalStore(
+    subscribeHover,
+    () => window.matchMedia?.(HOVER_QUERY).matches ?? true,
+    () => true,
+  )
 
 export function MonthCalendar({
   snapshot,
@@ -50,8 +74,6 @@ export function MonthCalendar({
 
   const issues = useMemo(() => applyFilters(snapshot.issues, filters), [snapshot.issues, filters])
   const byDate = useMemo(() => issuesByDate(issues), [issues])
-  // 필터 전 전체 목록으로 색을 정해서 필터를 바꿔도 사람마다 색이 그대로다.
-  const colors = useMemo(() => assigneeColors(snapshot.issues), [snapshot.issues])
   const days = monthWeeks(month).flat()
   // 앞뒤 달 칸에 보이는 티켓도 센다. 칸에 티켓이 보이는데 빈 달이라고 하지 않게 한다.
   const isEmpty = !days.some((date) => byDate.has(date))
@@ -121,7 +143,6 @@ export function MonthCalendar({
                   outside={!date.startsWith(month)}
                   cycle={inCycle(date, snapshot.cycles)}
                   issues={byDate.get(date) ?? []}
-                  colors={colors}
                 />
               ))}
             </ol>
@@ -135,8 +156,7 @@ export function MonthCalendar({
               <span aria-hidden className="size-3 rounded ring-2 ring-accent ring-inset" />
               최종 발표 {formatMonthDay(FINAL_PRESENTATION)}
             </li>
-            <li>앞의 색 막대는 담당자를 구분해요</li>
-            <li>기한 지난 날은 빨강, 오늘은 주황이에요</li>
+            <li>기한 지난 날의 이슈 번호는 빨강, 오늘은 주황이에요</li>
           </ul>
         </Card.Content>
       </Card>
@@ -150,14 +170,12 @@ function DayCell({
   outside,
   cycle,
   issues,
-  colors,
 }: {
   date: DateString
   today: DateString
   outside: boolean
   cycle: boolean
   issues: Issue[]
-  colors: Map<string, string>
 }) {
   const isToday = date === today
   const tone = dayTone(date, today)
@@ -192,7 +210,6 @@ function DayCell({
           date={date}
           issues={issues}
           today={today}
-          colors={colors}
           label={`${issues.length}건`}
           className={`md:hidden ${TONE_TEXT[tone]}`}
         />
@@ -200,7 +217,7 @@ function DayCell({
       <ul className="hidden min-w-0 flex-col gap-0.5 md:flex">
         {issues.slice(0, MAX_ROWS).map((issue) => (
           <li key={issue.id} className="min-w-0">
-            <IssueChip issue={issue} tone={tone} colors={colors} />
+            <IssueRow issue={issue} tone={tone} />
           </li>
         ))}
       </ul>
@@ -209,7 +226,6 @@ function DayCell({
           date={date}
           issues={issues}
           today={today}
-          colors={colors}
           label={`${issues.length - MAX_ROWS}건 더`}
           className="hidden text-muted md:inline-flex"
         />
@@ -218,32 +234,101 @@ function DayCell({
   )
 }
 
-function IssueChip({
-  issue,
-  tone,
-  colors,
-}: {
-  issue: Issue
-  tone: DueTone
-  colors: Map<string, string>
-}) {
+const ROW_CLASS =
+  'flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded px-1 text-xs leading-5 text-foreground no-underline outline-none hover:bg-default focus-visible:ring-2 focus-visible:ring-accent'
+
+/** 티켓 한 줄: 담당자 프로필 + 이름 + 이슈 번호. 번호에만 기한 색을 쓴다. */
+function IssueRow({ issue, tone }: { issue: Issue; tone: DueTone }) {
+  const canHover = useCanHover()
   const who = issue.assignee?.name ?? '담당 없음'
-  const color = (issue.assignee && colors.get(issue.assignee.id)) ?? NO_ASSIGNEE_COLOR
   const label = `${issue.identifier} ${issue.title}, ${who}`
+  const body = (
+    <>
+      <MemberAvatar
+        small
+        name={issue.assignee?.name ?? null}
+        avatarUrl={issue.assignee?.avatarUrl}
+      />
+      <span className="min-w-0 truncate">{who}</span>
+      <span className={`shrink-0 font-medium ${TONE_TEXT[tone]}`}>{issue.identifier}</span>
+    </>
+  )
+
+  if (!canHover) {
+    return (
+      <Popover>
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-label={label}
+          className={`h-auto justify-start font-normal ${ROW_CLASS}`}
+        >
+          {body}
+        </Button>
+        <Popover.Content placement="bottom" className="w-72 max-w-[calc(100vw-2rem)]">
+          <Popover.Dialog aria-label={label}>
+            <IssueDetail issue={issue} tone={tone} />
+            <a
+              href={issue.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`mt-3 w-full ${buttonVariants({ size: 'sm', variant: 'primary' })}`}
+            >
+              Linear에서 열기
+            </a>
+          </Popover.Dialog>
+        </Popover.Content>
+      </Popover>
+    )
+  }
+
   return (
-    <a
-      href={issue.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={label}
-      title={label}
-      className={`flex cursor-pointer items-center gap-1.5 rounded px-1 text-xs leading-5 outline-none hover:bg-default focus-visible:ring-2 focus-visible:ring-accent ${TONE_TEXT[tone]}`}
-    >
-      <span data-assignee-bar aria-hidden className={`h-3.5 w-1 shrink-0 rounded-full ${color}`} />
-      <span className="truncate">
-        <span className="font-medium">{issue.identifier}</span> {issue.title}
-      </span>
-    </a>
+    <Tooltip delay={300} closeDelay={0}>
+      <Tooltip.Trigger
+        // 타임라인과 같은 방식: 트리거를 링크로 그리고 button 역할을 빼서 링크로 읽히게 한다.
+        render={({ ref, ...props }) => (
+          <a
+            {...(props as React.ComponentProps<'a'>)}
+            ref={ref as React.Ref<HTMLAnchorElement>}
+            role={undefined}
+            href={issue.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={label}
+            className={ROW_CLASS}
+          />
+        )}
+      >
+        {body}
+      </Tooltip.Trigger>
+      <Tooltip.Content placement="right" className="w-72 max-w-[calc(100vw-2rem)] p-3">
+        <IssueDetail issue={issue} tone={tone} />
+      </Tooltip.Content>
+    </Tooltip>
+  )
+}
+
+/** 짧은 상세: 번호와 제목 전체, 상태, 기한(년도 포함), 라벨, 마일스톤 */
+function IssueDetail({ issue, tone }: { issue: Issue; tone: DueTone }) {
+  return (
+    <div className="flex flex-col gap-2 text-sm">
+      <p>
+        <span className={`font-medium ${TONE_TEXT[tone]}`}>{issue.identifier}</span>{' '}
+        <span>{issue.title}</span>
+      </p>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+        <dt className="text-muted">상태</dt>
+        <dd>{stateLabel(issue.state)}</dd>
+        <dt className="text-muted">기한</dt>
+        <dd className={TONE_TEXT[tone]}>{issue.dueDate && fullDate(issue.dueDate)}</dd>
+      </dl>
+      <div className="flex flex-wrap gap-1">
+        {issue.labels.map((l) => (
+          <LabelChip key={l.id} label={l} />
+        ))}
+        <MilestoneChip name={issue.milestone?.name ?? null} />
+      </div>
+    </div>
   )
 }
 
@@ -252,14 +337,12 @@ function DayPopover({
   date,
   issues,
   today,
-  colors,
   label,
   className,
 }: {
   date: DateString
   issues: Issue[]
   today: DateString
-  colors: Map<string, string>
   label: string
   className: string
 }) {
@@ -280,7 +363,7 @@ function DayPopover({
           <ul className="mt-2 flex max-h-80 flex-col gap-0.5 overflow-y-auto">
             {issues.map((issue) => (
               <li key={issue.id} className="min-w-0">
-                <IssueChip issue={issue} tone={dayTone(date, today)} colors={colors} />
+                <IssueRow issue={issue} tone={dayTone(date, today)} />
               </li>
             ))}
           </ul>
