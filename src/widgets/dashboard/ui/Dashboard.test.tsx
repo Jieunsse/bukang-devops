@@ -111,7 +111,7 @@ describe('대시보드', () => {
 
   it('달력 날짜에 기한 티켓 수를 적고, 날짜를 누르면 그날 티켓만 보이고 다시 누르면 풀린다', async () => {
     render(<Dashboard snapshot={snapshot([...overdue, ...rest])} now={NOW} />)
-    const calendar = screen.getByRole('application', { name: '기한 달력' })
+    const calendar = screen.getByRole('application', { name: /^기한 달력/ })
     const day7 = within(calendar).getByRole('button', { name: /11월 7일/ })
     expect(within(day7).getByText('1')).toBeInTheDocument()
 

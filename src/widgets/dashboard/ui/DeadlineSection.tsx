@@ -20,6 +20,7 @@ export function DeadlineSection({
   today,
   defaultOpen,
   emptyText,
+  title,
 }: {
   bucket: Bucket
   issues: Issue[]
@@ -27,10 +28,12 @@ export function DeadlineSection({
   defaultOpen: boolean
   /** 묶음 하나만 볼 때 티켓이 없으면 보여 줄 안내 */
   emptyText?: string
+  /** 묶음 이름 대신 쓸 제목(달력에서 날짜를 골랐을 때) */
+  title?: string
 }) {
   const [isOpen, setOpen] = useState(defaultOpen)
   const [shown, setShown] = useState(PAGE)
-  const label = BUCKET_LABEL[bucket]
+  const label = title ?? BUCKET_LABEL[bucket]
   const visible = issues.slice(0, shown)
   const hidden = issues.length - visible.length
 
