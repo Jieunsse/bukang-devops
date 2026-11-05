@@ -29,17 +29,17 @@ describe('월 달력 칸', () => {
     const weeks = monthWeeks('2026-11')
     expect(weeks).toHaveLength(6)
     expect(weeks.every((w) => w.length === 7)).toBe(true)
-    expect(weeks[0][0]).toBe('2026-10-26')
-    expect(weeks[0][6]).toBe('2026-11-01')
-    expect(weeks[5][6]).toBe('2026-12-06')
+    expect(weeks[0]?.[0]).toBe('2026-10-26')
+    expect(weeks[0]?.[6]).toBe('2026-11-01')
+    expect(weeks[5]?.[6]).toBe('2026-12-06')
   })
 
   it('1일이 월요일이고 말일이 일요일이면 앞뒤 달 날짜를 넣지 않는다', () => {
     // 2027년 2월은 월요일에 시작해 일요일에 끝난다.
     const weeks = monthWeeks('2027-02')
     expect(weeks).toHaveLength(4)
-    expect(weeks[0][0]).toBe('2027-02-01')
-    expect(weeks[3][6]).toBe('2027-02-28')
+    expect(weeks[0]?.[0]).toBe('2027-02-01')
+    expect(weeks[3]?.[6]).toBe('2027-02-28')
   })
 
   it('달을 옮기면 해가 바뀌는 곳도 넘어간다', () => {

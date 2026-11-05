@@ -163,7 +163,9 @@ describe('달력 페이지', () => {
   })
 
   it('이 달에 기한인 티켓이 없으면 빈 안내를 보여 준다', () => {
-    render(<MonthCalendar snapshot={snapshot([issue(1, '2027-01-10'), issue(2, null)])} now={NOW} />)
+    render(
+      <MonthCalendar snapshot={snapshot([issue(1, '2027-01-10'), issue(2, null)])} now={NOW} />,
+    )
     expect(screen.getByText('이 달에 기한인 남은 티켓이 없어요')).toBeInTheDocument()
   })
 })

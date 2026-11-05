@@ -1,13 +1,15 @@
 'use client'
 
 import { Calendar, Card, I18nProvider } from '@heroui/react'
+import { buttonVariants } from '@heroui/styles'
 import { parseDate } from '@internationalized/date'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 
-import type { DueTone } from '@/entities/ticket'
+import { dayTone, inCycle, type DueTone } from '@/entities/ticket'
 import type { Cycle } from '@/shared/api/linear'
-import { formatMonthDay, kstDate } from '@/shared/lib/date'
+import { formatMonthDay } from '@/shared/lib/date'
 
-import { dayTone } from '../lib/calendar'
 import { FINAL_PRESENTATION } from '../lib/presentation'
 
 const COUNT_COLOR: Record<DueTone, string> = {
@@ -15,10 +17,6 @@ const COUNT_COLOR: Record<DueTone, string> = {
   warning: 'text-warning',
   default: 'text-muted',
 }
-
-/** 사이클 기간(한국 날짜)에 드는지. 끝 시각은 사이클에 들지 않는다. */
-const inCycle = (date: string, cycles: Cycle[]) =>
-  cycles.some((c) => kstDate(c.startsAt) <= date && date <= kstDate(Date.parse(c.endsAt) - 1))
 
 export function CalendarCard({
   counts,
@@ -33,10 +31,18 @@ export function CalendarCard({
   selected: string | null
   onSelect: (date: string | null) => void
 }) {
+  // 필터가 남도록 지금 주소의 뒷부분을 그대로 붙인다.
+  const search = useSearchParams().toString()
   return (
     <Card>
-      <Card.Header>
+      <Card.Header className="flex-row items-center justify-between gap-2">
         <Card.Title>기한 달력</Card.Title>
+        <Link
+          href={`/calendar${search ? `?${search}` : ''}`}
+          className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+        >
+          크게 보기
+        </Link>
       </Card.Header>
       <Card.Content className="flex flex-col gap-3">
         {/* 이미 고른 날짜를 다시 누르면 선택을 푼다. 달력은 같은 날을 다시 골라도 알려 주지 않아서,
