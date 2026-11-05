@@ -22,6 +22,7 @@ import {
   markOf,
   toneOf,
   viewRange,
+  FINAL_PRESENTATION,
   type DatedIssue,
   type GroupBy,
   type Range,
@@ -55,13 +56,24 @@ export function Timeline({ snapshot, now }: { snapshot: Snapshot; now: number })
   const days = daysBetween(range.start, range.end) + 1
   const dates = Array.from({ length: days }, (_, d) => addDays(range.start, d))
   const todayIndex = daysBetween(range.start, today)
-  const showToday = todayIndex >= 0 && todayIndex < days
+  const inRange = (i: number) => (i >= 0 && i < days ? i : null)
+  const marks = {
+    today: inRange(todayIndex),
+    final: inRange(daysBetween(range.start, FINAL_PRESENTATION)),
+  }
 
-  // 휴대폰처럼 차트가 카드보다 넓으면 오늘 칸이 보이게 옮긴다.
+  // 휴대폰처럼 차트가 카드보다 넓으면 오늘 칸이 보이게 옮긴다. 페이지는 움직이지 않는다.
+  const chartRef = useRef<HTMLElement>(null)
   const todayRef = useRef<HTMLSpanElement>(null)
   const hasChart = dated.length > 0
   useEffect(() => {
-    todayRef.current?.scrollIntoView?.({ inline: 'center', block: 'nearest' })
+    const chart = chartRef.current
+    const pill = todayRef.current
+    if (!chart || !pill) return
+    // 고정된 이름 칸을 뺀 날짜 영역에서 왼쪽 3분의 1에 오늘이 오게 한다.
+    const labelW = chart.querySelector<HTMLElement>('[data-label-col]')?.offsetWidth ?? 0
+    const offset = pill.getBoundingClientRect().left - chart.getBoundingClientRect().left
+    chart.scrollLeft += offset + pill.offsetWidth / 2 - labelW - (chart.clientWidth - labelW) / 3
   }, [view, hasChart])
 
   const toggleGroup = (id: string) =>
@@ -133,6 +145,7 @@ export function Timeline({ snapshot, now }: { snapshot: Snapshot; now: number })
           </EmptyState>
         ) : (
           <section
+            ref={chartRef}
             aria-label="타임라인 차트"
             // 머리줄을 위에 고정하려고 차트 안에서 세로로도 스크롤한다.
             className="max-h-[75dvh] scroll-pl-40 overflow-auto rounded-xl border border-separator md:scroll-pl-56"
@@ -142,23 +155,21 @@ export function Timeline({ snapshot, now }: { snapshot: Snapshot; now: number })
               // 이름 칸(넓은 화면 224px)과 하루 칸 최소 폭을 더한 만큼은 확보한다.
               style={{ minWidth: 224 + days * MIN_DAY_PX }}
             >
-              <DateHeader
-                dates={dates}
-                today={today}
-                todayIndex={showToday ? todayIndex : null}
-                todayRef={todayRef}
-              />
+              <DateHeader dates={dates} today={today} marks={marks} todayRef={todayRef} />
               <div className="relative">
-                <DayGrid dates={dates} todayIndex={showToday ? todayIndex : null} />
+                <DayGrid dates={dates} marks={marks} />
                 {groupRows(dated, groupBy).map((row) => {
-                  const open = !collapsed.has(row.id)
+                  // 「담당 없음」과 「마일스톤 없음」은 id가 같아서 묶음 방식을 키에 붙인다.
+                  const key = `${groupBy}:${row.id}`
+                  const open = !collapsed.has(key)
                   return (
                     <section key={row.id} aria-label={row.name} className="relative">
                       <div className="flex h-9 border-b border-separator">
                         <button
                           type="button"
                           aria-expanded={open}
-                          onClick={() => toggleGroup(row.id)}
+                          aria-label={`${row.name} ${row.issues.length}건`}
+                          onClick={() => toggleGroup(key)}
                           className={`sticky left-0 z-20 flex shrink-0 cursor-pointer items-center gap-2 bg-surface px-2 font-medium outline-none hover:bg-default focus-visible:ring-2 focus-visible:ring-accent ${LABEL_W}`}
                         >
                           {open ? (
@@ -196,31 +207,55 @@ export function Timeline({ snapshot, now }: { snapshot: Snapshot; now: number })
 }
 
 /** 요일과 날짜를 하루 칸마다 적는다. 첫 칸과 월요일에는 월/일을 위에 적는다. */
+type Marks = { today: number | null; final: number | null }
+
 function DateHeader({
   dates,
   today,
-  todayIndex,
+  marks,
   todayRef,
 }: {
   dates: DateString[]
   today: DateString
-  todayIndex: number | null
+  marks: Marks
   todayRef: React.RefObject<HTMLSpanElement | null>
 }) {
   const days = dates.length
-  // 오늘 표시와 겹치는 월/일은 적지 않는다.
-  const nearToday = (d: number) => todayIndex !== null && Math.abs(d - todayIndex) <= 2
+  const todayIndex = marks.today
+  // 월/일은 오늘 표시와 겹치거나 끝에서 넘치는 곳에는 적지 않는다.
+  // 첫 칸 바로 뒤에 월요일이 있으면 첫 칸도 적지 않는다.
+  const showMonthDay = (d: number) =>
+    (d === 0
+      ? ![1, 2].some((n) => n < days && weekdayOf(dates[n]!) === 1)
+      : weekdayOf(dates[d]!) === 1) &&
+    d < days - 2 &&
+    !(todayIndex !== null && Math.abs(d - todayIndex) <= 2)
+  const sameDay = marks.today !== null && marks.today === marks.final
+  // 끝 쪽 이름표는 칸 오른쪽 끝에 맞춰 차트 밖으로 넘치지 않게 한다.
+  const at = (i: number): React.CSSProperties =>
+    i >= days - 3
+      ? { right: `${((days - i - 1) / days) * 100}%` }
+      : { left: `${((i + 0.5) / days) * 100}%`, transform: 'translateX(-50%)' }
   return (
     <div className="sticky top-0 z-30 flex border-b border-separator bg-surface">
       <span
+        data-label-col
         className={`sticky left-0 z-40 flex shrink-0 items-end bg-surface px-2 pb-1 text-xs text-muted ${LABEL_W}`}
       >
         티켓
       </span>
       <div className="relative flex-1">
-        <div className="relative h-6">
+        <div aria-hidden className="relative h-10">
+          {marks.final !== null && !sameDay && (
+            <span
+              className="absolute top-0.5 text-[11px] whitespace-nowrap text-muted"
+              style={at(marks.final)}
+            >
+              최종 발표
+            </span>
+          )}
           {dates.map((date, d) =>
-            (d === 0 || weekdayOf(date) === 1) && !nearToday(d) ? (
+            showMonthDay(d) ? (
               <span
                 key={date}
                 className="absolute bottom-0.5 pl-1 text-xs font-medium whitespace-nowrap"
@@ -233,10 +268,10 @@ function DateHeader({
           {todayIndex !== null && (
             <span
               ref={todayRef}
-              className="absolute bottom-0.5 -translate-x-1/2 rounded-full bg-accent px-2 text-xs font-medium whitespace-nowrap text-accent-foreground"
-              style={{ left: `${((todayIndex + 0.5) / days) * 100}%` }}
+              className="absolute bottom-0.5 rounded-full bg-accent px-2 text-xs font-medium whitespace-nowrap text-accent-foreground"
+              style={at(todayIndex)}
             >
-              오늘 {formatMonthDay(today)}
+              {sameDay ? '오늘·최종 발표' : `오늘 ${formatMonthDay(today)}`}
             </span>
           )}
         </div>
@@ -264,9 +299,13 @@ function DateHeader({
   )
 }
 
-/** 줄 뒤에 깔리는 칸. 주말은 연한 바탕, 주 시작(월요일)은 진한 선, 오늘은 강조색 선이다. */
-function DayGrid({ dates, todayIndex }: { dates: DateString[]; todayIndex: number | null }) {
+/**
+ * 줄 뒤에 깔리는 칸. 주말은 연한 바탕, 주 시작(월요일)은 진한 선이다.
+ * 오늘은 강조색 선, 최종 발표일은 점선이다.
+ */
+function DayGrid({ dates, marks }: { dates: DateString[]; marks: Marks }) {
   const days = dates.length
+  const line = (i: number) => ({ left: `${((i + 0.5) / days) * 100}%` })
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 flex">
       <span className={`shrink-0 ${LABEL_W}`} />
@@ -285,11 +324,14 @@ function DayGrid({ dates, todayIndex }: { dates: DateString[]; todayIndex: numbe
             />
           )
         })}
-        {todayIndex !== null && (
+        {marks.final !== null && marks.final !== marks.today && (
           <span
-            className="absolute inset-y-0 border-l-2 border-accent"
-            style={{ left: `${((todayIndex + 0.5) / days) * 100}%` }}
+            className="absolute inset-y-0 border-l-2 border-dashed border-foreground/50"
+            style={line(marks.final)}
           />
+        )}
+        {marks.today !== null && (
+          <span className="absolute inset-y-0 border-l-2 border-accent" style={line(marks.today)} />
         )}
       </div>
     </div>
@@ -327,6 +369,21 @@ function IssueRow({
   const pct = (date: DateString, offset = 0) =>
     `${((daysBetween(range.start, date) + offset) / days) * 100}%`
   const color = TONE[tone].color
+  // 기한 날짜는 표시 오른쪽에 적는다. 끝에서 두 칸 안이면 넘치지 않게 왼쪽에 적고,
+  // 왼쪽에도 자리가 없으면(범위 전체를 덮는 막대) 막대 안 오른쪽에 적는다.
+  const fromIndex = daysBetween(range.start, mark.from)
+  const dueSide =
+    daysBetween(mark.to, range.end) >= 2
+      ? {
+          className: 'pl-1.5 text-muted',
+          style: { left: pct(mark.to, mark.kind === 'bar' ? 1 : 0.75) },
+        }
+      : fromIndex >= 2
+        ? {
+            className: 'pr-1.5 text-muted',
+            style: { right: `${((days - fromIndex) / days) * 100}%` },
+          }
+        : { className: 'right-1 font-medium text-white', style: undefined }
 
   return (
     <Tooltip delay={300} closeDelay={0}>
@@ -341,7 +398,9 @@ function IssueRow({
             href={issue.url}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={`${issue.identifier} ${issue.title}, ${when}, ${TONE[tone].label}`}
+            aria-label={`${issue.identifier} ${issue.title}, ${when}${
+              tone === 'notStarted' ? '' : `, ${TONE[tone].label}`
+            }`}
             className="relative flex h-8 cursor-pointer outline-none hover:bg-default/40 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
           />
         )}
@@ -353,7 +412,11 @@ function IssueRow({
         </span>
         <span className="relative flex-1">
           {mark.outside === 'before' && (
-            <span className="absolute top-1/2 left-1 -translate-y-1/2 text-xs text-muted">
+            <span
+              className={`absolute top-1/2 left-1 -translate-y-1/2 text-xs ${
+                tone === 'overdue' ? 'font-medium text-danger' : 'text-muted'
+              }`}
+            >
               ← {due}
             </span>
           )}
@@ -381,15 +444,9 @@ function IssueRow({
                 />
               )}
               <span
-                // 마지막 칸에 닿으면 차트 밖으로 나가지 않게 오른쪽 끝 안쪽에 적는다.
-                className={`absolute top-1/2 -translate-y-1/2 text-xs whitespace-nowrap text-muted tabular-nums ${
-                  mark.to === range.end ? 'right-0.5 rounded bg-surface px-1' : 'pl-1.5'
-                }`}
-                style={
-                  mark.to === range.end
-                    ? undefined
-                    : { left: pct(mark.to, mark.kind === 'bar' ? 1 : 0.75) }
-                }
+                data-testid={`due-${issue.id}`}
+                className={`absolute top-1/2 -translate-y-1/2 text-xs whitespace-nowrap tabular-nums ${dueSide.className}`}
+                style={dueSide.style}
               >
                 {issue.dueDate > range.end ? `${due} →` : due}
               </span>
