@@ -9,12 +9,16 @@ const rawIssue = {
   url: 'https://linear.app/bukang/issue/BUK-1',
   dueDate: '2026-11-06',
   startedAt: '2026-11-03T01:00:00.000Z',
-  state: { name: '진행 중', type: 'started' },
+  state: { id: 's-progress', name: 'In Progress', type: 'started', position: 2 },
   assignee: { id: 'u1', name: '지훈' },
   labels: { nodes: [{ id: 'l1', name: 'FE', color: '#4ea7fc' }] },
   // Linear는 마일스톤 진행률을 0~100으로 준다.
   projectMilestone: { id: 'm1', name: '세미 발표', progress: 40 },
   cycle: { id: 'c1' },
+  // 우선순위는 0(없음)~4(낮음)이다.
+  priority: 2,
+  createdAt: '2026-10-30T02:02:39.364Z',
+  parent: { identifier: 'BUK-16', title: '충전 한도와 이상 패턴 감지' },
 }
 const rawCycle = {
   id: 'c1',
@@ -73,8 +77,35 @@ describe('Linear에서 한 번에 받기', () => {
     expect(query).toContain('nin: ["completed", "canceled"]')
     expect(query).toContain('assignee { id name avatarUrl }')
     expect(query).toContain('cycle { id }')
+    expect(query).toContain('state { id name type position }')
+    expect(query).toContain('priority')
+    expect(query).toContain('createdAt')
+    expect(query).toContain('parent { identifier title }')
     expect(query).toContain('labels(first: 20) { nodes { id name color } }')
     expect(variables.teamKey).toBe('BUK')
+  })
+
+  it('부모 이슈가 없는 티켓은 부모를 비워 둔다', async () => {
+    const snapshot = await fetchSnapshot(
+      'k',
+      fakeLinear([issuesPage([{ ...rawIssue, parent: null, priority: 0 }])]),
+      NOW,
+    )
+    expect(snapshot.issues[0]).toMatchObject({ parent: null, priority: 0 })
+  })
+
+  it('상태 순서, 우선순위, 만든 날이 응답에 없거나 범위를 벗어나면 오류를 낸다', async () => {
+    const broken = [
+      { ...rawIssue, priority: undefined },
+      { ...rawIssue, priority: 7 },
+      { ...rawIssue, createdAt: undefined },
+      { ...rawIssue, state: { name: 'Todo', type: 'unstarted' } },
+    ]
+    for (const issue of broken) {
+      await expect(fetchSnapshot('k', fakeLinear([issuesPage([issue])]), NOW)).rejects.toThrow(
+        LinearResponseError,
+      )
+    }
   })
 
   it('사이클의 완료 수 기록을 요청한다', async () => {
@@ -129,11 +160,14 @@ describe('Linear에서 한 번에 받기', () => {
           url: 'https://linear.app/bukang/issue/BUK-1',
           dueDate: '2026-11-06',
           startedAt: '2026-11-03T01:00:00.000Z',
-          state: { name: '진행 중', type: 'started' },
+          state: { id: 's-progress', name: 'In Progress', type: 'started', position: 2 },
           assignee: { id: 'u1', name: '지훈' },
           labels: [{ id: 'l1', name: 'FE', color: '#4ea7fc' }],
           milestone: { id: 'm1', name: '세미 발표', progress: 0.4 },
           cycle: { id: 'c1' },
+          priority: 2,
+          createdAt: '2026-10-30T02:02:39.364Z',
+          parent: { identifier: 'BUK-16', title: '충전 한도와 이상 패턴 감지' },
         },
       ],
     })

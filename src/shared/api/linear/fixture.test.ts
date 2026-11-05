@@ -28,4 +28,13 @@ describe('예시 데이터', () => {
     expect(snapshot.issues.some((i) => !i.cycle)).toBe(true)
     expect(snapshot.cycles.every((c) => typeof c.completedIssueCount === 'number')).toBe(true)
   })
+
+  it('상태별 보드를 채우도록 네 가지 상태와 부모 이슈, 우선순위, 만든 날이 들어 있다', () => {
+    const names = new Set(snapshot.issues.map((i) => i.state.name))
+    expect([...names].sort()).toEqual(['Backlog', 'In Progress', 'In Review', 'Todo'])
+    expect(snapshot.issues.every((i) => i.state.id && i.state.position !== undefined)).toBe(true)
+    expect(snapshot.issues.some((i) => i.parent)).toBe(true)
+    expect(new Set(snapshot.issues.map((i) => i.priority)).size).toBeGreaterThan(2)
+    expect(snapshot.issues.every((i) => i.createdAt)).toBe(true)
+  })
 })

@@ -12,12 +12,15 @@ const rawDone = {
   startedAt: '2026-10-30T01:00:00.000Z',
   completedAt: '2026-11-04T08:00:00.000Z',
   canceledAt: null,
-  state: { name: '완료', type: 'completed' },
+  state: { id: 's-done', name: 'Done', type: 'completed', position: 4 },
   assignee: { id: 'f6ad6c3a-2e01-4c69-b3d6-71966925bd01', name: '지은세', avatarUrl: null },
   labels: { nodes: [{ id: 'l1', name: 'FE' }] },
   projectMilestone: { id: 'm1', name: '세미 발표', progress: 40 },
-  // 티켓 응답은 대시보드와 같은 검사를 거쳐서 사이클 칸이 꼭 있어야 한다.
+  // 티켓 응답은 대시보드와 같은 검사를 거쳐서 사이클·우선순위·만든 날·부모 칸이 꼭 있어야 한다.
   cycle: null,
+  priority: 3,
+  createdAt: '2026-10-28T01:00:00.000Z',
+  parent: null,
 }
 const rawCanceled = {
   ...rawDone,
@@ -25,7 +28,7 @@ const rawCanceled = {
   identifier: 'BUK-2',
   completedAt: null,
   canceledAt: '2026-11-05T01:00:00.000Z',
-  state: { name: '취소', type: 'canceled' },
+  state: { id: 's-canceled', name: 'Canceled', type: 'canceled', position: 5 },
   assignee: null,
   projectMilestone: null,
 }
@@ -66,6 +69,9 @@ describe('완료·취소 티켓 받기', () => {
     expect(query).toContain('lt: "2026-11-05T15:00:00.000Z"')
     // Linear는 닫힌 지 오래된 티켓을 자동으로 보관한다. 지난 기간을 고르면 그 티켓도 보여야 한다.
     expect(query).toContain('includeArchived: true')
+    // 대시보드와 같은 티켓 검사를 거치므로 같은 칸을 요청한다.
+    expect(query).toContain('state { id name type position }')
+    expect(query).toContain('parent { identifier title }')
   })
 
   it('완료했다가 취소한 티켓은 취소 시각을 닫힌 시각으로 쓴다', async () => {
@@ -87,7 +93,10 @@ describe('완료·취소 티켓 받기', () => {
         startedAt: '2026-10-30T01:00:00.000Z',
         closedAt: '2026-11-05T01:00:00.000Z',
         cycle: null,
-        state: { name: '취소', type: 'canceled' },
+        priority: 3,
+        createdAt: '2026-10-28T01:00:00.000Z',
+        parent: null,
+        state: { id: 's-canceled', name: 'Canceled', type: 'canceled', position: 5 },
         assignee: null,
         labels: [{ id: 'l1', name: 'FE' }],
         milestone: null,
@@ -101,7 +110,10 @@ describe('완료·취소 티켓 받기', () => {
         startedAt: '2026-10-30T01:00:00.000Z',
         closedAt: '2026-11-04T08:00:00.000Z',
         cycle: null,
-        state: { name: '완료', type: 'completed' },
+        priority: 3,
+        createdAt: '2026-10-28T01:00:00.000Z',
+        parent: null,
+        state: { id: 's-done', name: 'Done', type: 'completed', position: 4 },
         // Linear 이름이 실명이 아닌 팀원은 실명으로 바꾼다.
         assignee: { id: 'f6ad6c3a-2e01-4c69-b3d6-71966925bd01', name: '옥지훈', avatarUrl: null },
         labels: [{ id: 'l1', name: 'FE' }],
