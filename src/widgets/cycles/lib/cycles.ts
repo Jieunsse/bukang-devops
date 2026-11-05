@@ -1,7 +1,7 @@
 import { bucketOf, currentPeriod, STATE_TYPE_ORDER, stateLabel } from '@/entities/ticket'
 import { NONE } from '@/features/filter'
 import type { Cycle, Issue } from '@/shared/api/linear'
-import { daysBetween, formatMonthDay, kstDate, weekdayOf, type DateString } from '@/shared/lib/date'
+import { daysBetween, kstDate, type DateString } from '@/shared/lib/date'
 
 /** 사이클 밖 기간 탭의 키 */
 export const OUTSIDE = 'outside'
@@ -169,8 +169,5 @@ export function tabSummary(
   }
 }
 
-const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토']
-
-/** '2026-11-09' → '11/9(월)' */
-export const formatDayWithWeekday = (date: DateString) =>
-  `${formatMonthDay(date)}(${WEEKDAY[weekdayOf(date)]})`
+// 다른 곳에서도 쓰려고 shared로 옮겼다. 사이클 위젯은 여기서 그대로 가져다 쓴다.
+export { formatDayWithWeekday } from '@/shared/lib/date'

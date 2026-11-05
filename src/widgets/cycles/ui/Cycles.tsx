@@ -14,7 +14,15 @@ import { cardVariants } from '@heroui/styles'
 import { useMemo, useState } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
-import { DueChip, LabelChip, PriorityIcon, StateIcon } from '@/entities/ticket'
+import {
+  currentPeriod,
+  DueChip,
+  LabelChip,
+  periodText,
+  PriorityIcon,
+  StateIcon,
+  stateLabel,
+} from '@/entities/ticket'
 import { applyFilters, NONE, useFilters } from '@/features/filter'
 import type { Cycle, Issue, Snapshot } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
@@ -27,6 +35,7 @@ import {
   groupByAssignee,
   groupByState,
   inBucket,
+  OUTSIDE,
   tabSummary,
   type CycleTab,
   type SummaryBucket,
@@ -42,6 +51,9 @@ export function Cycles({ snapshot, now }: { snapshot: Snapshot; now: number }) {
     [snapshot.issues, snapshot.cycles],
   )
   const fallback = defaultTabKey(tabs, snapshot.cycles, now)
+  const current = currentPeriod(now, snapshot.cycles)
+  // 지금 사이클 밖이면 사이클 밖 탭을 「사이클 N 시작 전」으로 부른다. 대시보드와 같은 문구다.
+  const outsideName = periodText(current, snapshot.cycles, now).name
   const [picked, setPicked] = useState<string | null>(null)
   // 새로 받은 목록에서 고른 탭이 사라지면 고른 것을 잊고 지금 기간 탭으로 돌아간다.
   // 그래야 나중에 그 탭이 다시 생겨도 저절로 넘어가지 않는다.
@@ -66,16 +78,19 @@ export function Cycles({ snapshot, now }: { snapshot: Snapshot; now: number }) {
       <Tabs.ListContainer className="w-fit max-w-full">
         <Tabs.List aria-label="사이클">
           {tabs.map((t) => {
-            const { period } = tabSummary(t, snapshot.cycles, now)
+            const isCurrent = tabSummary(t, snapshot.cycles, now).period?.daysLeft != null
             return (
-              <Tabs.Tab key={t.key} id={t.key} className="h-auto flex-col py-1.5 whitespace-nowrap">
-                <span>{t.title}</span>
-                {period && (
-                  <span className="text-xs text-muted">
-                    {formatMonthDay(period.start)}~{formatMonthDay(period.end)}
-                    {period.daysLeft !== null && ' · 진행 중'}
-                  </span>
+              <Tabs.Tab key={t.key} id={t.key} className="gap-1.5 whitespace-nowrap">
+                {/* 지금 기간 탭은 이름 앞 작은 표시로 구분한다. 날짜는 아래 숫자 칸 줄에 있다. */}
+                {isCurrent && (
+                  <span
+                    aria-hidden
+                    data-current
+                    className="size-1.5 shrink-0 rounded-full bg-accent"
+                  />
                 )}
+                {t.key === OUTSIDE && current.kind === 'outside' ? outsideName : t.title}
+                {isCurrent && <span className="sr-only">, 진행 중</span>}
                 <Tabs.Indicator />
               </Tabs.Tab>
             )
@@ -347,10 +362,24 @@ function Column({
 }
 
 /** Linear 보드 카드 모양. 누르면 Linear 이슈를 새 탭으로 연다. */
+const PRIORITY_NAME = ['없음', '긴급', '높음', '보통', '낮음']
+
+/** 화면 낭독기가 제목을 먼저 읽도록 카드 링크 이름을 따로 만든다. */
+const cardName = (issue: Issue) =>
+  [
+    issue.title,
+    issue.identifier,
+    stateLabel(issue.state),
+    `담당 ${issue.assignee?.name ?? '없음'}`,
+    `기한 ${issue.dueDate ? formatMonthDay(issue.dueDate) : '없음'}`,
+    `우선순위 ${PRIORITY_NAME[issue.priority ?? 0] ?? '없음'}`,
+  ].join(', ')
+
 function TicketCard({ issue, today }: { issue: Issue; today: string }) {
   const ticket = cardVariants({ variant: 'secondary' })
   return (
     <a
+      aria-label={cardName(issue)}
       href={issue.url}
       target="_blank"
       rel="noreferrer"
@@ -367,12 +396,9 @@ function TicketCard({ issue, today }: { issue: Issue; today: string }) {
       <span className="flex items-center justify-between gap-2 text-xs">
         <span className="text-muted">{issue.identifier}</span>
         {issue.assignee && (
-          <>
-            <span aria-hidden>
-              <MemberAvatar {...issue.assignee} />
-            </span>
-            <span className="sr-only">담당 {issue.assignee.name}</span>
-          </>
+          <span aria-hidden>
+            <MemberAvatar {...issue.assignee} />
+          </span>
         )}
       </span>
       <span className="flex items-start gap-1.5">

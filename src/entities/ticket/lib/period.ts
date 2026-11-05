@@ -1,5 +1,13 @@
 import type { Cycle } from '@/shared/api/linear'
-import { addDays, formatMonthDay, kstDate, weekdayOf, type DateString } from '@/shared/lib/date'
+import {
+  addDays,
+  daysBetween,
+  formatDayWithWeekday,
+  formatMonthDay,
+  kstDate,
+  weekdayOf,
+  type DateString,
+} from '@/shared/lib/date'
 
 /** 「이번 주」로 보는 기간. 지금 사이클이 없으면 오늘부터 이번 주 일요일까지다. */
 export type Period =
@@ -36,4 +44,38 @@ export function periodLabel(period: Period): string {
   if (period.kind === 'outside') return `사이클 밖 · ${range}`
   const { number, name } = period.cycle
   return `사이클 ${number}${name ? ` ${name}` : ''} · ${range}`
+}
+
+export type PeriodText = {
+  /** 「사이클 7」, 사이클 밖이면 「사이클 8 시작 전」(다음 사이클이 없으면 「사이클 밖 기간」) */
+  name: string
+  /** 「11/9(월) ~ 11/15(일)」 */
+  range: string
+  /** 「3일째 / 7일」 */
+  day: string
+}
+
+/** 대시보드와 사이클 페이지가 같이 쓰는 기간 표시 문구 */
+export function periodText(
+  period: Period,
+  cycles: Cycle[],
+  now: string | number | Date,
+): PeriodText {
+  const today = kstDate(now)
+  const nowMs = new Date(now).getTime()
+  let name: string
+  if (period.kind === 'cycle') {
+    const { number, name: cycleName } = period.cycle
+    name = `사이클 ${number}${cycleName ? ` ${cycleName}` : ''}`
+  } else {
+    const next = cycles
+      .filter((c) => Date.parse(c.startsAt) > nowMs)
+      .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0]
+    name = next ? `사이클 ${next.number} 시작 전` : '사이클 밖 기간'
+  }
+  return {
+    name,
+    range: `${formatDayWithWeekday(period.start)} ~ ${formatDayWithWeekday(period.end)}`,
+    day: `${daysBetween(period.start, today) + 1}일째 / ${daysBetween(period.start, period.end) + 1}일`,
+  }
 }
