@@ -38,9 +38,7 @@ export function DeadlineSection({
     <section aria-label={label} className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
         <h3 className="font-semibold">{label}</h3>
-        <Chip size="sm">
-          {issues.length}
-        </Chip>
+        <Chip size="sm">{issues.length}</Chip>
         {!defaultOpen && issues.length > 0 && (
           <Button size="sm" variant="ghost" className="ml-auto" onPress={() => setOpen(!isOpen)}>
             {isOpen ? '접기' : '펼치기'}
@@ -95,16 +93,26 @@ export function DeadlineSection({
                       <Table.Cell>
                         <div className="flex flex-wrap gap-1">
                           {issue.labels.map((l) => (
-                            <Chip key={l.id} size="sm">
+                            <Chip
+                              key={l.id}
+                              size="sm"
+                              // 라벨마다 Linear에 정해 둔 색을 옅게 깔아 종류를 나눈다.
+                              style={
+                                l.color
+                                  ? {
+                                      backgroundColor: `color-mix(in oklab, ${l.color} 22%, transparent)`,
+                                      color: `color-mix(in oklab, ${l.color} 65%, var(--foreground))`,
+                                    }
+                                  : undefined
+                              }
+                            >
                               {l.name}
                             </Chip>
                           ))}
                         </div>
                       </Table.Cell>
                       <Table.Cell>
-                        <Chip size="sm">
-                          {issue.milestone?.name ?? '마일스톤 없음'}
-                        </Chip>
+                        <Chip size="sm">{issue.milestone?.name ?? '마일스톤 없음'}</Chip>
                       </Table.Cell>
                     </Table.Row>
                   )
