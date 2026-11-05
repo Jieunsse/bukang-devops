@@ -232,7 +232,7 @@ describe('사이클 페이지', () => {
   it('열 머리를 누르면 그 사람 카드를 접고, 다시 누르면 펼친다', async () => {
     render(<Cycles snapshot={snapshot([issue(1), issue(2, { assignee: null })])} now={NOW} />)
     const column = screen.getByRole('region', { name: '지훈' })
-    const toggle = within(column).getByRole('button', { name: /지훈\s*1건/ })
+    const toggle = within(column).getByRole('button', { name: /^지훈\s*1건$/ })
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
     await userEvent.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
@@ -253,7 +253,7 @@ describe('사이클 페이지', () => {
 
   it('한 열만 펼쳐 있어도 모두 접기를 보여 준다', async () => {
     render(<Cycles snapshot={snapshot([issue(1), issue(2, { assignee: null })])} now={NOW} />)
-    await userEvent.click(screen.getByRole('button', { name: /지훈\s*1건/ }))
+    await userEvent.click(screen.getByRole('button', { name: /^지훈\s*1건$/ }))
     expect(screen.getByRole('button', { name: '모두 접기' })).toBeInTheDocument()
   })
 })
