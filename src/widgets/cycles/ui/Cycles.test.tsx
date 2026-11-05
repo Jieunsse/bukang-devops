@@ -66,18 +66,34 @@ describe('사이클 페이지', () => {
     search = ''
   })
 
-  it('탭마다 이름 아래 기간을 작게 적고, 지금 기간 탭에 진행 중을 붙여 먼저 연다', () => {
+  it('탭에는 이름만 두고 사이클 밖은 「사이클 N 시작 전」으로 부르며, 지금 기간 탭은 이름 앞 표시와 화면 낭독용 「진행 중」으로 구분해 먼저 연다', () => {
     render(<Cycles snapshot={snapshot([issue(1), issue(2, inC1)])} now={NOW} />)
     const tabs = screen.getAllByRole('tab')
+    // 날짜는 탭에 적지 않는다. 아래 숫자 칸 줄에 이미 있다.
     expect(tabs.map((t) => t.textContent)).toEqual([
-      '사이클 밖 기간11/5~11/8 · 진행 중',
-      '사이클 111/9~11/15',
-      '사이클 211/16~11/22',
+      '사이클 1 시작 전, 진행 중',
+      '사이클 1',
+      '사이클 2',
     ])
-    expect(screen.getByRole('tab', { name: /사이클 밖 기간/ })).toHaveAttribute(
-      'aria-selected',
-      'true',
+    const current = screen.getByRole('tab', { name: /사이클 1 시작 전/ })
+    expect(current).toHaveAttribute('aria-selected', 'true')
+    expect(current.querySelector('[data-current]')).toHaveAttribute('aria-hidden', 'true')
+    expect(within(current).getByText(', 진행 중')).toHaveClass('sr-only')
+    expect(screen.getByRole('tab', { name: '사이클 1' }).querySelector('[data-current]')).toBeNull()
+  })
+
+  it('지금 사이클 중이면 사이클에 들지 않은 티켓 탭은 「사이클 밖 기간」이라고 부른다', () => {
+    render(
+      <Cycles
+        snapshot={snapshot([issue(1), issue(2, inC1)])}
+        now={Date.parse('2026-11-10T03:00:00.000Z')}
+      />,
     )
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
+      '사이클 밖 기간',
+      '사이클 1, 진행 중',
+      '사이클 2',
+    ])
   })
 
   it('숫자 칸 네 개에 남은 티켓, 기한 지남, 오늘, 이번 주 개수를 나란히 보여 준다', () => {
@@ -99,7 +115,7 @@ describe('사이클 페이지', () => {
       .map((b) => b.textContent)
     expect(names).toEqual(['남은 티켓4', '기한 지남1', '오늘1', '이번 주2'])
     // 탭에 있는 기간 이름을 아래에 큰 제목으로 다시 적지 않는다.
-    expect(screen.queryByRole('heading', { name: '사이클 밖 기간' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '사이클 1 시작 전' })).not.toBeInTheDocument()
   })
 
   it('숫자 칸 아래 한 줄에 기간과 남은 날을 적는다', () => {
@@ -238,7 +254,8 @@ describe('사이클 페이지', () => {
     expect(within(card).getByText('프론트')).toBeInTheDocument()
     // UTC 10/29 16:00은 한국 시간 10/30이다.
     expect(within(card).getByText('만든 날 10/30')).toBeInTheDocument()
-    expect(within(card).getByText('지')).toBeInTheDocument()
+    // 화면 낭독기는 제목을 먼저 읽고, 번호·상태·담당자·기한·우선순위를 이어 읽는다.
+    expect(card).toHaveAccessibleName('티켓 1, BUK-1, 진행 중, 담당 지훈, 기한 없음, 우선순위 높음')
     expect(card).toHaveAttribute('href', 'https://linear.app/bukang/issue/BUK-1')
     expect(card).toHaveAttribute('target', '_blank')
   })
@@ -367,7 +384,7 @@ describe('사이클 페이지', () => {
     await userEvent.click(screen.getByRole('tab', { name: /사이클 2/ }))
     rerender(<Cycles snapshot={snapshot([issue(1), issue(2, inC1)], [cycle1])} now={NOW} />)
     rerender(<Cycles snapshot={snapshot([issue(1), issue(2, inC1)])} now={NOW} />)
-    expect(screen.getByRole('tab', { name: /사이클 밖 기간/ })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: /사이클 1 시작 전/ })).toHaveAttribute(
       'aria-selected',
       'true',
     )
@@ -416,12 +433,13 @@ describe('사이클 페이지', () => {
     expect(chip.style.backgroundColor).toMatch(/#4ea7fc|rgb\(78, 167, 252\)/)
   })
 
-  it('빈 묶음을 골랐다가 돌아와도 접어 둔 열은 접힌 채로 둔다', async () => {
+  it('빈 묶음을 골랐다가 돌아와도 묶음 방식과 접어 둔 열을 그대로 둔다', async () => {
     render(<Cycles snapshot={snapshot([issue(1, { dueDate: '2026-11-03' })])} now={NOW} />)
     await byAssignee()
     await userEvent.click(screen.getByRole('button', { name: /^지훈\s*1건$/ }))
     await userEvent.click(screen.getByRole('button', { name: /오늘\s*0/ }))
     await userEvent.click(screen.getByRole('button', { name: /남은 티켓\s*1/ }))
+    expect(screen.getByRole('radio', { name: '담당자별' })).toBeChecked()
     expect(screen.getByRole('button', { name: /^지훈\s*1건$/ })).toHaveAttribute(
       'aria-expanded',
       'false',
