@@ -1,7 +1,6 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  typedRoutes: true,
   // 검색엔진이 주소를 따라 들어와도 색인하지 않게 모든 응답에 붙인다.
   async headers() {
     return [{ source: '/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] }]
