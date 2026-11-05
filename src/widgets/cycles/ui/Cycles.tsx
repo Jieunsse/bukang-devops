@@ -5,7 +5,7 @@ import { cardVariants } from '@heroui/styles'
 import { useMemo, useState, type ReactNode } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
-import { dueLabel, LabelChip, type DueTone } from '@/entities/ticket'
+import { beforeCycleLabel, dueLabel, LabelChip, type DueTone } from '@/entities/ticket'
 import { applyFilters, FilterChips, NONE, useFilters } from '@/features/filter'
 import type { Cycle, Issue, Snapshot } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
@@ -17,6 +17,7 @@ import {
   formatDayWithWeekday,
   groupByAssignee,
   inBucket,
+  OUTSIDE,
   tabSummary,
   type AssigneeGroup,
   type CycleTab,
@@ -74,7 +75,8 @@ export function Cycles({
             const { period } = tabSummary(t, snapshot.cycles, now)
             return (
               <Tabs.Tab key={t.key} id={t.key} className="h-auto flex-col py-1.5 whitespace-nowrap">
-                <span>{t.title}</span>
+                {/* 사이클에 들지 않은 티켓 탭은 「사이클 밖」 대신 다음 사이클 기준으로 부른다. */}
+                <span>{t.key === OUTSIDE ? beforeCycleLabel(now, snapshot.cycles) : t.title}</span>
                 {period && (
                   <span className="text-xs text-muted">
                     {formatMonthDay(period.start)}~{formatMonthDay(period.end)}
