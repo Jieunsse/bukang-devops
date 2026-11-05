@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, EmptyState, ToggleButton, ToggleButtonGroup } from '@heroui/react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
 import { applyFilters, NONE, useFilters } from '@/features/filter'
@@ -39,6 +39,15 @@ export function Timeline({ snapshot, now }: { snapshot: Snapshot; now: number })
   const range = timelineRange(dated, today)
   const days = daysBetween(range.start, range.end) + 1
   const x = (date: DateString) => daysBetween(range.start, date) * DAY_PX
+  const todayX = x(today)
+
+  // 처음 열면 오늘이 보이게 차트를 옮긴다. 오래 지난 기한이 있으면 범위가 길어지기 때문이다.
+  const chartRef = useRef<HTMLElement>(null)
+  const hasChart = dated.length > 0
+  useEffect(() => {
+    const chart = chartRef.current
+    if (chart) chart.scrollLeft = todayX - chart.clientWidth / 3
+  }, [hasChart]) // eslint-disable-line react-hooks/exhaustive-deps -- 처음 그릴 때만 옮긴다.
 
   return (
     <Card>
@@ -66,7 +75,12 @@ export function Timeline({ snapshot, now }: { snapshot: Snapshot; now: number })
             <p className="text-sm text-muted">필터를 바꾸거나 Linear에서 기한을 정해 주세요.</p>
           </EmptyState>
         ) : (
-          <section aria-label="타임라인 차트" className="overflow-x-auto">
+          <section
+            ref={chartRef}
+            aria-label="타임라인 차트"
+            // 키보드로 막대에 갔을 때 고정된 이름 칸 밑에 가려지지 않게 한다.
+            className="scroll-pl-36 overflow-x-auto md:scroll-pl-56"
+          >
             <div role="table" aria-label="티켓 일정" className="relative w-max text-sm">
               <div role="row" className="flex h-12 items-end border-b border-separator">
                 <span
@@ -75,7 +89,12 @@ export function Timeline({ snapshot, now }: { snapshot: Snapshot; now: number })
                 >
                   티켓
                 </span>
-                <span role="columnheader" className="relative" style={{ width: days * DAY_PX }}>
+                <span
+                  role="columnheader"
+                  aria-label="일정"
+                  className="relative"
+                  style={{ width: days * DAY_PX }}
+                >
                   {/* 월요일마다 날짜를 적는다. */}
                   {Array.from({ length: days }, (_, d) => addDays(range.start, d))
                     .filter((date) => weekdayOf(date) === 1)
@@ -116,8 +135,15 @@ export function Timeline({ snapshot, now }: { snapshot: Snapshot; now: number })
                 </div>
               ))}
 
-              <DayLine left={x(today)} label="오늘" />
-              <DayLine left={x(FINAL_PRESENTATION)} label="최종 발표" />
+              {today === FINAL_PRESENTATION ? (
+                <DayLine left={todayX} label="오늘·최종 발표" />
+              ) : (
+                <>
+                  <DayLine left={todayX} label="오늘" />
+                  {/* 최종 발표 직전 주에 이름표가 겹치지 않게 한 줄 아래에 적는다. */}
+                  <DayLine left={x(FINAL_PRESENTATION)} label="최종 발표" lower />
+                </>
+              )}
             </div>
           </section>
         )}
@@ -143,7 +169,9 @@ function IssueRow({
   const when =
     mark.started === null
       ? `시작 전, 기한 ${formatMonthDay(issue.dueDate)}`
-      : `${formatMonthDay(mark.started)}부터 ${formatMonthDay(issue.dueDate)}까지`
+      : mark.kind === 'dot'
+        ? `기한 ${formatMonthDay(issue.dueDate)}, ${formatMonthDay(mark.started)}에 시작`
+        : `${formatMonthDay(mark.started)}부터 ${formatMonthDay(issue.dueDate)}까지`
   const label = `${issue.identifier} ${issue.title}: ${when}${overdue ? ', 기한 지남' : ''}`
   const color = overdue ? 'bg-danger' : 'bg-accent'
 
@@ -180,14 +208,18 @@ function IssueRow({
 }
 
 /** 날짜 칸 가운데에 세로선을 긋는다. 왼쪽 이름 칸 폭만큼 밀어서 그린다. */
-function DayLine({ left, label }: { left: number; label: string }) {
+function DayLine({ left, label, lower }: { left: number; label: string; lower?: boolean }) {
   return (
     <div className="pointer-events-none absolute inset-y-0 left-36 md:left-56">
       <div
         className="absolute inset-y-0 border-l border-dashed border-foreground/40"
         style={{ left: left + DAY_PX / 2 }}
       >
-        <span className="absolute top-0 left-1 text-xs whitespace-nowrap text-muted">{label}</span>
+        <span
+          className={`absolute left-1 text-xs whitespace-nowrap text-muted ${lower ? 'top-4' : 'top-0'}`}
+        >
+          {label}
+        </span>
       </div>
     </div>
   )

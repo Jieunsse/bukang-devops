@@ -26,9 +26,10 @@ export function markOf(issue: Issue, rangeStart: DateString): Mark | null {
   return { kind: 'bar', from: started < rangeStart ? rangeStart : started, to: due, started }
 }
 
-/** 일주일 전부터 최종 발표일(지났으면 오늘)까지. 모든 기한이 들어가도록 늘리고, 시작일로는 늘리지 않는다. */
+/** 일주일 전부터 최종 발표일(지났으면 오늘)까지. 최종 발표일은 늘 범위 안에 든다. 모든 기한이 들어가도록 늘리고, 시작일로는 늘리지 않는다. */
 export function timelineRange(issues: Issue[], today: DateString) {
-  let start = addDays(today, -7)
+  const weekAgo = addDays(today, -7)
+  let start = weekAgo < FINAL_PRESENTATION ? weekAgo : FINAL_PRESENTATION
   let end = today > FINAL_PRESENTATION ? today : FINAL_PRESENTATION
   for (const { dueDate } of issues) {
     if (dueDate === null) continue
