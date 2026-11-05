@@ -136,7 +136,10 @@ function SummaryCard({ tab, summary }: { tab: CycleTab; summary: TabSummary }) {
               {COUNTS.map((c) => (
                 <div key={c.key} className="flex flex-col rounded-xl bg-default px-3 py-2">
                   <span className="text-xs whitespace-nowrap text-muted">{c.label}</span>
-                  <span className={`text-xl font-semibold tabular-nums ${c.className}`}>
+                  <span
+                    // 0건은 알릴 것이 없으니 기한 색을 넣지 않는다.
+                    className={`text-xl font-semibold tabular-nums ${counts[c.key] > 0 ? c.className : ''}`}
+                  >
                     {counts[c.key]}
                   </span>
                 </div>
@@ -164,7 +167,7 @@ function Board({ tab, issues, today }: { tab: CycleTab; issues: Issue[]; today: 
     <section
       aria-label="담당자별 티켓"
       // 넓은 화면에서는 열을 화면 폭에 맞춰 나누고, 열이 많으면 가로로 밀어 본다. 휴대폰에서는 세로로 쌓는다.
-      className="flex flex-col gap-4 md:grid md:auto-cols-[minmax(16rem,1fr)] md:grid-flow-col md:overflow-x-auto md:pb-2"
+      className="flex flex-col gap-4 md:grid md:auto-cols-[minmax(13rem,1fr)] md:grid-flow-col md:overflow-x-auto md:pb-2"
     >
       {groupByAssignee(issues).map((group) => (
         <Column key={group.id} group={group} today={today} />
