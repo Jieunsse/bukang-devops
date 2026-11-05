@@ -69,9 +69,11 @@ export function Dashboard({
     Bucket,
     number
   >
-  const sections = bucket === 'all' ? BUCKETS : [bucket]
+  const sections: readonly Bucket[] = bucket === 'all' ? BUCKETS : [bucket]
   const dueCounts = useMemo(() => dueCountsByDate(issues), [issues])
   const dateIssues = date ? issues.filter((i) => i.dueDate === date) : []
+  // 도구 줄 개수는 지금 목록에 보이는 묶음(또는 고른 날짜)만 센다.
+  const shownCount = date ? dateIssues.length : sections.reduce((n, b) => n + groups[b].length, 0)
 
   return (
     <div className="flex flex-col gap-6">
@@ -120,7 +122,7 @@ export function Dashboard({
           <div className="flex flex-col gap-6">
             <PageToolbar
               title="마감 목록"
-              summary={`${issues.length}건`}
+              summary={`${shownCount}건`}
               actions={
                 <>
                   {date && (

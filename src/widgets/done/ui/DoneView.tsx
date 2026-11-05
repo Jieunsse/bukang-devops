@@ -46,8 +46,8 @@ export function DoneView() {
             <FilterButton />
           </div>
         </div>
-        {/* 이름은 대시보드가 받아 둔 티켓에서 찾는다. 완료·취소 목록은 기간마다 달라서다. */}
-        <FilterChips issues={snapshot.issues} />
+        {/* 이름은 남은 티켓과 이 기간의 완료·취소 티켓에서 함께 찾는다. */}
+        <FilterChips issues={[...snapshot.issues, ...(query.data ?? [])]} />
       </div>
       {error && <p className="text-sm text-muted">{error}</p>}
       {query.isPending ? (

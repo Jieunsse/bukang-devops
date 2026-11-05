@@ -95,7 +95,11 @@ export function Timeline({
 
   return (
     <div className="flex flex-col gap-4">
-      <PageToolbar title="타임라인" summary={`${dated.length}건`} actions={actions}>
+      <PageToolbar
+        title="타임라인"
+        summary={`${dated.filter((i) => markOf(i, range)).length}건`}
+        actions={actions}
+      >
         <FilterChips issues={snapshot.issues} />
       </PageToolbar>
       <Card>
