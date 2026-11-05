@@ -1,5 +1,5 @@
-import { ComingSoon } from '@/shared/ui'
+import { TimelineView } from '@/widgets/timeline'
 
 export default function TimelinePage() {
-  return <ComingSoon title="타임라인" />
+  return <TimelineView />
 }
