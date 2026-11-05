@@ -21,4 +21,11 @@ describe('예시 데이터', () => {
     expect(dues).toContain('2026-11-05')
     expect(dues.some((d) => d !== null && d < '2026-11-05')).toBe(true)
   })
+
+  it('사이클에 든 티켓과 들지 않은 티켓이 있고, 사이클마다 완료 수가 있다', () => {
+    const ids = new Set(snapshot.cycles.map((c) => c.id))
+    expect(snapshot.issues.some((i) => i.cycle && ids.has(i.cycle.id))).toBe(true)
+    expect(snapshot.issues.some((i) => !i.cycle)).toBe(true)
+    expect(snapshot.cycles.every((c) => typeof c.completedIssueCount === 'number')).toBe(true)
+  })
 })

@@ -24,6 +24,7 @@ const ISSUES_QUERY = `
         assignee { id name avatarUrl }
         labels(first: 20) { nodes { id name color } }
         projectMilestone { id name progress }
+        cycle { id }
       }
       pageInfo { hasNextPage endCursor }
     }
@@ -33,7 +34,7 @@ const ISSUES_QUERY = `
 const CYCLES_QUERY = `
   query Cycles($teamKey: String!, $after: String) {
     cycles(first: ${PAGE_SIZE}, after: $after, filter: { team: { key: { eq: $teamKey } } }) {
-      nodes { id number name startsAt endsAt }
+      nodes { id number name startsAt endsAt completedIssueCountHistory }
       pageInfo { hasNextPage endCursor }
     }
   }
@@ -87,7 +88,7 @@ async function request<T>(
 type Page<N> = { nodes: N[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } }
 
 /** 다음 쪽이 없을 때까지 받는다. 쪽 수가 한도를 넘으면 잘린 목록 대신 오류를 낸다. */
-async function paginate<T, N>(
+export async function paginate<T, N>(
   fetchImpl: FetchImpl,
   apiKey: string,
   query: string,

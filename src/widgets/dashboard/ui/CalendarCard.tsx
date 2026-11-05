@@ -70,7 +70,7 @@ export function CalendarCard({
                 <Calendar.NavButton slot="previous" />
                 <Calendar.NavButton slot="next" />
               </Calendar.Header>
-              <Calendar.Grid className="w-full">
+              <Calendar.Grid className="w-full gap-x-1 gap-y-1.5">
                 <Calendar.GridHeader>
                   {(day) => <Calendar.HeaderCell>{day}</Calendar.HeaderCell>}
                 </Calendar.GridHeader>
@@ -83,7 +83,8 @@ export function CalendarCard({
                       <Calendar.Cell
                         date={date}
                         className={[
-                          'mx-auto aspect-auto h-11 w-full flex-col gap-0 text-sm',
+                          // 지름을 고정한 원을 칸 가운데에 둔다. 옆 날짜와 떨어지게 격자에 간격을 준다.
+                          'mx-auto aspect-square size-10 flex-col gap-0 text-sm sm:size-11',
                           inCycle(day, cycles) ? 'bg-accent-soft/60' : '',
                           isFinal ? 'ring-2 ring-accent ring-inset' : '',
                         ].join(' ')}

@@ -37,7 +37,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <PersistQueryClientProvider
         client={queryClient}
         // 저장 모양이 바뀌면 buster를 올려 지난 저장분을 버린다.
-        persistOptions={{ persister, maxAge: ONE_DAY, buster: 'snapshot-v4' }}
+        persistOptions={{ persister, maxAge: ONE_DAY, buster: 'snapshot-v5' }}
       >
         {children}
         <Toast.Provider />

@@ -42,6 +42,11 @@ describe('필터', () => {
     expect(parseFilters(new URLSearchParams(toSearch(filters)))).toEqual(filters)
   })
 
+  it('필터를 바꿔도 주소에 있던 다른 값(완료·취소 기간)은 남긴다', () => {
+    const current = new URLSearchParams('from=2026-10-01&to=2026-10-31&assignee=u1')
+    expect(toSearch({ label: 'l1' }, current)).toBe('from=2026-10-01&to=2026-10-31&label=l1')
+  })
+
   it('아무것도 고르지 않으면 주소는 비고 티켓은 그대로다', () => {
     expect(toSearch({})).toBe('')
     expect(ids(applyFilters(issues, {}))).toEqual(['1', '2', '3'])

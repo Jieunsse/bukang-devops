@@ -9,6 +9,8 @@ import { BUCKET_LABEL, dueLabel, type Bucket, type DueTone } from '@/entities/ti
 import type { Issue } from '@/shared/api/linear'
 
 const PAGE = 5
+/** 라벨과 마일스톤 칩. 기본 칩은 안쪽 여백이 좁아 글자가 테두리에 붙어 보여서 넓힌다. */
+const TAG_CHIP = 'h-6 max-w-full px-2.5'
 const TONE_CLASS: Record<DueTone, string> = {
   danger: 'text-danger',
   warning: 'text-warning',
@@ -116,7 +118,7 @@ export function DeadlineSection({
                             <Chip
                               key={l.id}
                               size="sm"
-                              className="max-w-full"
+                              className={TAG_CHIP}
                               // 라벨마다 Linear에 정해 둔 색을 옅게 깔아 종류를 나눈다.
                               style={
                                 l.color
@@ -135,7 +137,7 @@ export function DeadlineSection({
                         </div>
                       </Table.Cell>
                       <Table.Cell>
-                        <Chip size="sm" className="max-w-full">
+                        <Chip size="sm" className={TAG_CHIP}>
                           <span
                             title={issue.milestone?.name ?? '마일스톤 없음'}
                             className="truncate"

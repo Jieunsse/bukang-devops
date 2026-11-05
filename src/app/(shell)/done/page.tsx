@@ -1,5 +1,5 @@
-import { ComingSoon } from '@/shared/ui'
+import { DoneView } from '@/widgets/done'
 
 export default function DonePage() {
-  return <ComingSoon title="완료·취소" />
+  return <DoneView />
 }
