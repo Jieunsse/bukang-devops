@@ -1,7 +1,7 @@
 'use client'
 
 import { ArrowsRotateRight } from '@gravity-ui/icons'
-import { Button, toast, Tooltip } from '@heroui/react'
+import { Button, Spinner, toast, Tooltip } from '@heroui/react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { SNAPSHOT_QUERY_KEY } from '@/shared/api/linear/query'
@@ -31,7 +31,11 @@ export function RefreshButton() {
         isPending={isPending}
         onPress={() => mutate()}
       >
-        <ArrowsRotateRight aria-hidden className="size-4" />
+        {isPending ? (
+          <Spinner size="sm" color="current" />
+        ) : (
+          <ArrowsRotateRight aria-hidden className="size-4" />
+        )}
       </Button>
       <Tooltip.Content placement="bottom">Linear에서 새로 받기</Tooltip.Content>
     </Tooltip>

@@ -10,10 +10,10 @@ const people = [
   { id: 'u-doyun', name: '도윤' },
 ] as const
 const labels = {
-  fe: { id: 'l-fe', name: '프론트' },
-  be: { id: 'l-be', name: '백엔드' },
-  bug: { id: 'l-bug', name: '버그' },
-  docs: { id: 'l-docs', name: '문서' },
+  fe: { id: 'l-fe', name: '프론트', color: '#4ea7fc' },
+  be: { id: 'l-be', name: '백엔드', color: '#26b5ce' },
+  bug: { id: 'l-bug', name: '버그', color: '#eb5757' },
+  docs: { id: 'l-docs', name: '문서', color: '#bec2c8' },
 }
 const milestones = {
   semi: { id: 'm-semi', name: '세미 발표', progress: 0.82 },

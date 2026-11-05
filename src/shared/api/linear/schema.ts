@@ -14,7 +14,17 @@ export const issueSchema = z.object({
   startedAt: z.iso.datetime({ offset: true }).nullable(),
   state: z.object({ name: z.string(), type: z.string() }),
   assignee: z.object({ id: z.string(), name: z.string(), avatarUrl: z.url().nullish() }).nullable(),
-  labels: z.array(z.object({ id: z.string(), name: z.string() })),
+  labels: z.array(
+    // 색은 Linear 라벨에 정해 둔 색 코드다. 칩 색을 Linear 화면과 맞춘다.
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      color: z
+        .string()
+        .regex(/^#[0-9a-f]{6}$/i)
+        .optional(),
+    }),
+  ),
   milestone: z.object({ id: z.string(), name: z.string(), progress: z.number() }).nullable(),
   // 화면 모양에서는 빼도 된다(사이클 밖과 같다). Linear 응답에서는 반드시 받는다.
   cycle: z.object({ id: z.string() }).nullish(),
