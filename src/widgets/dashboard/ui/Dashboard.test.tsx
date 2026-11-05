@@ -90,7 +90,7 @@ describe('대시보드', () => {
     expect(screen.queryByText('티켓 12')).not.toBeInTheDocument()
   })
 
-  it('긴 마일스톤 이름은 자르지 않고 한 줄로 다 보여 주고, 라벨과 제목은 잘라도 전체를 마우스 올림 설명으로 남긴다', () => {
+  it('긴 마일스톤 이름은 말줄임 없이 줄바꿈하지 않는 칸에 두고, 라벨과 제목은 잘라도 전체를 마우스 올림 설명으로 남긴다', () => {
     const long = '충전 한도·이상 감지와 아주 긴 마일스톤 이름'
     render(
       <Dashboard
@@ -128,6 +128,25 @@ describe('대시보드', () => {
         .style.width
     expect(widthOf('기한 지남')).not.toBe('')
     expect(widthOf('오늘')).toBe(widthOf('기한 지남'))
+  })
+
+  it('마일스톤 칸이 넓어져도 제목 칸에 240px이 남도록 표를 넓힌다', () => {
+    const long = '아주 긴 마일스톤 이름'.repeat(4)
+    render(
+      <Dashboard
+        snapshot={snapshot([
+          issue(33, '2026-11-03', { milestone: { id: 'm9', name: long, progress: 0 } }),
+        ])}
+        now={NOW}
+      />,
+    )
+    const section = screen.getByRole('region', { name: '기한 지남' })
+    const milestone = parseFloat(
+      within(section).getByRole('columnheader', { name: '마일스톤' }).style.width,
+    )
+    // 번호 96 + 담당자 96 + 기한 112 + 라벨 144 = 448
+    const table = within(section).getByRole('grid')
+    expect(parseFloat(table.style.minWidth)).toBeGreaterThanOrEqual(448 + milestone + 240)
   })
 
   it('숫자 칸을 누르면 마감 목록이 그 묶음만 보여 준다', async () => {
