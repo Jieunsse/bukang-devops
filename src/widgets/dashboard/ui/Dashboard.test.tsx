@@ -112,6 +112,7 @@ describe('대시보드', () => {
     const section = screen.getByRole('region', { name: '기한 지남' })
     expect(within(section).queryByRole('button')).not.toBeInTheDocument()
     expect(within(section).getByText('0')).toBeInTheDocument()
+    expect(within(section).getByRole('heading', { level: 3, name: /기한 지남/ })).toBeInTheDocument()
   })
 
   it('키보드 Enter와 Space로 묶음을 접고 펼친다', async () => {
@@ -166,6 +167,16 @@ describe('대시보드', () => {
     expect(screen.queryByText('티켓 10')).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('tab', { name: '이번 주' }))
     await userEvent.click(screen.getByRole('tab', { name: '전체' }))
+    expect(screen.getByText('티켓 10')).toBeInTheDocument()
+  })
+
+  it('전체 보기에서 접은 묶음을 탭으로 고르면 펼친 채로 보여 준다', async () => {
+    render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
+    await userEvent.click(
+      within(screen.getByRole('region', { name: '오늘' })).getByRole('button', { name: /^오늘/ }),
+    )
+    expect(screen.queryByText('티켓 10')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('tab', { name: '오늘' }))
     expect(screen.getByText('티켓 10')).toBeInTheDocument()
   })
 
