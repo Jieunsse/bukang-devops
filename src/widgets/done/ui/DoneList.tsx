@@ -5,7 +5,7 @@ import { Button, Card, Chip, EmptyState, Table } from '@heroui/react'
 import { useMemo, useState } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
-import { milestoneColumnWidth } from '@/entities/ticket'
+import { milestoneColumnWidth, TITLE_MIN_PX } from '@/entities/ticket'
 import { applyFilters, NONE, useFilters } from '@/features/filter'
 import type { DoneIssue } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
@@ -120,8 +120,8 @@ function GroupSection({ group, milestoneWidth }: { group: DoneGroup; milestoneWi
             <Table.Content
               aria-label={`${group.name} 완료·취소 티켓`}
               className="table-fixed"
-              // 마일스톤 칸이 길어져도 제목 칸이 240px은 남게 표 최소 폭을 늘린다(번호·닫은 날·라벨 320px).
-              style={{ minWidth: milestoneWidth + 320 + 240 }}
+              // 마일스톤 칸이 길어져도 제목 칸 최소 폭이 남게 표 최소 폭을 늘린다(번호·닫은 날·라벨 320px).
+              style={{ minWidth: milestoneWidth + 320 + TITLE_MIN_PX }}
             >
               <Table.Header>
                 <Table.Column isRowHeader>제목</Table.Column>
