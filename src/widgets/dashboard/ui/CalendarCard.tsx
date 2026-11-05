@@ -53,7 +53,8 @@ export function CalendarCard({
           <I18nProvider locale="ko-KR">
             <Calendar
               aria-label="기한 달력"
-              className="w-full"
+              // 기본 달력은 폭이 252px로 고정이라 카드 폭에 맞게 늘린다.
+              className="w-full max-w-none"
               value={selected ? parseDate(selected) : null}
               defaultFocusedValue={parseDate(today)}
               onChange={(value) => onSelect(value.toString())}
@@ -76,7 +77,7 @@ export function CalendarCard({
                       <Calendar.Cell
                         date={date}
                         className={[
-                          'h-11 w-full flex-col gap-0 text-sm',
+                          'mx-auto aspect-auto h-11 w-full flex-col gap-0 text-sm',
                           inCycle(day, cycles) ? 'bg-accent-soft/60' : '',
                           isFinal ? 'ring-2 ring-accent ring-inset' : '',
                         ].join(' ')}

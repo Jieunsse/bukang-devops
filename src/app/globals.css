@@ -5,3 +5,12 @@
 html {
   scrollbar-gutter: stable;
 }
+
+/* 누를 수 있는 곳에는 손가락 모양을 보여 준다. Tailwind는 버튼 커서를 기본 화살표로 두므로 한곳에서 바꾼다.
+   HeroUI 컴포넌트가 쓰는 값(--cursor-interactive)을 그대로 쓴다. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: var(--cursor-interactive);
+  }
+}

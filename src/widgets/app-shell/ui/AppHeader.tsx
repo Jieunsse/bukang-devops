@@ -3,7 +3,6 @@
 import { currentPeriod, type Period } from '@/entities/ticket'
 import { FilterButton } from '@/features/filter'
 import { RefreshButton } from '@/features/refresh'
-import { ThemeToggle } from '@/features/theme'
 import { useSnapshot } from '@/shared/api/linear/query'
 import { useNow } from '@/shared/lib/use-now'
 import { formatKstDateTime, formatMonthDay } from '@/shared/lib/date'
@@ -26,7 +25,6 @@ export function AppHeader() {
         <p className="font-medium">{periodLabel(currentPeriod(now, cycles))}</p>
         <p className="text-sm text-muted">마지막으로 받은 시각 {formatKstDateTime(fetchedAt)}</p>
         <div className="ml-auto flex items-center gap-2">
-          <ThemeToggle />
           <RefreshButton />
           <FilterButton />
         </div>
