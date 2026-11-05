@@ -41,12 +41,18 @@ const rawIssueSchema = issueSchema
   .omit({ labels: true, milestone: true })
   .extend({
     labels: z.object({ nodes: issueSchema.shape.labels }),
-    projectMilestone: issueSchema.shape.milestone,
+    // Linear는 마일스톤 진행률을 0~100으로 준다. 화면은 0~1로 쓴다.
+    projectMilestone: z
+      .object({ id: z.string(), name: z.string(), progress: z.number().min(0).max(100) })
+      .nullable(),
   })
   .transform(({ labels, projectMilestone, ...rest }) => ({
     ...rest,
     labels: labels.nodes,
-    milestone: projectMilestone,
+    milestone: projectMilestone && {
+      ...projectMilestone,
+      progress: projectMilestone.progress / 100,
+    },
   }))
 
 export const issuesResponseSchema = z.object({

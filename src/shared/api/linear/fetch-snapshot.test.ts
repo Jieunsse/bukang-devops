@@ -12,7 +12,8 @@ const rawIssue = {
   state: { name: '진행 중', type: 'started' },
   assignee: { id: 'u1', name: '지훈' },
   labels: { nodes: [{ id: 'l1', name: 'FE' }] },
-  projectMilestone: { id: 'm1', name: '세미 발표', progress: 0.4 },
+  // Linear는 마일스톤 진행률을 0~100으로 준다.
+  projectMilestone: { id: 'm1', name: '세미 발표', progress: 40 },
 }
 const rawCycle = {
   id: 'c1',
@@ -82,6 +83,19 @@ describe('Linear에서 한 번에 받기', () => {
         },
       ],
     })
+  })
+
+  it('마일스톤 진행률 0~100을 화면에서 쓰는 0~1로 바꾼다', async () => {
+    const at = (progress: number) => ({
+      ...rawIssue,
+      projectMilestone: { id: 'm', name: 'm', progress },
+    })
+    const snapshot = await fetchSnapshot(
+      'k',
+      fakeLinear([issuesPage([at(4), { ...at(100), id: 'i2' }, { ...at(0), id: 'i3' }])]),
+      NOW,
+    )
+    expect(snapshot.issues.map((i) => i.milestone?.progress)).toEqual([0.04, 1, 0])
   })
 
   it('담당자와 마일스톤이 없는 티켓도 받는다', async () => {
