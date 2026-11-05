@@ -228,4 +228,32 @@ describe('사이클 페이지', () => {
       'true',
     )
   })
+
+  it('열 머리를 누르면 그 사람 카드를 접고, 다시 누르면 펼친다', async () => {
+    render(<Cycles snapshot={snapshot([issue(1), issue(2, { assignee: null })])} now={NOW} />)
+    const column = screen.getByRole('region', { name: '지훈' })
+    const toggle = within(column).getByRole('button', { name: /지훈\s*1건/ })
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    await userEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(within(column).queryByRole('link')).not.toBeInTheDocument()
+    expect(screen.getByText('티켓 2')).toBeInTheDocument()
+    await userEvent.click(toggle)
+    expect(within(column).getByRole('link', { name: /티켓 1/ })).toBeInTheDocument()
+  })
+
+  it('모두 접기로 모든 열을 접고, 모두 펼치기로 다시 펼친다', async () => {
+    render(<Cycles snapshot={snapshot([issue(1), issue(2, { assignee: null })])} now={NOW} />)
+    await userEvent.click(screen.getByRole('button', { name: '모두 접기' }))
+    expect(screen.queryAllByRole('link')).toHaveLength(0)
+    await userEvent.click(screen.getByRole('button', { name: '모두 펼치기' }))
+    expect(screen.getAllByRole('link')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: '모두 접기' })).toBeInTheDocument()
+  })
+
+  it('한 열만 펼쳐 있어도 모두 접기를 보여 준다', async () => {
+    render(<Cycles snapshot={snapshot([issue(1), issue(2, { assignee: null })])} now={NOW} />)
+    await userEvent.click(screen.getByRole('button', { name: /지훈\s*1건/ }))
+    expect(screen.getByRole('button', { name: '모두 접기' })).toBeInTheDocument()
+  })
 })
