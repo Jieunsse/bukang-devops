@@ -54,5 +54,5 @@ export const issuesResponseSchema = z.object({
 })
 
 export const cyclesResponseSchema = z.object({
-  cycles: z.object({ nodes: z.array(cycleSchema) }),
+  cycles: z.object({ nodes: z.array(cycleSchema), pageInfo }),
 })

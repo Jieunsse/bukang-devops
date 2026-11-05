@@ -3,7 +3,12 @@ import 'server-only'
 import { updateTag } from 'next/cache'
 
 import type { Snapshot } from '@/shared/api/linear'
-import { getSnapshot, SNAPSHOT_TAG } from '@/shared/api/linear/server'
+import {
+  fetchFreshSnapshot,
+  getSnapshot,
+  primeNextSnapshot,
+  SNAPSHOT_TAG,
+} from '@/shared/api/linear/server'
 
 const ONE_MINUTE_MS = 60_000
 
@@ -30,6 +35,9 @@ export async function refreshSnapshot(): Promise<RefreshResult> {
   if (!decision.allowed) {
     return { status: 'tooSoon', secondsAgo: decision.secondsAgo, snapshot: current }
   }
+  // 먼저 받아서 성공한 뒤에만 캐시를 바꾼다. Linear가 실패하면 지금 캐시가 그대로 남는다.
+  const fresh = await fetchFreshSnapshot()
+  primeNextSnapshot(fresh)
   updateTag(SNAPSHOT_TAG)
   return { status: 'refreshed', snapshot: await getSnapshot() }
 }

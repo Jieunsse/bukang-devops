@@ -27,13 +27,18 @@ const json = (body: unknown, status = 200) =>
 
 const issuesPage = (nodes: unknown[], hasNextPage = false, endCursor: string | null = null) =>
   json({ data: { issues: { nodes, pageInfo: { hasNextPage, endCursor } } } })
-const cyclesPage = (nodes: unknown[]) => json({ data: { cycles: { nodes } } })
+const cyclesPage = (nodes: unknown[], hasNextPage = false, endCursor: string | null = null) =>
+  json({ data: { cycles: { nodes, pageInfo: { hasNextPage, endCursor } } } })
 
 /** 요청 본문의 query로 이슈 요청과 사이클 요청을 나눠 응답한다. */
-const fakeLinear = (issuePages: Response[], cycles: Response = cyclesPage([rawCycle])) =>
+const fakeLinear = (issuePages: Response[], cyclePages: Response[] = [cyclesPage([rawCycle])]) =>
   vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body)) as { query: string }
-    if (body.query.includes('cycles(')) return cycles
+    if (body.query.includes('cycles(')) {
+      const page = cyclePages.shift()
+      if (!page) throw new Error('사이클을 예상보다 많이 불렀다')
+      return page
+    }
     const next = issuePages.shift()
     if (!next) throw new Error('예상보다 많이 불렀다')
     return next
@@ -97,6 +102,15 @@ describe('Linear에서 한 번에 받기', () => {
         (JSON.parse(String(init?.body)) as { variables: { after?: string } }).variables.after,
     )
     expect(second).toBeDefined()
+  })
+
+  it('사이클도 다음 쪽이 있으면 끝까지 이어 받는다', async () => {
+    const fetchImpl = fakeLinear(
+      [issuesPage([rawIssue])],
+      [cyclesPage([rawCycle], true, 'cy-1'), cyclesPage([{ ...rawCycle, id: 'c2', number: 8 }])],
+    )
+    const snapshot = await fetchSnapshot('k', fetchImpl, NOW)
+    expect(snapshot.cycles.map((c) => c.number)).toEqual([7, 8])
   })
 
   it('쪽 수가 한도를 넘으면 잘린 목록을 보여 주지 않고 오류를 낸다', async () => {

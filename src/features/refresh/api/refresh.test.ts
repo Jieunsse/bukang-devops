@@ -2,11 +2,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Snapshot } from '@/shared/api/linear'
 
-const { getSnapshot, updateTag } = vi.hoisted(() => ({
+const { getSnapshot, fetchFreshSnapshot, primeNextSnapshot, updateTag } = vi.hoisted(() => ({
   getSnapshot: vi.fn<() => Promise<Snapshot>>(),
+  fetchFreshSnapshot: vi.fn<() => Promise<Snapshot>>(),
+  primeNextSnapshot: vi.fn(),
   updateTag: vi.fn(),
 }))
-vi.mock('@/shared/api/linear/server', () => ({ getSnapshot, SNAPSHOT_TAG: 'linear-snapshot' }))
+vi.mock('@/shared/api/linear/server', () => ({
+  getSnapshot,
+  fetchFreshSnapshot,
+  primeNextSnapshot,
+  SNAPSHOT_TAG: 'linear-snapshot',
+}))
 vi.mock('next/cache', () => ({ updateTag }))
 
 const { decideRefresh, refreshSnapshot } = await import('./refresh')
@@ -18,6 +25,8 @@ describe('새로고침 1분 제한', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-11-05T03:01:00.000Z'))
     getSnapshot.mockReset()
+    fetchFreshSnapshot.mockReset()
+    primeNextSnapshot.mockReset()
     updateTag.mockReset()
   })
 
@@ -43,12 +52,21 @@ describe('새로고침 1분 제한', () => {
     })
   })
 
-  it('1분이 지났으면 서버 캐시를 비우고 새로 받은 값을 돌려준다', async () => {
-    getSnapshot
-      .mockResolvedValueOnce(snap('2026-11-05T02:50:00.000Z'))
-      .mockResolvedValueOnce(snap('2026-11-05T03:01:00.000Z'))
+  it('1분이 지났으면 먼저 새로 받고, 받은 값으로 서버 캐시를 바꾼다', async () => {
+    const fresh = snap('2026-11-05T03:01:00.000Z')
+    getSnapshot.mockResolvedValueOnce(snap('2026-11-05T02:50:00.000Z')).mockResolvedValueOnce(fresh)
+    fetchFreshSnapshot.mockResolvedValue(fresh)
     const result = await refreshSnapshot()
+    expect(primeNextSnapshot).toHaveBeenCalledWith(fresh)
     expect(updateTag).toHaveBeenCalledWith('linear-snapshot')
-    expect(result).toEqual({ status: 'refreshed', snapshot: snap('2026-11-05T03:01:00.000Z') })
+    expect(result).toEqual({ status: 'refreshed', snapshot: fresh })
+  })
+
+  it('새로 받다가 Linear가 실패하면 서버 캐시를 비우지 않는다', async () => {
+    getSnapshot.mockResolvedValue(snap('2026-11-05T02:50:00.000Z'))
+    fetchFreshSnapshot.mockRejectedValue(new Error('Rate limit exceeded'))
+    await expect(refreshSnapshot()).rejects.toThrow('Rate limit')
+    expect(updateTag).not.toHaveBeenCalled()
+    expect(primeNextSnapshot).not.toHaveBeenCalled()
   })
 })

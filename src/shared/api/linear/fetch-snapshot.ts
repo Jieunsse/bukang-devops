@@ -2,7 +2,7 @@ import 'server-only'
 
 import { z } from 'zod'
 
-import { cyclesResponseSchema, issuesResponseSchema, type Issue, type Snapshot } from './schema'
+import { cyclesResponseSchema, issuesResponseSchema, type Snapshot } from './schema'
 
 const ENDPOINT = 'https://api.linear.app/graphql'
 const TEAM_KEY = 'BUK'
@@ -31,9 +31,10 @@ const ISSUES_QUERY = `
 `
 
 const CYCLES_QUERY = `
-  query Cycles($teamKey: String!) {
-    cycles(first: 50, filter: { team: { key: { eq: $teamKey } } }) {
+  query Cycles($teamKey: String!, $after: String) {
+    cycles(first: ${PAGE_SIZE}, after: $after, filter: { team: { key: { eq: $teamKey } } }) {
       nodes { id number name startsAt endsAt }
+      pageInfo { hasNextPage endCursor }
     }
   }
 `
@@ -83,31 +84,48 @@ async function request<T>(
   return parsed.data
 }
 
+type Page<N> = { nodes: N[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } }
+
+/** 다음 쪽이 없을 때까지 받는다. 쪽 수가 한도를 넘으면 잘린 목록 대신 오류를 낸다. */
+async function paginate<T, N>(
+  fetchImpl: FetchImpl,
+  apiKey: string,
+  query: string,
+  schema: z.ZodType<T>,
+  pick: (data: T) => Page<N>,
+): Promise<N[]> {
+  const nodes: N[] = []
+  let after: string | null = null
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const data: Page<N> = pick(
+      await request(fetchImpl, apiKey, query, { teamKey: TEAM_KEY, after }, schema),
+    )
+    nodes.push(...data.nodes)
+    if (!data.pageInfo.hasNextPage) return nodes
+    after = data.pageInfo.endCursor
+  }
+  throw new LinearRequestError(`목록이 ${MAX_PAGES * PAGE_SIZE}건을 넘어 다 받지 못했어요.`)
+}
+
 /** BUK 팀의 끝나지 않은 티켓 전부와 사이클을 받는다. */
 export async function fetchSnapshot(
   apiKey: string,
   fetchImpl: FetchImpl = fetch,
   now: Date = new Date(),
 ): Promise<Snapshot> {
-  const variables = { teamKey: TEAM_KEY }
-  const issues: Issue[] = []
-  let after: string | null = null
-  for (let page = 0; ; page++) {
-    if (page === MAX_PAGES) {
-      throw new LinearRequestError(`티켓이 ${MAX_PAGES * PAGE_SIZE}건을 넘어 다 받지 못했어요.`)
-    }
-    const data: z.infer<typeof issuesResponseSchema> = await request(
-      fetchImpl,
-      apiKey,
-      ISSUES_QUERY,
-      { ...variables, after },
-      issuesResponseSchema,
-    )
-    issues.push(...data.issues.nodes)
-    if (!data.issues.pageInfo.hasNextPage) break
-    after = data.issues.pageInfo.endCursor
-  }
-
-  const { cycles } = await request(fetchImpl, apiKey, CYCLES_QUERY, variables, cyclesResponseSchema)
-  return { fetchedAt: now.toISOString(), issues, cycles: cycles.nodes }
+  const issues = await paginate(
+    fetchImpl,
+    apiKey,
+    ISSUES_QUERY,
+    issuesResponseSchema,
+    (d) => d.issues,
+  )
+  const cycles = await paginate(
+    fetchImpl,
+    apiKey,
+    CYCLES_QUERY,
+    cyclesResponseSchema,
+    (d) => d.cycles,
+  )
+  return { fetchedAt: now.toISOString(), issues, cycles }
 }
