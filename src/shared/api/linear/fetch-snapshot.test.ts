@@ -60,6 +60,7 @@ describe('Linear에서 한 번에 받기', () => {
       variables: Record<string, unknown>
     }
     expect(query).toContain('nin: ["completed", "canceled"]')
+    expect(query).toContain('assignee { id name avatarUrl }')
     expect(variables.teamKey).toBe('BUK')
   })
 
@@ -122,6 +123,21 @@ describe('Linear에서 한 번에 받기', () => {
       '옥지훈',
       '김소희',
     ])
+  })
+
+  it('담당자의 프로필 이미지 주소를 받고, 없으면 비워 둔다', async () => {
+    const avatar = 'https://public.linear.app/u1/avatar.png'
+    const snapshot = await fetchSnapshot(
+      'k',
+      fakeLinear([
+        issuesPage([
+          { ...rawIssue, assignee: { id: 'u1', name: '지훈', avatarUrl: avatar } },
+          { ...rawIssue, id: 'i2', assignee: { id: 'u2', name: '영호', avatarUrl: null } },
+        ]),
+      ]),
+      NOW,
+    )
+    expect(snapshot.issues.map((i) => i.assignee?.avatarUrl)).toEqual([avatar, null])
   })
 
   it('담당자와 마일스톤이 없는 티켓도 받는다', async () => {

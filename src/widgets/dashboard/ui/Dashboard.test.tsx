@@ -96,6 +96,13 @@ describe('대시보드', () => {
     )
   })
 
+  it('프로필 이미지가 없는 담당자는 이름 첫 글자로 보여 준다', () => {
+    render(<Dashboard snapshot={snapshot([issue(20, '2026-11-07')])} now={NOW} />)
+    const row = screen.getByRole('row', { name: /티켓 20/ })
+    expect(within(row).getByText('지')).toBeInTheDocument()
+    expect(within(row).getByText('지훈')).toBeInTheDocument()
+  })
+
   it('주소의 필터를 적용한다', () => {
     search = 'assignee=none'
     render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
