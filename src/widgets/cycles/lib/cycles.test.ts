@@ -7,6 +7,7 @@ import {
   defaultTabKey,
   formatDayWithWeekday,
   groupByAssignee,
+  groupByState,
   OUTSIDE,
   tabSummary,
 } from './cycles'
@@ -192,5 +193,39 @@ describe('날짜 표시', () => {
   it('요일을 붙인다', () => {
     expect(formatDayWithWeekday('2026-11-09')).toBe('11/9(월)')
     expect(formatDayWithWeekday('2026-11-15')).toBe('11/15(일)')
+  })
+})
+
+describe('상태별 묶음', () => {
+  const st = (id: string, name: string, type: string, position: number) => ({
+    id,
+    name,
+    type,
+    position,
+  })
+  it('대기 → 할 일 → 진행 중 순으로 두고, 같은 종류 안에서는 Linear 순서를 따른다', () => {
+    const groups = groupByState([
+      issue(1, { state: st('s-review', 'In Review', 'started', 3) }),
+      issue(2, { state: st('s-todo', 'Todo', 'unstarted', 1) }),
+      issue(3, { state: st('s-progress', 'In Progress', 'started', 2) }),
+      issue(4, { state: st('s-backlog', 'Backlog', 'backlog', 0) }),
+    ])
+    expect(groups.map((g) => g.name)).toEqual(['대기', '할 일', '진행 중', '리뷰 중'])
+  })
+
+  it('열 안은 기한 순이고 기한 없음은 뒤에 둔다', () => {
+    const todo = st('s-todo', 'Todo', 'unstarted', 1)
+    const [group] = groupByState([
+      issue(1, { state: todo }),
+      issue(2, { state: todo, dueDate: '2026-11-10' }),
+      issue(3, { state: todo, dueDate: '2026-11-03' }),
+    ])
+    expect(group?.issues.map((i) => i.id)).toEqual(['i3', 'i2', 'i1'])
+  })
+
+  it('상태 id를 모르는 티켓은 종류와 이름으로 묶는다', () => {
+    const groups = groupByState([issue(1), issue(2)])
+    expect(groups).toHaveLength(1)
+    expect(groups[0]?.issues).toHaveLength(2)
   })
 })
