@@ -9,6 +9,7 @@ import { dueLabel, type DueTone } from '@/entities/ticket'
 import { applyFilters, NONE, useFilters } from '@/features/filter'
 import type { Issue, Snapshot } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
+import { CollapseButton } from '@/shared/ui'
 
 import {
   cycleTabs,
@@ -165,20 +166,61 @@ function Board({ tab, issues, today }: { tab: CycleTab; issues: Issue[]; today: 
       </EmptyState>
     )
   }
+  return <BoardColumns issues={issues} today={today} />
+}
+
+/** 처음에는 모든 열을 펼쳐 둔다. 접은 열은 담당자 id로 기억한다. */
+function BoardColumns({ issues, today }: { issues: Issue[]; today: string }) {
+  const groups = groupByAssignee(issues)
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set())
+  const allCollapsed = groups.every((g) => collapsed.has(g.id))
+  const toggle = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(id)) next.add(id)
+      return next
+    })
+
   return (
-    <section
-      aria-label="담당자별 티켓"
-      // 넓은 화면에서는 열을 화면 폭에 맞춰 나누고, 열이 많으면 가로로 밀어 본다. 휴대폰에서는 세로로 쌓는다.
-      className="flex flex-col gap-4 md:grid md:auto-cols-[minmax(13rem,1fr)] md:grid-flow-col md:overflow-x-auto md:pb-2"
-    >
-      {groupByAssignee(issues).map((group) => (
-        <Column key={group.id} group={group} today={today} />
-      ))}
-    </section>
+    <div className="flex flex-col gap-3">
+      <Button
+        size="sm"
+        variant="tertiary"
+        className="self-end"
+        onPress={() => setCollapsed(allCollapsed ? new Set() : new Set(groups.map((g) => g.id)))}
+      >
+        {allCollapsed ? '모두 펼치기' : '모두 접기'}
+      </Button>
+      <section
+        aria-label="담당자별 티켓"
+        // 넓은 화면에서는 열을 화면 폭에 맞춰 나누고, 열이 많으면 가로로 밀어 본다. 휴대폰에서는 세로로 쌓는다.
+        className="flex flex-col gap-4 md:grid md:auto-cols-[minmax(13rem,1fr)] md:grid-flow-col md:items-start md:overflow-x-auto md:pb-2"
+      >
+        {groups.map((group) => (
+          <Column
+            key={group.id}
+            group={group}
+            today={today}
+            isOpen={!collapsed.has(group.id)}
+            onToggle={() => toggle(group.id)}
+          />
+        ))}
+      </section>
+    </div>
   )
 }
 
-function Column({ group, today }: { group: AssigneeGroup; today: string }) {
+function Column({
+  group,
+  today,
+  isOpen,
+  onToggle,
+}: {
+  group: AssigneeGroup
+  today: string
+  isOpen: boolean
+  onToggle: () => void
+}) {
   const [expanded, setExpanded] = useState(false)
   const visible = expanded ? group.issues : group.issues.slice(0, PAGE)
   const hidden = group.issues.length - visible.length
@@ -186,62 +228,68 @@ function Column({ group, today }: { group: AssigneeGroup; today: string }) {
   return (
     <Card>
       <section aria-label={group.name} className="flex flex-col gap-3">
-        <Card.Header className="flex-row items-center gap-2">
-          {group.id === NONE ? (
-            <span aria-hidden className="size-6 shrink-0" />
-          ) : (
-            <MemberAvatar name={group.name} avatarUrl={group.avatarUrl} />
-          )}
-          <Card.Title className="truncate">{group.name}</Card.Title>
-          <Chip size="sm">{group.issues.length}건</Chip>
+        <Card.Header>
+          <h3 className="min-w-0">
+            <CollapseButton isOpen={isOpen} onToggle={onToggle} className="max-w-full">
+              {group.id === NONE ? (
+                <span aria-hidden className="size-6 shrink-0" />
+              ) : (
+                <MemberAvatar name={group.name} avatarUrl={group.avatarUrl} />
+              )}
+              <span className="truncate">{group.name}</span>
+              <Chip size="sm">{group.issues.length}건</Chip>
+            </CollapseButton>
+          </h3>
         </Card.Header>
-        <Card.Content>
-          <ul className="flex flex-col gap-2">
-            {visible.map((issue) => {
-              const due = dueLabel(issue.dueDate, today)
-              return (
-                <li key={issue.id}>
-                  <a
-                    href={issue.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={ticket.base({
-                      className:
-                        'gap-1.5 p-3 outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-accent',
-                    })}
-                  >
-                    <span className="flex items-center justify-between gap-2 text-xs">
-                      <span className="text-muted">{issue.identifier}</span>
-                      <span className={`whitespace-nowrap ${TONE_CLASS[due.tone]}`}>
-                        {due.text}
+        {isOpen && (
+          <Card.Content>
+            <ul className="flex flex-col gap-2">
+              {visible.map((issue) => {
+                const due = dueLabel(issue.dueDate, today)
+                return (
+                  <li key={issue.id}>
+                    <a
+                      href={issue.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={ticket.base({
+                        className:
+                          'gap-1.5 p-3 outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-accent',
+                      })}
+                    >
+                      <span className="flex items-center justify-between gap-2 text-xs">
+                        <span className="text-muted">{issue.identifier}</span>
+                        <span className={`whitespace-nowrap ${TONE_CLASS[due.tone]}`}>
+                          {due.text}
+                        </span>
                       </span>
-                    </span>
-                    <span className="line-clamp-2 text-sm font-medium">{issue.title}</span>
-                    {issue.labels.length > 0 && (
-                      <span className="flex flex-wrap gap-1">
-                        {issue.labels.map((l) => (
-                          <Chip key={l.id} size="sm">
-                            {l.name}
-                          </Chip>
-                        ))}
-                      </span>
-                    )}
-                  </a>
-                </li>
-              )
-            })}
-          </ul>
-          {hidden > 0 && (
-            <Button
-              variant="tertiary"
-              size="sm"
-              className="mt-2 self-start"
-              onPress={() => setExpanded(true)}
-            >
-              {hidden}건 더 보기
-            </Button>
-          )}
-        </Card.Content>
+                      <span className="line-clamp-2 text-sm font-medium">{issue.title}</span>
+                      {issue.labels.length > 0 && (
+                        <span className="flex flex-wrap gap-1">
+                          {issue.labels.map((l) => (
+                            <Chip key={l.id} size="sm">
+                              {l.name}
+                            </Chip>
+                          ))}
+                        </span>
+                      )}
+                    </a>
+                  </li>
+                )
+              })}
+            </ul>
+            {hidden > 0 && (
+              <Button
+                variant="tertiary"
+                size="sm"
+                className="mt-2 self-start"
+                onPress={() => setExpanded(true)}
+              >
+                {hidden}건 더 보기
+              </Button>
+            )}
+          </Card.Content>
+        )}
       </section>
     </Card>
   )
