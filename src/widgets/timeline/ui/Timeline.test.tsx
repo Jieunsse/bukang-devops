@@ -136,4 +136,51 @@ describe('타임라인', () => {
       /overflow-x-auto/,
     )
   })
+
+  it('기한이 지난 뒤에 시작한 티켓은 기한과 시작일을 따로 알려 준다', () => {
+    render(
+      <Timeline
+        snapshot={snapshot([issue(1, '2026-11-03', { startedAt: '2026-11-04T01:00:00.000Z' })])}
+        now={NOW}
+      />,
+    )
+    expect(screen.getByRole('link', { name: /티켓 1/ })).toHaveAccessibleName(
+      /기한 11\/3, 11\/4에 시작/,
+    )
+  })
+
+  it('막대와 오늘 선을 날짜 칸에 맞춰 그린다', () => {
+    // 표시 범위는 10/29부터, 하루 칸은 28px이다.
+    render(
+      <Timeline
+        snapshot={snapshot([issue(1, '2026-11-10', { startedAt: '2026-11-02T01:00:00.000Z' })])}
+        now={NOW}
+      />,
+    )
+    const bar = screen.getByRole('link', { name: /티켓 1/ })
+    expect(bar.style.left).toBe(`${4 * 28 + 2}px`)
+    expect(bar.style.width).toBe(`${9 * 28 - 4}px`)
+    expect(screen.getByText('오늘').parentElement!.style.left).toBe(`${7 * 28 + 14}px`)
+  })
+
+  it('한국 시간 자정이 지나면 어제 기한이 기한 지남으로 바뀐다', () => {
+    // UTC 11/5 15:00은 한국 시간 11/6 0시다.
+    const midnight = new Date('2026-11-05T15:00:00.000Z').getTime()
+    render(<Timeline snapshot={snapshot([issue(1, '2026-11-05')])} now={midnight} />)
+    const link = screen.getByRole('link', { name: /티켓 1/ })
+    expect(link).toHaveAccessibleName(/기한 지남/)
+    expect(link.className).toMatch(/bg-danger/)
+  })
+
+  it('기한이 오늘인 티켓은 파랑이다', () => {
+    render(<Timeline snapshot={snapshot([issue(1, '2026-11-05')])} now={NOW} />)
+    expect(screen.getByRole('link', { name: /티켓 1/ }).className).toMatch(/bg-accent/)
+  })
+
+  it('최종 발표일 당일에는 세로선을 하나만 그린다', () => {
+    const finalDay = new Date('2026-11-23T03:00:00.000Z').getTime()
+    render(<Timeline snapshot={snapshot([issue(1, '2026-11-24')])} now={finalDay} />)
+    expect(screen.getByText('오늘·최종 발표')).toBeInTheDocument()
+    expect(screen.queryByText('최종 발표')).not.toBeInTheDocument()
+  })
 })

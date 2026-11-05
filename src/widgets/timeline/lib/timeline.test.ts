@@ -128,3 +128,9 @@ describe('최종 발표 뒤', () => {
     expect(timelineRange([], '2026-11-30').end).toBe('2026-11-30')
   })
 })
+
+describe('최종 발표 일주일 뒤', () => {
+  it('최종 발표일은 늘 표시 범위 안에 든다', () => {
+    expect(timelineRange([], '2026-12-10').start).toBe('2026-11-23')
+  })
+})
