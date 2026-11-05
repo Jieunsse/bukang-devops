@@ -96,14 +96,14 @@ describe('대시보드', () => {
       const section = screen.getByRole('region', { name })
       const header = within(section).getByRole('button', { name: new RegExp(`^${name}`) })
       expect(header).toHaveAttribute('aria-expanded', 'true')
-      expect(within(section).getByRole('table')).toBeInTheDocument()
+      expect(within(section).getByRole('grid')).toBeInTheDocument()
 
       await userEvent.click(header)
       expect(header).toHaveAttribute('aria-expanded', 'false')
-      expect(within(section).queryByRole('table')).not.toBeInTheDocument()
+      expect(within(section).queryByRole('grid')).not.toBeInTheDocument()
 
       await userEvent.click(header)
-      expect(within(section).getByRole('table')).toBeInTheDocument()
+      expect(within(section).getByRole('grid')).toBeInTheDocument()
     }
   })
 
