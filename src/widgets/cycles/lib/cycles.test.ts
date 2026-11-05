@@ -73,7 +73,7 @@ describe('사이클 탭', () => {
   })
 
   it('완료 수를 모르는 사이클은 완료 0으로 본다', () => {
-    const { completedIssueCount: _omit, ...unknown } = cycle1
+    const unknown = { ...cycle1, completedIssueCount: undefined }
     const [tab] = cycleTabs([issue(1, { cycle: { id: 'c1' } })], [unknown], NOW)
     expect(tab?.progress).toEqual({ completed: 0, total: 1 })
   })

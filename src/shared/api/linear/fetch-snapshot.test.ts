@@ -104,11 +104,12 @@ describe('Linear에서 한 번에 받기', () => {
   })
 
   it('티켓의 사이클이나 사이클의 완료 수 기록이 응답에 없으면 오류를 낸다', async () => {
-    const { cycle: _omit, ...noCycle } = rawIssue
+    // JSON으로 보낼 때 undefined 칸은 빠진다.
+    const noCycle = { ...rawIssue, cycle: undefined }
     await expect(fetchSnapshot('k', fakeLinear([issuesPage([noCycle])]), NOW)).rejects.toThrow(
       LinearResponseError,
     )
-    const { completedIssueCountHistory: _h, ...noHistory } = rawCycle
+    const noHistory = { ...rawCycle, completedIssueCountHistory: undefined }
     await expect(
       fetchSnapshot('k', fakeLinear([issuesPage([rawIssue])], [cyclesPage([noHistory])]), NOW),
     ).rejects.toThrow(LinearResponseError)
