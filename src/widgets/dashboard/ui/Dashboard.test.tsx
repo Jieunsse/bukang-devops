@@ -112,6 +112,24 @@ describe('대시보드', () => {
     expect(within(row).getByRole('link', { name: '티켓 30' })).toHaveClass('truncate')
   })
 
+  it('묶음마다 표가 달라도 마일스톤 칸 폭을 가장 긴 이름에 맞춰 똑같이 둔다', () => {
+    const long = '충전 한도·이상 감지와 아주 긴 마일스톤 이름'
+    render(
+      <Dashboard
+        snapshot={snapshot([
+          issue(31, '2026-11-03', { milestone: { id: 'm9', name: long, progress: 0 } }),
+          issue(32, '2026-11-05'),
+        ])}
+        now={NOW}
+      />,
+    )
+    const widthOf = (name: string) =>
+      within(screen.getByRole('region', { name })).getByRole('columnheader', { name: '마일스톤' })
+        .style.width
+    expect(widthOf('기한 지남')).not.toBe('')
+    expect(widthOf('오늘')).toBe(widthOf('기한 지남'))
+  })
+
   it('숫자 칸을 누르면 마감 목록이 그 묶음만 보여 준다', async () => {
     render(<Dashboard snapshot={snapshot([...overdue, ...rest])} now={NOW} />)
     await userEvent.click(
