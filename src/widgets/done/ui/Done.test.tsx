@@ -89,7 +89,37 @@ describe('완료·취소 목록', () => {
       within(card)
         .getAllByRole('listitem')
         .map((li) => li.getAttribute('aria-label')),
-    ).toEqual(['지훈 완료 1건', '담당 없음 완료 0건'])
+    ).toEqual(['지훈 완료 1건'])
+  })
+
+  it('완료가 하나도 없으면 사람별 완료 막대를 그리지 않는다', () => {
+    render(<DoneList issues={[issues[1]!]} />)
+    expect(screen.queryByRole('list', { name: '사람별 완료' })).not.toBeInTheDocument()
+  })
+
+  it('묶음마다 따로인 표의 마일스톤 칸 폭이 모두 같다', () => {
+    render(
+      <DoneList
+        issues={[
+          ...issues,
+          done(3, '2026-11-02T01:00:00.000Z', {
+            assignee: { id: 'u2', name: '소희' },
+            milestone: { id: 'm2', name: '아주 긴 이름의 최종 발표 마일스톤', progress: 0 },
+          }),
+        ]}
+      />,
+    )
+    const widths = screen
+      .getAllByRole('columnheader', { name: '마일스톤' })
+      .map((th) => th.style.width)
+    expect(widths).toHaveLength(3)
+    expect(new Set(widths).size).toBe(1)
+    expect(parseInt(widths[0]!)).toBeGreaterThan(0)
+  })
+
+  it('묶음 머리줄 버튼 이름에 프로필 대신 보이는 첫 글자가 섞이지 않는다', () => {
+    render(<DoneList issues={issues} />)
+    expect(screen.getByRole('button', { name: '지훈 완료 1 · 취소 0' })).toBeInTheDocument()
   })
 
   it('주소의 필터를 적용한다', () => {
