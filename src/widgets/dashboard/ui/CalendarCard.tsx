@@ -1,20 +1,13 @@
 'use client'
 
-import { Calendar, Card, I18nProvider } from '@heroui/react'
+import { Badge, Calendar, Card, I18nProvider } from '@heroui/react'
 import { parseDate } from '@internationalized/date'
 
-import type { DueTone } from '@/entities/ticket'
 import type { Cycle } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
 
 import { dayTone } from '../lib/calendar'
 import { FINAL_PRESENTATION } from '../lib/presentation'
-
-const COUNT_COLOR: Record<DueTone, string> = {
-  danger: 'text-danger',
-  warning: 'text-warning',
-  default: 'text-muted',
-}
 
 /** 사이클 기간(한국 날짜)에 드는지. 끝 시각은 사이클에 들지 않는다. */
 const inCycle = (date: string, cycles: Cycle[]) =>
@@ -77,21 +70,26 @@ export function CalendarCard({
                       <Calendar.Cell
                         date={date}
                         className={[
-                          // 지름을 고정한 원을 칸 가운데에 둔다. 옆 날짜와 떨어지게 격자에 간격을 준다.
-                          'mx-auto aspect-square size-10 flex-col gap-0 text-sm sm:size-11',
-                          inCycle(day, cycles) ? 'bg-accent-soft/60' : '',
+                          'mx-auto aspect-square size-10 text-sm sm:size-11',
+                          // 사이클 바탕은 회색으로 둬서 파란 「오늘」 바탕과 구분한다. 오늘·선택 칸에는 덮어쓰지 않는다.
+                          inCycle(day, cycles) ? 'not-data-selected:not-data-today:bg-default/60' : '',
                           isFinal ? 'ring-2 ring-accent ring-inset' : '',
                         ].join(' ')}
                       >
                         {({ formattedDate }) => (
-                          <span className="flex size-full flex-col items-center justify-center">
-                            <span>{formattedDate}</span>
-                            <span
-                              className={`text-[11px] leading-none font-semibold tabular-nums ${count ? COUNT_COLOR[dayTone(day, today)] : 'invisible'}`}
-                            >
-                              {count || 0}
-                            </span>
-                          </span>
+                          <>
+                            {formattedDate}
+                            {count > 0 && (
+                              <Badge
+                                color={dayTone(day, today)}
+                                size="sm"
+                                placement="top-right"
+                                className="tabular-nums"
+                              >
+                                {count}
+                              </Badge>
+                            )}
+                          </>
                         )}
                       </Calendar.Cell>
                     )
@@ -103,14 +101,14 @@ export function CalendarCard({
         </div>
         <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
           <li className="flex items-center gap-1">
-            <span aria-hidden className="size-3 rounded bg-accent-soft" />
+            <span aria-hidden className="size-3 rounded bg-default/60" />
             사이클 기간
           </li>
           <li className="flex items-center gap-1">
             <span aria-hidden className="size-3 rounded ring-2 ring-accent ring-inset" />
             최종 발표 {formatMonthDay(FINAL_PRESENTATION)}
           </li>
-          <li>숫자는 그날 기한인 남은 티켓 수예요</li>
+          <li>날짜 위 숫자는 그날 기한인 남은 티켓 수예요</li>
         </ul>
       </Card.Content>
     </Card>
