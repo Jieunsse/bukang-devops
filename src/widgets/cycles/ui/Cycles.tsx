@@ -2,14 +2,14 @@
 
 import { Button, Card, Chip, EmptyState, Label, ProgressBar, Tabs } from '@heroui/react'
 import { cardVariants } from '@heroui/styles'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
 import { dueLabel, type DueTone } from '@/entities/ticket'
-import { applyFilters, NONE, useFilters } from '@/features/filter'
+import { applyFilters, FilterChips, NONE, useFilters } from '@/features/filter'
 import type { Issue, Snapshot } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
-import { CollapseButton } from '@/shared/ui'
+import { CollapseButton, PageToolbar } from '@/shared/ui'
 
 import {
   cycleTabs,
@@ -30,7 +30,16 @@ const TONE_CLASS: Record<DueTone, string> = {
 /** 열마다 처음 보여 줄 카드 수 */
 const PAGE = 5
 
-export function Cycles({ snapshot, now }: { snapshot: Snapshot; now: number }) {
+export function Cycles({
+  snapshot,
+  now,
+  actions,
+}: {
+  snapshot: Snapshot
+  now: number
+  /** 도구 줄 오른쪽 버튼(새로고침, 필터). 화면을 그리는 쪽이 넘긴다. */
+  actions?: ReactNode
+}) {
   const { filters } = useFilters()
   const tabs = useMemo(
     () => cycleTabs(snapshot.issues, snapshot.cycles),
@@ -42,6 +51,7 @@ export function Cycles({ snapshot, now }: { snapshot: Snapshot; now: number }) {
   // 그래야 나중에 그 탭이 다시 생겨도 저절로 넘어가지 않는다.
   if (picked !== null && !tabs.some((t) => t.key === picked)) setPicked(null)
   const selected = tabs.find((t) => t.key === picked) ?? tabs.find((t) => t.key === fallback)
+  const shown = selected ? applyFilters(selected.issues, filters) : []
 
   if (!selected) {
     return (
@@ -78,11 +88,14 @@ export function Cycles({ snapshot, now }: { snapshot: Snapshot; now: number }) {
       </Tabs.ListContainer>
       <Tabs.Panel id={selected.key} className="flex flex-col gap-6 pt-6">
         <SummaryCard tab={selected} summary={tabSummary(selected, snapshot.cycles, now)} />
+        <PageToolbar title="담당자별 티켓" summary={`${shown.length}건`} actions={actions}>
+          <FilterChips issues={snapshot.issues} />
+        </PageToolbar>
         <Board
           // 탭을 바꾸면 열마다 더 보기 상태를 처음으로 돌린다.
           key={selected.key}
           tab={selected}
-          issues={applyFilters(selected.issues, filters)}
+          issues={shown}
           today={kstDate(now)}
         />
       </Tabs.Panel>

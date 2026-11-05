@@ -1,7 +1,7 @@
 'use client'
 
 import { Button, EmptyState, Tabs } from '@heroui/react'
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 
 import {
   BUCKET_LABEL,
@@ -12,9 +12,10 @@ import {
   milestoneColumnWidth,
   type Bucket,
 } from '@/entities/ticket'
-import { applyFilters, useFilters, type Filters } from '@/features/filter'
+import { applyFilters, FilterChips, useFilters, type Filters } from '@/features/filter'
 import type { Snapshot } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
+import { PageToolbar } from '@/shared/ui'
 
 import { dueCountsByDate } from '../lib/calendar'
 import { assigneeLoad, milestoneProgress } from '../lib/summary'
@@ -35,7 +36,16 @@ const toggle = (filters: Filters, key: 'assignee' | 'milestone', id: string): Fi
   [key]: filters[key] === id ? undefined : id,
 })
 
-export function Dashboard({ snapshot, now }: { snapshot: Snapshot; now: number }) {
+export function Dashboard({
+  snapshot,
+  now,
+  actions,
+}: {
+  snapshot: Snapshot
+  now: number
+  /** 도구 줄 오른쪽 버튼(새로고침, 필터). 화면을 그리는 쪽이 넘긴다. */
+  actions?: ReactNode
+}) {
   const { filters, setFilters } = useFilters()
   const bucket = useDashboardStore((s) => s.bucket)
   const setBucket = useDashboardStore((s) => s.setBucket)
@@ -108,14 +118,22 @@ export function Dashboard({ snapshot, now }: { snapshot: Snapshot; now: number }
           </div>
 
           <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-lg font-semibold">마감 목록</h2>
-              {date && (
-                <Button size="sm" variant="tertiary" onPress={() => setDate(null)}>
-                  날짜 선택 풀기
-                </Button>
-              )}
-            </div>
+            <PageToolbar
+              title="마감 목록"
+              summary={`${issues.length}건`}
+              actions={
+                <>
+                  {date && (
+                    <Button size="sm" variant="tertiary" onPress={() => setDate(null)}>
+                      날짜 선택 풀기
+                    </Button>
+                  )}
+                  {actions}
+                </>
+              }
+            >
+              <FilterChips issues={snapshot.issues} />
+            </PageToolbar>
             {issues.length === 0 ? (
               <EmptyState className="py-12">
                 <p className="font-medium">남은 티켓이 없어요</p>

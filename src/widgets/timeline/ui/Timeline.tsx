@@ -2,12 +2,13 @@
 
 import { ChevronDown, ChevronRight } from '@gravity-ui/icons'
 import { Card, Chip, EmptyState, ToggleButton, ToggleButtonGroup, Tooltip } from '@heroui/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
 import { dueLabel } from '@/entities/ticket'
-import { applyFilters, NONE, useFilters } from '@/features/filter'
+import { applyFilters, FilterChips, NONE, useFilters } from '@/features/filter'
 import type { Snapshot } from '@/shared/api/linear'
+import { PageToolbar } from '@/shared/ui'
 import {
   addDays,
   daysBetween,
@@ -42,7 +43,16 @@ const TONE: Record<Tone, { label: string; color: string }> = {
   today: { label: '오늘 마감', color: 'bg-warning' },
 }
 
-export function Timeline({ snapshot, now }: { snapshot: Snapshot; now: number }) {
+export function Timeline({
+  snapshot,
+  now,
+  actions,
+}: {
+  snapshot: Snapshot
+  now: number
+  /** 도구 줄 오른쪽 버튼(새로고침, 필터). 화면을 그리는 쪽이 넘긴다. */
+  actions?: ReactNode
+}) {
   const { filters } = useFilters()
   const [groupBy, setGroupBy] = useState<GroupBy>('assignee')
   const [view, setView] = useState<View>('4w')
@@ -84,125 +94,130 @@ export function Timeline({ snapshot, now }: { snapshot: Snapshot; now: number })
     })
 
   return (
-    <Card>
-      <Card.Header className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Card.Title>타임라인</Card.Title>
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="text-sm text-muted">기한 없음 {noDue}건</p>
-            <ToggleButtonGroup
-              aria-label="보기 범위"
-              size="sm"
-              selectionMode="single"
-              disallowEmptySelection
-              selectedKeys={[view]}
-              onSelectionChange={(keys) => setView([...keys][0] as View)}
-            >
-              <ToggleButton id="2w">2주</ToggleButton>
-              <ToggleButton id="4w">4주</ToggleButton>
-              <ToggleButton id="all">전체</ToggleButton>
-            </ToggleButtonGroup>
-            <ToggleButtonGroup
-              aria-label="줄 묶음"
-              size="sm"
-              selectionMode="single"
-              disallowEmptySelection
-              selectedKeys={[groupBy]}
-              onSelectionChange={(keys) => setGroupBy([...keys][0] as GroupBy)}
-            >
-              <ToggleButton id="assignee">담당자별</ToggleButton>
-              <ToggleButton id="milestone">마일스톤별</ToggleButton>
-            </ToggleButtonGroup>
-          </div>
-        </div>
-        <ul aria-label="범례" className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-          <li className="flex items-center gap-1.5">
-            <span aria-hidden className={`h-2.5 w-5 rounded-full ${TONE.progress.color}`} />
-            {TONE.progress.label}
-          </li>
-          <li className="flex items-center gap-1.5">
-            <span
-              aria-hidden
-              className={`size-2.5 rotate-45 rounded-[2px] ${TONE.notStarted.color}`}
-            />
-            {TONE.notStarted.label}
-          </li>
-          <li className="flex items-center gap-1.5">
-            <span aria-hidden className={`h-2.5 w-5 rounded-full ${TONE.overdue.color}`} />
-            {TONE.overdue.label}
-          </li>
-          <li className="flex items-center gap-1.5">
-            <span aria-hidden className={`h-2.5 w-5 rounded-full ${TONE.today.color}`} />
-            {TONE.today.label}
-          </li>
-        </ul>
-      </Card.Header>
-      <Card.Content>
-        {dated.length === 0 ? (
-          <EmptyState className="py-12">
-            <p className="font-medium">기한이 있는 티켓이 없어요</p>
-            <p className="text-sm text-muted">필터를 바꾸거나 Linear에서 기한을 정해 주세요.</p>
-          </EmptyState>
-        ) : (
-          <section
-            ref={chartRef}
-            aria-label="타임라인 차트"
-            // 머리줄을 위에 고정하려고 차트 안에서 세로로도 스크롤한다.
-            className="max-h-[75dvh] scroll-pl-40 overflow-auto rounded-xl border border-separator md:scroll-pl-56"
-          >
-            <div
-              className="relative flex flex-col text-sm"
-              // 이름 칸(넓은 화면 224px)과 하루 칸 최소 폭을 더한 만큼은 확보한다.
-              style={{ minWidth: 224 + days * MIN_DAY_PX }}
-            >
-              <DateHeader dates={dates} today={today} marks={marks} todayRef={todayRef} />
-              <div className="relative">
-                <DayGrid dates={dates} marks={marks} />
-                {groupRows(dated, groupBy).map((row) => {
-                  // 「담당 없음」과 「마일스톤 없음」은 id가 같아서 묶음 방식을 키에 붙인다.
-                  const key = `${groupBy}:${row.id}`
-                  const open = !collapsed.has(key)
-                  return (
-                    <section key={row.id} aria-label={row.name} className="relative">
-                      <div className="flex h-9 border-b border-separator">
-                        <button
-                          type="button"
-                          aria-expanded={open}
-                          aria-label={`${row.name} ${row.issues.length}건`}
-                          onClick={() => toggleGroup(key)}
-                          className={`sticky left-0 z-20 flex shrink-0 cursor-pointer items-center gap-2 bg-surface px-2 font-medium outline-none hover:bg-default focus-visible:ring-2 focus-visible:ring-accent ${LABEL_W}`}
-                        >
-                          {open ? (
-                            <ChevronDown aria-hidden className="size-3.5 shrink-0 text-muted" />
-                          ) : (
-                            <ChevronRight aria-hidden className="size-3.5 shrink-0 text-muted" />
-                          )}
-                          {groupBy === 'assignee' && row.id !== NONE && (
-                            <MemberAvatar name={row.name} avatarUrl={row.avatarUrl} />
-                          )}
-                          <span className="truncate">{row.name}</span>
-                          <Chip size="sm">{row.issues.length}</Chip>
-                        </button>
-                      </div>
-                      {open &&
-                        row.issues.map((issue) => (
-                          <IssueRow
-                            key={issue.id}
-                            issue={issue}
-                            today={today}
-                            range={range}
-                            days={days}
-                          />
-                        ))}
-                    </section>
-                  )
-                })}
-              </div>
+    <div className="flex flex-col gap-4">
+      <PageToolbar title="타임라인" summary={`${dated.length}건`} actions={actions}>
+        <FilterChips issues={snapshot.issues} />
+      </PageToolbar>
+      <Card>
+        <Card.Header className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* 제목은 위 도구 줄에 있다. */}
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-sm text-muted">기한 없음 {noDue}건</p>
+              <ToggleButtonGroup
+                aria-label="보기 범위"
+                size="sm"
+                selectionMode="single"
+                disallowEmptySelection
+                selectedKeys={[view]}
+                onSelectionChange={(keys) => setView([...keys][0] as View)}
+              >
+                <ToggleButton id="2w">2주</ToggleButton>
+                <ToggleButton id="4w">4주</ToggleButton>
+                <ToggleButton id="all">전체</ToggleButton>
+              </ToggleButtonGroup>
+              <ToggleButtonGroup
+                aria-label="줄 묶음"
+                size="sm"
+                selectionMode="single"
+                disallowEmptySelection
+                selectedKeys={[groupBy]}
+                onSelectionChange={(keys) => setGroupBy([...keys][0] as GroupBy)}
+              >
+                <ToggleButton id="assignee">담당자별</ToggleButton>
+                <ToggleButton id="milestone">마일스톤별</ToggleButton>
+              </ToggleButtonGroup>
             </div>
-          </section>
-        )}
-      </Card.Content>
-    </Card>
+          </div>
+          <ul aria-label="범례" className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+            <li className="flex items-center gap-1.5">
+              <span aria-hidden className={`h-2.5 w-5 rounded-full ${TONE.progress.color}`} />
+              {TONE.progress.label}
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span
+                aria-hidden
+                className={`size-2.5 rotate-45 rounded-[2px] ${TONE.notStarted.color}`}
+              />
+              {TONE.notStarted.label}
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span aria-hidden className={`h-2.5 w-5 rounded-full ${TONE.overdue.color}`} />
+              {TONE.overdue.label}
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span aria-hidden className={`h-2.5 w-5 rounded-full ${TONE.today.color}`} />
+              {TONE.today.label}
+            </li>
+          </ul>
+        </Card.Header>
+        <Card.Content>
+          {dated.length === 0 ? (
+            <EmptyState className="py-12">
+              <p className="font-medium">기한이 있는 티켓이 없어요</p>
+              <p className="text-sm text-muted">필터를 바꾸거나 Linear에서 기한을 정해 주세요.</p>
+            </EmptyState>
+          ) : (
+            <section
+              ref={chartRef}
+              aria-label="타임라인 차트"
+              // 머리줄을 위에 고정하려고 차트 안에서 세로로도 스크롤한다.
+              className="max-h-[75dvh] scroll-pl-40 overflow-auto rounded-xl border border-separator md:scroll-pl-56"
+            >
+              <div
+                className="relative flex flex-col text-sm"
+                // 이름 칸(넓은 화면 224px)과 하루 칸 최소 폭을 더한 만큼은 확보한다.
+                style={{ minWidth: 224 + days * MIN_DAY_PX }}
+              >
+                <DateHeader dates={dates} today={today} marks={marks} todayRef={todayRef} />
+                <div className="relative">
+                  <DayGrid dates={dates} marks={marks} />
+                  {groupRows(dated, groupBy).map((row) => {
+                    // 「담당 없음」과 「마일스톤 없음」은 id가 같아서 묶음 방식을 키에 붙인다.
+                    const key = `${groupBy}:${row.id}`
+                    const open = !collapsed.has(key)
+                    return (
+                      <section key={row.id} aria-label={row.name} className="relative">
+                        <div className="flex h-9 border-b border-separator">
+                          <button
+                            type="button"
+                            aria-expanded={open}
+                            aria-label={`${row.name} ${row.issues.length}건`}
+                            onClick={() => toggleGroup(key)}
+                            className={`sticky left-0 z-20 flex shrink-0 cursor-pointer items-center gap-2 bg-surface px-2 font-medium outline-none hover:bg-default focus-visible:ring-2 focus-visible:ring-accent ${LABEL_W}`}
+                          >
+                            {open ? (
+                              <ChevronDown aria-hidden className="size-3.5 shrink-0 text-muted" />
+                            ) : (
+                              <ChevronRight aria-hidden className="size-3.5 shrink-0 text-muted" />
+                            )}
+                            {groupBy === 'assignee' && row.id !== NONE && (
+                              <MemberAvatar name={row.name} avatarUrl={row.avatarUrl} />
+                            )}
+                            <span className="truncate">{row.name}</span>
+                            <Chip size="sm">{row.issues.length}</Chip>
+                          </button>
+                        </div>
+                        {open &&
+                          row.issues.map((issue) => (
+                            <IssueRow
+                              key={issue.id}
+                              issue={issue}
+                              today={today}
+                              range={range}
+                              days={days}
+                            />
+                          ))}
+                      </section>
+                    )
+                  })}
+                </div>
+              </div>
+            </section>
+          )}
+        </Card.Content>
+      </Card>
+    </div>
   )
 }
 

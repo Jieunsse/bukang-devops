@@ -7,15 +7,10 @@ import { Controller, useForm } from 'react-hook-form'
 
 import { useSnapshot } from '@/shared/api/linear/query'
 
-import { FILTER_KEYS, type FilterKey, type Filters } from '../lib/filter'
+import { FIELD_LABEL, FILTER_KEYS, type FilterKey, type Filters } from '../lib/filter'
 import { filterOptions } from '../lib/options'
 import { useFilters } from '../lib/use-filters'
 
-const FIELD_LABEL: Record<FilterKey, string> = {
-  assignee: '담당자',
-  label: '라벨',
-  milestone: '마일스톤',
-}
 const ALL = '__all'
 
 type FormValues = Record<FilterKey, string>
