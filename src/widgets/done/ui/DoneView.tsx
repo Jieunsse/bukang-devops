@@ -4,8 +4,11 @@ import { Button, Spinner } from '@heroui/react'
 import { useQuery } from '@tanstack/react-query'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
+import { FilterButton, FilterChips } from '@/features/filter'
+import { RefreshButton } from '@/features/refresh'
 import { parseDoneRange, type DoneRange } from '@/shared/api/linear'
 import { loadDoneAction } from '@/shared/api/linear/done-actions'
+import { useSnapshot } from '@/shared/api/linear/query'
 import { kstDate } from '@/shared/lib/date'
 import { useNow } from '@/shared/lib/use-now'
 
@@ -17,6 +20,7 @@ export function DoneView() {
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const router = useRouter()
+  const snapshot = useSnapshot()
   const { range, error } = parseDoneRange(searchParams, kstDate(useNow()))
   const query = useQuery({
     queryKey: ['done', range.start, range.end],
@@ -34,7 +38,17 @@ export function DoneView() {
   return (
     <div className="flex flex-col gap-6">
       <h2 className="text-lg font-semibold">완료·취소</h2>
-      <RangeForm range={range} onSubmit={setRange} />
+      <div role="group" aria-label="완료·취소 도구" className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <RangeForm range={range} onSubmit={setRange} />
+          <div className="flex items-center gap-2">
+            <RefreshButton />
+            <FilterButton />
+          </div>
+        </div>
+        {/* 이름은 남은 티켓과 이 기간의 완료·취소 티켓에서 함께 찾는다. */}
+        <FilterChips issues={[...snapshot.issues, ...(query.data ?? [])]} />
+      </div>
       {error && <p className="text-sm text-muted">{error}</p>}
       {query.isPending ? (
         <div className="flex justify-center py-12">
