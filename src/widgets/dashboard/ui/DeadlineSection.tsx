@@ -1,8 +1,6 @@
 'use client'
 
-import { ChevronDown, ChevronRight } from '@gravity-ui/icons'
-import { Button, Table } from '@heroui/react'
-import { useState } from 'react'
+import { Table } from '@heroui/react'
 
 import { MemberAvatar } from '@/entities/member'
 import {
@@ -17,19 +15,17 @@ import {
 import { CountChip } from '@/shared/ui'
 import type { Issue } from '@/shared/api/linear'
 
-const PAGE = 5
 const TONE_CLASS: Record<DueTone, string> = {
   danger: 'text-danger',
   warning: 'text-warning',
   default: 'text-muted',
 }
 
+/** 묶음 하나나 고른 날짜의 티켓 전체를 표로 보여 준다. */
 export function DeadlineSection({
   bucket,
   issues,
   today,
-  defaultOpen,
-  collapsible,
   emptyText,
   title,
   milestoneWidth,
@@ -37,59 +33,23 @@ export function DeadlineSection({
   bucket: Bucket
   issues: Issue[]
   today: string
-  defaultOpen: boolean
-  /** 머리줄을 눌러 접고 펼칠 수 있는지(전체 보기일 때) */
-  collapsible?: boolean
-  /** 묶음 하나만 볼 때 티켓이 없으면 보여 줄 안내 */
-  emptyText?: string
+  /** 티켓이 없으면 보여 줄 안내 */
+  emptyText: string
   /** 묶음 이름 대신 쓸 제목(달력에서 날짜를 골랐을 때) */
   title?: string
   /** 묶음 표끼리 칸을 맞추려고 바깥에서 같은 폭(px)을 넘긴다. */
   milestoneWidth: number
 }) {
-  const [isOpen, setOpen] = useState(defaultOpen)
-  const [shown, setShown] = useState(PAGE)
   const label = title ?? BUCKET_LABEL[bucket]
-  const visible = issues.slice(0, shown)
-  const hidden = issues.length - visible.length
-  const canToggle = collapsible && issues.length > 0
 
   return (
     <section aria-label={label} className="flex flex-col gap-3">
-      {canToggle ? (
-        // 머리줄 전체를 눌러 펼치고 접는다.
-        <h3>
-          <Button
-            variant="ghost"
-            aria-expanded={isOpen}
-            onPress={() => setOpen(!isOpen)}
-            className="-ml-3 gap-2 px-3 font-semibold"
-          >
-            {isOpen ? (
-              <ChevronDown aria-hidden className="size-4" />
-            ) : (
-              <ChevronRight aria-hidden className="size-4" />
-            )}
-            {label}
-            <CountChip>{issues.length}</CountChip>
-          </Button>
-        </h3>
-      ) : collapsible ? (
-        // 0건이라 펼칠 게 없다. 버튼 대신 같은 자리·같은 크기의 글자로 두고 화살표만 흐리게 한다.
-        <h3 className="-ml-3 flex h-10 items-center gap-2 px-3 text-sm font-semibold md:h-9">
-          {/* 버튼 안 아이콘처럼 좌우 여백을 줄여 다른 머리줄과 글자 위치를 맞춘다. */}
-          <ChevronRight aria-hidden className="-mx-0.5 size-4 opacity-30" />
-          {label}
-          <CountChip>{issues.length}</CountChip>
-        </h3>
-      ) : (
-        <div className="flex items-center gap-2">
-          <h3 className="font-semibold">{label}</h3>
-          <CountChip>{issues.length}</CountChip>
-        </div>
-      )}
-      {emptyText && issues.length === 0 && <p className="text-sm text-muted">{emptyText}</p>}
-      {isOpen && issues.length > 0 && (
+      <div className="flex items-center gap-2">
+        <h3 className="font-semibold">{label}</h3>
+        <CountChip>{issues.length}</CountChip>
+      </div>
+      {issues.length === 0 && <p className="text-sm text-muted">{emptyText}</p>}
+      {issues.length > 0 && (
         <Table>
           <Table.ScrollContainer>
             <Table.Content
@@ -107,7 +67,7 @@ export function DeadlineSection({
                 <Table.Column style={{ width: milestoneWidth }}>마일스톤</Table.Column>
               </Table.Header>
               <Table.Body>
-                {visible.map((issue) => {
+                {issues.map((issue) => {
                   const due = dueLabel(issue.dueDate, today)
                   return (
                     <Table.Row key={issue.id} id={issue.id} className="relative">
@@ -157,17 +117,6 @@ export function DeadlineSection({
             </Table.Content>
           </Table.ScrollContainer>
         </Table>
-      )}
-      {isOpen && hidden > 0 && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-3 gap-2 self-start px-3"
-          onPress={() => setShown(issues.length)}
-        >
-          <ChevronDown aria-hidden className="size-4" />
-          {hidden}건 더 보기
-        </Button>
       )}
     </section>
   )

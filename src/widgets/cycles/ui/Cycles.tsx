@@ -18,7 +18,7 @@ import {
   currentPeriod,
   DueChip,
   LabelChip,
-  periodText,
+  beforeCycleLabel,
   PriorityIcon,
   StateIcon,
   stateLabel,
@@ -61,8 +61,8 @@ export function Cycles({
   )
   const fallback = defaultTabKey(tabs, snapshot.cycles, now)
   const current = currentPeriod(now, snapshot.cycles)
-  // 지금 사이클 밖이면 사이클 밖 탭을 「사이클 N 시작 전」으로 부른다. 대시보드와 같은 문구다.
-  const outsideName = periodText(current, snapshot.cycles, now).name
+  // 지금 사이클 밖이면 사이클 밖 탭을 「사이클 N 시작 전」으로 부른다. 머리 영역과 같은 함수다.
+  const outsideName = beforeCycleLabel(now, snapshot.cycles)
   const [picked, setPicked] = useState<string | null>(null)
   // 새로 받은 목록에서 고른 탭이 사라지면 고른 것을 잊고 지금 기간 탭으로 돌아간다.
   // 그래야 나중에 그 탭이 다시 생겨도 저절로 넘어가지 않는다.

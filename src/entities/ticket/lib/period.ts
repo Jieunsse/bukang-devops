@@ -3,7 +3,6 @@ import {
   addDays,
   daysBetween,
   formatDayWithWeekday,
-  formatMonthDay,
   kstDate,
   weekdayOf,
   type DateString,
@@ -38,44 +37,35 @@ export function currentPeriod(now: string | number | Date, cycles: Cycle[]): Per
   return { kind: 'outside', start: today, end: end < today ? today : end }
 }
 
-/** 「사이클 1 · 11/9~11/15」, 사이클 밖이면 「사이클 밖 · 11/5~11/8」 */
-export function periodLabel(period: Period): string {
-  const range = `${formatMonthDay(period.start)}~${formatMonthDay(period.end)}`
-  if (period.kind === 'outside') return `사이클 밖 · ${range}`
-  const { number, name } = period.cycle
-  return `사이클 ${number}${name ? ` ${name}` : ''} · ${range}`
+const cycleName = (c: Cycle) => `사이클 ${c.number}${c.name ? ` ${c.name}` : ''}`
+
+/** 지금 사이클 밖일 때 쓰는 이름. 「사이클 밖」 대신 다음 사이클을 기준으로 말한다. */
+export function beforeCycleLabel(now: string | number | Date, cycles: Cycle[]): string {
+  const nowMs = new Date(now).getTime()
+  const next = [...cycles]
+    .filter((c) => Date.parse(c.startsAt) > nowMs)
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0]
+  return next ? `${cycleName(next)} 시작 전` : '사이클 없음'
 }
 
-export type PeriodText = {
-  /** 「사이클 7」, 사이클 밖이면 「사이클 8 시작 전」(다음 사이클이 없으면 「사이클 밖 기간」) */
-  name: string
+export type PeriodBadge = {
+  /** 칩 글자. 사이클 안이면 「사이클 1」, 밖이면 「사이클 1 시작 전」 */
+  chip: string
+  inCycle: boolean
   /** 「11/9(월) ~ 11/15(일)」 */
   range: string
-  /** 「3일째 / 7일」 */
-  day: string
+  /** 사이클 안일 때만 「3일째 / 7일」 */
+  dayOf: string | null
 }
 
-/** 대시보드와 사이클 페이지가 같이 쓰는 기간 표시 문구 */
-export function periodText(
-  period: Period,
-  cycles: Cycle[],
-  now: string | number | Date,
-): PeriodText {
-  const today = kstDate(now)
-  const nowMs = new Date(now).getTime()
-  let name: string
-  if (period.kind === 'cycle') {
-    const { number, name: cycleName } = period.cycle
-    name = `사이클 ${number}${cycleName ? ` ${cycleName}` : ''}`
-  } else {
-    const next = cycles
-      .filter((c) => Date.parse(c.startsAt) > nowMs)
-      .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0]
-    name = next ? `사이클 ${next.number} 시작 전` : '사이클 밖 기간'
+/** 머리 영역에 보여 줄 지금 기간. */
+export function periodBadge(now: string | number | Date, cycles: Cycle[]): PeriodBadge {
+  const period = currentPeriod(now, cycles)
+  const range = `${formatDayWithWeekday(period.start)} ~ ${formatDayWithWeekday(period.end)}`
+  if (period.kind === 'outside') {
+    return { chip: beforeCycleLabel(now, cycles), inCycle: false, range, dayOf: null }
   }
-  return {
-    name,
-    range: `${formatDayWithWeekday(period.start)} ~ ${formatDayWithWeekday(period.end)}`,
-    day: `${daysBetween(period.start, today) + 1}일째 / ${daysBetween(period.start, period.end) + 1}일`,
-  }
+  const day = daysBetween(period.start, kstDate(now)) + 1
+  const length = daysBetween(period.start, period.end) + 1
+  return { chip: cycleName(period.cycle), inCycle: true, range, dayOf: `${day}일째 / ${length}일` }
 }
