@@ -14,6 +14,7 @@ const rawIssue = {
   labels: { nodes: [{ id: 'l1', name: 'FE' }] },
   // Linear는 마일스톤 진행률을 0~100으로 준다.
   projectMilestone: { id: 'm1', name: '세미 발표', progress: 40 },
+  cycle: { id: 'c1' },
 }
 const rawCycle = {
   id: 'c1',
@@ -21,6 +22,16 @@ const rawCycle = {
   name: null,
   startsAt: '2026-11-08T15:00:00.000Z',
   endsAt: '2026-11-15T15:00:00.000Z',
+  // Linear는 날마다 완료 수를 쌓아 둔다. 마지막 값이 지금 완료 수다.
+  completedIssueCountHistory: [0, 2, 3],
+}
+const cycle = {
+  id: 'c1',
+  number: 7,
+  name: null,
+  startsAt: '2026-11-08T15:00:00.000Z',
+  endsAt: '2026-11-15T15:00:00.000Z',
+  completedIssueCount: 3,
 }
 
 const json = (body: unknown, status = 200) =>
@@ -61,14 +72,53 @@ describe('Linear에서 한 번에 받기', () => {
     }
     expect(query).toContain('nin: ["completed", "canceled"]')
     expect(query).toContain('assignee { id name avatarUrl }')
+    expect(query).toContain('cycle { id }')
     expect(variables.teamKey).toBe('BUK')
+  })
+
+  it('사이클의 완료 수 기록을 요청한다', async () => {
+    const fetchImpl = fakeLinear([issuesPage([rawIssue])])
+    await fetchSnapshot('k', fetchImpl, NOW)
+    const queries = fetchImpl.mock.calls.map(
+      ([, init]) => (JSON.parse(String(init?.body)) as { query: string }).query,
+    )
+    expect(queries.find((q) => q.includes('cycles('))).toContain('completedIssueCountHistory')
+  })
+
+  it('완료 수 기록의 마지막 값을 완료 수로 쓰고, 기록이 비면 0으로 본다', async () => {
+    const fetchImpl = fakeLinear(
+      [issuesPage([rawIssue])],
+      [cyclesPage([rawCycle, { ...rawCycle, id: 'c2', completedIssueCountHistory: [] }])],
+    )
+    const snapshot = await fetchSnapshot('k', fetchImpl, NOW)
+    expect(snapshot.cycles.map((c) => c.completedIssueCount)).toEqual([3, 0])
+  })
+
+  it('사이클에 들지 않은 티켓은 사이클을 비워 둔다', async () => {
+    const snapshot = await fetchSnapshot(
+      'k',
+      fakeLinear([issuesPage([{ ...rawIssue, cycle: null }])]),
+      NOW,
+    )
+    expect(snapshot.issues[0]?.cycle).toBeNull()
+  })
+
+  it('티켓의 사이클이나 사이클의 완료 수 기록이 응답에 없으면 오류를 낸다', async () => {
+    const { cycle: _omit, ...noCycle } = rawIssue
+    await expect(fetchSnapshot('k', fakeLinear([issuesPage([noCycle])]), NOW)).rejects.toThrow(
+      LinearResponseError,
+    )
+    const { completedIssueCountHistory: _h, ...noHistory } = rawCycle
+    await expect(
+      fetchSnapshot('k', fakeLinear([issuesPage([rawIssue])], [cyclesPage([noHistory])]), NOW),
+    ).rejects.toThrow(LinearResponseError)
   })
 
   it('받은 값을 화면에서 쓰는 모양으로 바꾸고 받은 시각을 남긴다', async () => {
     const snapshot = await fetchSnapshot('k', fakeLinear([issuesPage([rawIssue])]), NOW)
     expect(snapshot).toEqual({
       fetchedAt: '2026-11-05T03:00:00.000Z',
-      cycles: [rawCycle],
+      cycles: [cycle],
       issues: [
         {
           id: 'i1',
@@ -81,6 +131,7 @@ describe('Linear에서 한 번에 받기', () => {
           assignee: { id: 'u1', name: '지훈' },
           labels: [{ id: 'l1', name: 'FE' }],
           milestone: { id: 'm1', name: '세미 발표', progress: 0.4 },
+          cycle: { id: 'c1' },
         },
       ],
     })
