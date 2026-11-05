@@ -62,7 +62,7 @@ export function MonthCalendar({
 
   return (
     <div className="flex flex-col gap-4">
-      <PageToolbar title="기한 달력" summary={`이 달 기한 ${monthCount}건`} actions={actions}>
+      <PageToolbar title="달력" summary={`이 달 기한 ${monthCount}건`} actions={actions}>
         <FilterChips issues={snapshot.issues} />
       </PageToolbar>
       <Card>
