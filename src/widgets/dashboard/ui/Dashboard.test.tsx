@@ -272,11 +272,15 @@ describe('대시보드', () => {
     expect(within(row).getByText('지훈')).toBeInTheDocument()
   })
 
-  it('최종 발표까지 남은 날을 크게 보여 준다', () => {
+  it('맨 위에 최종 발표, 지금 사이클, 남은 일의 속도 카드 세 개를 보여 준다', () => {
     render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
-    expect(screen.getByText('최종 발표 11/23(월)')).toBeInTheDocument()
-    expect(screen.getByText('D-18')).toBeInTheDocument()
-    expect(screen.queryByRole('progressbar', { name: /지난 비율/ })).not.toBeInTheDocument()
+    const summary = screen.getByRole('region', { name: '한눈에 보기' })
+    expect(within(summary).getByText('최종 발표 11/23(월)')).toBeInTheDocument()
+    expect(within(summary).getByText('D-18')).toBeInTheDocument()
+    expect(within(summary).getByText('사이클 밖 · 11/5~11/8')).toBeInTheDocument()
+    // 끝나지 않은 티켓 4건 ÷ 발표까지 18일 = 0.2건
+    expect(within(summary).getByText('0.2건')).toBeInTheDocument()
+    expect(within(summary).getByText('끝나지 않은 티켓 4건 · 발표까지 18일')).toBeInTheDocument()
   })
 
   it('달력 날짜에 기한 티켓 수를 적고, 날짜를 누르면 그날 티켓만 보이고 다시 누르면 풀린다', async () => {
