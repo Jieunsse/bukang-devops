@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest'
 
 import type { Cycle, Issue } from '@/shared/api/linear'
 
-import { cycleTabs, defaultTabKey, groupByAssignee, OUTSIDE } from './cycles'
+import {
+  cycleTabs,
+  defaultTabKey,
+  formatDayWithWeekday,
+  groupByAssignee,
+  OUTSIDE,
+  tabSummary,
+} from './cycles'
 
 const issue = (n: number, extra: Partial<Issue> = {}): Issue => ({
   id: `i${n}`,
@@ -51,13 +58,9 @@ describe('사이클 탭', () => {
     expect(tabs.map((t) => t.key)).toEqual(['c1'])
   })
 
-  it('사이클 이름이 있으면 번호 뒤에 붙이고, 기간을 한국 시간 날짜로 적는다', () => {
+  it('사이클 이름이 있으면 번호 뒤에 붙인다', () => {
     const [tab] = cycleTabs([], [{ ...cycle1, name: '데모 준비' }])
-    expect(tab).toMatchObject({ title: '사이클 1 데모 준비', range: '11/9~11/15' })
-  })
-
-  it('사이클 밖 기간은 기한과 상관없이 모든 티켓을 담으므로 기간을 적지 않는다', () => {
-    expect(cycleTabs([issue(1)], [cycle1])[0]?.range).toBeNull()
+    expect(tab?.title).toBe('사이클 1 데모 준비')
   })
 
   it('진행률은 완료 수와, 완료 수에 남은 티켓 수를 더한 전체 수다', () => {
@@ -133,5 +136,61 @@ describe('담당자별 묶음', () => {
       issue(3, { dueDate: '2026-11-03' }),
     ])
     expect(group?.issues.map((i) => i.id)).toEqual(['i3', 'i2', 'i1'])
+  })
+})
+
+describe('탭 요약', () => {
+  const tabsOf = (issues: Issue[]) => cycleTabs(issues, [cycle1, cycle2])
+  const tab = (issues: Issue[], key: string) => tabsOf(issues).find((t) => t.key === key)!
+
+  it('사이클 기간은 한국 시간 시작일부터 끝 시각 직전 날까지다', () => {
+    expect(tabSummary(tab([], 'c1'), [cycle1, cycle2], NOW).period).toEqual({
+      start: '2026-11-09',
+      end: '2026-11-15',
+      daysLeft: null,
+    })
+  })
+
+  it('지금 사이클이면 마지막 날까지 남은 날을 센다', () => {
+    const at = (now: string) => tabSummary(tab([], 'c1'), [cycle1, cycle2], now).period?.daysLeft
+    expect(at('2026-11-10T03:00:00.000Z')).toBe(5)
+    // 한국 시간 11/15(일) 23:59는 마지막 날이다.
+    expect(at('2026-11-15T14:59:00.000Z')).toBe(0)
+  })
+
+  it('지금 사이클 밖이면 사이클 밖 기간에 오늘부터 이번 주 일요일까지를 적는다', () => {
+    expect(tabSummary(tab([issue(1)], OUTSIDE), [cycle1, cycle2], NOW).period).toEqual({
+      start: '2026-11-05',
+      end: '2026-11-08',
+      daysLeft: 3,
+    })
+  })
+
+  it('지금 사이클 안이면 사이클 밖 기간에는 기간을 적지 않는다', () => {
+    const inCycle = '2026-11-10T03:00:00.000Z'
+    expect(tabSummary(tab([issue(1)], OUTSIDE), [cycle1, cycle2], inCycle).period).toBeNull()
+  })
+
+  it('기한 지남·오늘·이번 주 개수를 필터 전 티켓으로 센다', () => {
+    const issues = [
+      issue(1, { dueDate: '2026-11-03' }),
+      issue(2, { dueDate: '2026-11-04' }),
+      issue(3, { dueDate: '2026-11-05' }),
+      issue(4, { dueDate: '2026-11-08' }),
+      issue(5, { dueDate: '2026-11-09' }),
+      issue(6),
+    ]
+    expect(tabSummary(tab(issues, OUTSIDE), [cycle1, cycle2], NOW).counts).toEqual({
+      overdue: 2,
+      today: 1,
+      thisWeek: 1,
+    })
+  })
+})
+
+describe('날짜 표시', () => {
+  it('요일을 붙인다', () => {
+    expect(formatDayWithWeekday('2026-11-09')).toBe('11/9(월)')
+    expect(formatDayWithWeekday('2026-11-15')).toBe('11/15(일)')
   })
 })
