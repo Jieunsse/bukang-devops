@@ -51,7 +51,7 @@ describe('달력 페이지', () => {
         actions={<button>필터</button>}
       />,
     )
-    const bar = screen.getByRole('group', { name: '기한 달력 도구' })
+    const bar = screen.getByRole('group', { name: '달력 도구' })
     expect(within(bar).getByRole('button', { name: '필터' })).toBeInTheDocument()
   })
 

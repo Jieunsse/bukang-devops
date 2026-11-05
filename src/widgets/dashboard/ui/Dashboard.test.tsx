@@ -154,7 +154,7 @@ describe('대시보드', () => {
 
   it('달력에서 날짜를 고르면 펼친 채로 보여 주고 접기 버튼을 두지 않는다', async () => {
     render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
-    const calendar = screen.getByRole('application', { name: /^기한 달력/ })
+    const calendar = screen.getByRole('application', { name: /^달력/ })
     await userEvent.click(within(calendar).getByRole('button', { name: /11월 7일/ }))
     const section = screen.getByRole('region', { name: '11/7 기한' })
     expect(within(section).queryByRole('button', { name: /^11\/7 기한/ })).not.toBeInTheDocument()
@@ -311,7 +311,7 @@ describe('대시보드', () => {
 
   it('달력 날짜에 기한 티켓 수를 적고, 날짜를 누르면 그날 티켓만 보이고 다시 누르면 풀린다', async () => {
     render(<Dashboard snapshot={snapshot([...overdue, ...rest])} now={NOW} />)
-    const calendar = screen.getByRole('application', { name: /^기한 달력/ })
+    const calendar = screen.getByRole('application', { name: /^달력/ })
     const day7 = within(calendar).getByRole('button', { name: /11월 7일/ })
     expect(within(day7).getByText('1')).toBeInTheDocument()
 
