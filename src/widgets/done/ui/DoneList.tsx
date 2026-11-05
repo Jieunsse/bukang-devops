@@ -1,7 +1,6 @@
 'use client'
 
-import { ChevronDown, ChevronRight } from '@gravity-ui/icons'
-import { Button, Card, Chip, EmptyState, Table } from '@heroui/react'
+import { Card, Chip, EmptyState, Table } from '@heroui/react'
 import { useMemo, useState } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
@@ -9,6 +8,7 @@ import { milestoneColumnWidth, TITLE_MIN_PX } from '@/entities/ticket'
 import { applyFilters, NONE, useFilters } from '@/features/filter'
 import type { DoneIssue } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
+import { CollapseButton } from '@/shared/ui'
 
 import { groupDone, type DoneGroup } from '../lib/group'
 
@@ -90,19 +90,12 @@ function GroupSection({ group, milestoneWidth }: { group: DoneGroup; milestoneWi
   const [isOpen, setOpen] = useState(true)
   return (
     <section aria-label={group.name} className="flex flex-col gap-3">
-      {/* 사이클 페이지·대시보드처럼 머리줄 전체를 눌러 접고 펼친다. */}
       <h3>
-        <Button
-          variant="ghost"
-          aria-expanded={isOpen}
-          onPress={() => setOpen(!isOpen)}
-          className="-ml-3 cursor-pointer gap-2 px-3 font-semibold"
+        <CollapseButton
+          isOpen={isOpen}
+          onToggle={() => setOpen(!isOpen)}
+          className="cursor-pointer"
         >
-          {isOpen ? (
-            <ChevronDown aria-hidden className="size-4" />
-          ) : (
-            <ChevronRight aria-hidden className="size-4" />
-          )}
           {/* 사진이 없을 때 보이는 첫 글자가 버튼 이름에 섞이지 않게 숨긴다. */}
           {group.id !== NONE && (
             <span aria-hidden>
@@ -113,7 +106,7 @@ function GroupSection({ group, milestoneWidth }: { group: DoneGroup; milestoneWi
           <span className="text-sm font-normal text-muted">
             완료 {group.completed} · 취소 {group.canceled}
           </span>
-        </Button>
+        </CollapseButton>
       </h3>
       {isOpen && (
         <Table>
