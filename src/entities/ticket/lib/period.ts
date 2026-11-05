@@ -1,5 +1,5 @@
 import type { Cycle } from '@/shared/api/linear'
-import { addDays, kstDate, weekdayOf, type DateString } from '@/shared/lib/date'
+import { addDays, formatMonthDay, kstDate, weekdayOf, type DateString } from '@/shared/lib/date'
 
 /** 「이번 주」로 보는 기간. 지금 사이클이 없으면 오늘부터 이번 주 일요일까지다. */
 export type Period =
@@ -28,4 +28,12 @@ export function currentPeriod(now: string | number | Date, cycles: Cycle[]): Per
     if (dayBefore < end) end = dayBefore
   }
   return { kind: 'outside', start: today, end: end < today ? today : end }
+}
+
+/** 「사이클 1 · 11/9~11/15」, 사이클 밖이면 「사이클 밖 · 11/5~11/8」 */
+export function periodLabel(period: Period): string {
+  const range = `${formatMonthDay(period.start)}~${formatMonthDay(period.end)}`
+  if (period.kind === 'outside') return `사이클 밖 · ${range}`
+  const { number, name } = period.cycle
+  return `사이클 ${number}${name ? ` ${name}` : ''} · ${range}`
 }

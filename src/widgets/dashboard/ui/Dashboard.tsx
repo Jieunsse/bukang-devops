@@ -77,7 +77,12 @@ export function Dashboard({
 
   return (
     <div className="flex flex-col gap-6">
-      <PresentationCard today={today} />
+      <PresentationCard
+        now={now}
+        cycles={snapshot.cycles}
+        cycleIssues={snapshot.issues}
+        openIssues={issues}
+      />
       <Tabs
         // 탭 줄만 글자 폭에 맞춘다. 아래 내용 영역은 늘 전체 폭이다.
         className="w-full"

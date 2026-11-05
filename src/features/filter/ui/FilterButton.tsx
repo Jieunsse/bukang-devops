@@ -77,7 +77,7 @@ export function FilterButton() {
             ))}
             <div className="flex justify-end gap-2">
               <Button
-                variant="ghost"
+                variant="outline"
                 onPress={() => {
                   setFilters({})
                   setOpen(false)

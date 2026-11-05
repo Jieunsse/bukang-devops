@@ -241,6 +241,18 @@ describe('대시보드', () => {
     expect(parseFloat(table.style.minWidth)).toBeGreaterThanOrEqual(448 + milestone + 240)
   })
 
+  it('고른 숫자 칸을 다시 누르면 모든 묶음을 다시 보여 준다', async () => {
+    render(<Dashboard snapshot={snapshot([...overdue, ...rest])} now={NOW} />)
+    const noDue = within(screen.getByRole('group', { name: '숫자 요약' })).getByRole('button', {
+      name: /기한 없음\s*1/,
+    })
+    await userEvent.click(noDue)
+    expect(screen.queryByRole('region', { name: '기한 지남' })).not.toBeInTheDocument()
+    await userEvent.click(noDue)
+    expect(noDue).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('region', { name: '기한 지남' })).toBeInTheDocument()
+  })
+
   it('숫자 칸을 누르면 마감 목록이 그 묶음만 보여 준다', async () => {
     render(<Dashboard snapshot={snapshot([...overdue, ...rest])} now={NOW} />)
     await userEvent.click(
@@ -272,11 +284,15 @@ describe('대시보드', () => {
     expect(within(row).getByText('지훈')).toBeInTheDocument()
   })
 
-  it('최종 발표까지 남은 날을 크게 보여 준다', () => {
+  it('맨 위에 최종 발표, 지금 사이클, 남은 일의 속도 카드 세 개를 보여 준다', () => {
     render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
-    expect(screen.getByText('최종 발표 11/23(월)')).toBeInTheDocument()
-    expect(screen.getByText('D-18')).toBeInTheDocument()
-    expect(screen.queryByRole('progressbar', { name: /지난 비율/ })).not.toBeInTheDocument()
+    const summary = screen.getByRole('region', { name: '한눈에 보기' })
+    expect(within(summary).getByText('최종 발표 11/23(월)')).toBeInTheDocument()
+    expect(within(summary).getByText('D-18')).toBeInTheDocument()
+    expect(within(summary).getByText('사이클 밖 · 11/5~11/8')).toBeInTheDocument()
+    // 끝나지 않은 티켓 4건 ÷ 발표까지 18일 = 0.2건
+    expect(within(summary).getByText('0.2건')).toBeInTheDocument()
+    expect(within(summary).getByText('끝나지 않은 티켓 4건 · 발표까지 18일')).toBeInTheDocument()
   })
 
   it('달력 날짜에 기한 티켓 수를 적고, 날짜를 누르면 그날 티켓만 보이고 다시 누르면 풀린다', async () => {

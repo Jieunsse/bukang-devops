@@ -96,22 +96,43 @@ export function groupByAssignee(issues: Issue[]): AssigneeGroup[] {
   )
 }
 
+export type SummaryBucket = 'overdue' | 'today' | 'thisWeek'
+
+/** 이번 주 끝은 지금 사이클(또는 사이클 밖 기간)의 끝 날이다. 대시보드와 같은 기준이다. */
+function summaryBucketOf(issue: Issue, cycles: Cycle[], now: Instant): SummaryBucket | null {
+  const bucket = bucketOf(issue.dueDate, {
+    today: kstDate(now),
+    end: currentPeriod(now, cycles).end,
+  })
+  return bucket === 'overdue' || bucket === 'today' || bucket === 'thisWeek' ? bucket : null
+}
+
+/** 숫자 칸에서 고른 묶음의 티켓만 남긴다. */
+export const inBucket = (issues: Issue[], bucket: SummaryBucket, cycles: Cycle[], now: Instant) =>
+  issues.filter((i) => summaryBucketOf(i, cycles, now) === bucket)
+
 export type TabSummary = {
   /** daysLeft는 지금 이 기간 안일 때만 있다. 마지막 날이면 0이다. */
   period: { start: DateString; end: DateString; daysLeft: number | null } | null
-  /** 필터를 걸기 전 티켓으로 센다. */
+  /** 넘겨받은 티켓으로 센다. 화면은 필터를 건 티켓을 넘긴다. */
   counts: { overdue: number; today: number; thisWeek: number }
 }
 
 /** 사이클 밖 기간은 지금 사이클 밖일 때만 오늘부터 이번 주 끝까지를 기간으로 적는다. */
-export function tabSummary(tab: CycleTab, cycles: Cycle[], now: Instant): TabSummary {
+export function tabSummary(
+  tab: CycleTab,
+  cycles: Cycle[],
+  now: Instant,
+  /** 숫자를 셀 티켓. 기본은 필터 전 탭 티켓 전체다. */
+  issues: Issue[] = tab.issues,
+): TabSummary {
   const today = kstDate(now)
   const current = currentPeriod(now, cycles)
   const days = tab.days ?? (current.kind === 'outside' ? current : null)
   const counts = { overdue: 0, today: 0, thisWeek: 0 }
-  for (const issue of tab.issues) {
-    const bucket = bucketOf(issue.dueDate, { today, end: current.end })
-    if (bucket === 'overdue' || bucket === 'today' || bucket === 'thisWeek') counts[bucket]++
+  for (const issue of issues) {
+    const bucket = summaryBucketOf(issue, cycles, now)
+    if (bucket) counts[bucket]++
   }
   return {
     period: days && {

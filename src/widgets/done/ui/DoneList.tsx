@@ -1,10 +1,16 @@
 'use client'
 
-import { Card, Chip, EmptyState, Table } from '@heroui/react'
+import { Card, EmptyState, Table } from '@heroui/react'
 import { useMemo, useState } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
-import { milestoneColumnWidth, TITLE_MIN_PX } from '@/entities/ticket'
+import {
+  LabelChip,
+  MilestoneChip,
+  milestoneColumnWidth,
+  TagChip,
+  TITLE_MIN_PX,
+} from '@/entities/ticket'
 import { applyFilters, NONE, useFilters } from '@/features/filter'
 import type { DoneIssue } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
@@ -140,9 +146,7 @@ function GroupSection({ group, milestoneWidth }: { group: DoneGroup; milestoneWi
                           {issue.title}
                         </a>
                         {issue.state.type === 'canceled' && (
-                          <Chip size="sm" className="shrink-0">
-                            취소
-                          </Chip>
+                          <TagChip className="shrink-0">취소</TagChip>
                         )}
                       </span>
                     </Table.Cell>
@@ -155,15 +159,13 @@ function GroupSection({ group, milestoneWidth }: { group: DoneGroup; milestoneWi
                     <Table.Cell>
                       <div className="flex flex-wrap gap-1">
                         {issue.labels.map((l) => (
-                          <Chip key={l.id} size="sm">
-                            {l.name}
-                          </Chip>
+                          <LabelChip key={l.id} label={l} />
                         ))}
                       </div>
                     </Table.Cell>
                     {/* 마일스톤은 자르면 어느 것인지 몰라서, 칸을 가장 긴 이름만큼 잡고 한 줄로 보여 준다. */}
                     <Table.Cell className="whitespace-nowrap">
-                      <Chip size="sm">{issue.milestone?.name ?? '마일스톤 없음'}</Chip>
+                      <MilestoneChip name={issue.milestone?.name ?? null} />
                     </Table.Cell>
                   </Table.Row>
                 ))}
