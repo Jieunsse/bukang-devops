@@ -14,11 +14,11 @@ export function useFilters() {
 
   const setFilters = useCallback(
     (next: Filters) => {
-      const search = toSearch(next)
+      const search = toSearch(next, searchParams)
       // 주소만 바뀌고 데이터는 브라우저가 가진 목록에서 다시 거른다.
       router.replace(`${pathname}${search ? `?${search}` : ''}`, { scroll: false })
     },
-    [pathname, router],
+    [pathname, router, searchParams],
   )
 
   return { filters, setFilters }

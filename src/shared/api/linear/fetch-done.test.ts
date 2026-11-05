@@ -34,7 +34,7 @@ const page = (nodes: unknown[], hasNextPage = false, endCursor: string | null = 
   json({ data: { issues: { nodes, pageInfo: { hasNextPage, endCursor } } } })
 
 const fakeLinear = (pages: Response[]) =>
-  vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => {
+  vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async () => {
     const next = pages.shift()
     if (!next) throw new Error('예상보다 많이 불렀다')
     return next
