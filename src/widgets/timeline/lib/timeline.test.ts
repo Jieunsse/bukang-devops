@@ -122,3 +122,9 @@ describe('줄 묶음', () => {
     expect(rows[0]!.issues.map((i) => i.id)).toEqual(['i2', 'i3', 'i1'])
   })
 })
+
+describe('최종 발표 뒤', () => {
+  it('오늘이 최종 발표일보다 늦어도 오늘까지 보여 준다', () => {
+    expect(timelineRange([], '2026-11-30').end).toBe('2026-11-30')
+  })
+})
