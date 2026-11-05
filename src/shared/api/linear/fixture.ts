@@ -86,8 +86,8 @@ export function createFixtureSnapshot(now: Date = new Date()): Snapshot {
       assignee: person === null ? null : { ...people[person]! },
       labels: labelKeys.map((k) => labels[k]),
       milestone: milestone === null ? null : milestones[milestone],
-      // 기한이 조금 먼 티켓은 다음 사이클에 넣어, 사이클 탭과 사이클 밖 탭이 모두 채워지게 한다.
-      cycle: due !== null && due >= 3 && due <= 9 ? { id: 'c-7' } : null,
+      // 기한이 다음 사이클 안인 티켓은 그 사이클에 넣어, 사이클 탭과 사이클 밖 탭이 모두 채워지게 한다.
+      cycle: due !== null && due >= daysToMonday && due < daysToMonday + 7 ? { id: 'c-7' } : null,
     }
   })
 
