@@ -13,6 +13,8 @@ const doneQuery = (from: string, until: string) => `
     issues(
       first: 100
       after: $after
+      # Linear는 닫힌 지 오래된 티켓을 자동으로 보관한다. 지난 기간을 고르면 그 티켓도 받아야 한다.
+      includeArchived: true
       filter: {
         team: { key: { eq: $teamKey } }
         or: [

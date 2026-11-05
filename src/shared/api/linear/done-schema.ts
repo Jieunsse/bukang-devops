@@ -14,10 +14,10 @@ export type DoneIssue = z.infer<typeof doneIssueSchema>
 export const MAX_RANGE_DAYS = 90
 const DEFAULT_RANGE_DAYS = 14
 
-/** 'YYYY-MM-DD' 모양이고 달력에 있는 날짜 */
+/** 'YYYY-MM-DD' 모양이고 달력에 있는 날짜. 2000~2099년만 받아 쓸데없는 Linear 호출을 막는다. */
 const calendarDate = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, '날짜를 골라 주세요.')
+  .regex(/^20\d{2}-\d{2}-\d{2}$/, '날짜를 골라 주세요.')
   .refine((s) => {
     const date = new Date(`${s}T00:00:00Z`)
     return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === s
@@ -61,9 +61,10 @@ const rawDoneIssueSchema = z
   .object({ completedAt: instant, canceledAt: instant })
   .and(rawIssueSchema)
   .transform(({ completedAt, canceledAt, ...issue }, ctx) => {
-    const closedAt = completedAt ?? canceledAt
+    // 완료했다가 취소한 티켓은 두 시각이 모두 있을 수 있어 상태 종류로 고른다.
+    const closedAt = issue.state.type === 'canceled' ? canceledAt : completedAt
     if (closedAt === null) {
-      ctx.addIssue({ code: 'custom', message: '완료 시각과 취소 시각이 모두 없어요.' })
+      ctx.addIssue({ code: 'custom', message: '상태에 맞는 완료 시각이나 취소 시각이 없어요.' })
       return z.NEVER
     }
     return { ...issue, closedAt }
