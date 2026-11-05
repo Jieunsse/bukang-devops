@@ -80,6 +80,18 @@ describe('완료·취소 티켓 받기', () => {
     expect(issue?.closedAt).toBe('2026-11-05T01:00:00.000Z')
   })
 
+  it('중복으로 닫은 티켓은 취소로 보고 취소 시각을 닫힌 시각으로 쓴다', async () => {
+    // Linear에는 「중복」이라는 상태 종류가 따로 있고, 완료 시각 없이 취소 시각만 있다.
+    const duplicate = {
+      ...rawCanceled,
+      state: { ...rawCanceled.state, name: 'Duplicate', type: 'duplicate' },
+      completedAt: null,
+    }
+    const [issue] = await fetchDone('k', RANGE, fakeLinear([page([duplicate])]))
+    expect(issue?.closedAt).toBe('2026-11-05T01:00:00.000Z')
+    expect(issue?.state).toMatchObject({ name: 'Duplicate', type: 'canceled' })
+  })
+
   it('화면에서 쓰는 모양으로 바꾸고 닫힌 시각이 늦은 순으로 놓는다', async () => {
     const issues = await fetchDone('k', RANGE, fakeLinear([page([rawDone, rawCanceled])]))
     expect(issues).toEqual([
