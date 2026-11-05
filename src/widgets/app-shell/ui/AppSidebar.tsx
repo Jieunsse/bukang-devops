@@ -3,11 +3,11 @@
 import { CircleQuestion } from '@gravity-ui/icons'
 import { Button, Popover } from '@heroui/react'
 import { buttonVariants } from '@heroui/styles'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 
 import { ThemeToggle } from '@/features/theme'
-import { LogoMark } from '@/shared/ui'
 
 import { NAV_ITEMS } from './nav'
 
@@ -34,8 +34,8 @@ export function AppSidebar() {
         href={links[0]?.href ?? '/'}
         className="flex items-center gap-2 rounded-lg px-3 pt-2 text-lg font-semibold"
       >
-        <LogoMark size={28} />
-        bukang-devops
+        <Image src="/bukangi.png" alt="" width={57} height={36} priority />
+        부캉이
       </Link>
       <nav aria-label="페이지" className="flex flex-col gap-1">
         {links.map((l) => (

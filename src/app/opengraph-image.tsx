@@ -1,6 +1,7 @@
-import { ImageResponse } from 'next/og'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 
-import { LogoMark } from '@/shared/ui/LogoMark'
+import { ImageResponse } from 'next/og'
 
 import { SITE_DESCRIPTION, SITE_NAME } from './site'
 
@@ -19,9 +20,10 @@ async function loadFont(weight: 400 | 700, text: string) {
 }
 
 export default async function OpengraphImage() {
-  const [bold, regular] = await Promise.all([
+  const [bold, regular, shark] = await Promise.all([
     loadFont(700, SITE_NAME),
     loadFont(400, SITE_DESCRIPTION),
+    readFile(join(process.cwd(), 'public/bukangi.png'), 'base64'),
   ])
   return new ImageResponse(
     <div
@@ -38,7 +40,8 @@ export default async function OpengraphImage() {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
-        <LogoMark size={128} />
+        {/* 원본(247×155)이 작아서 1.2배까지만 키운다. */}
+        <img src={`data:image/png;base64,${shark}`} width={296} height={186} alt="" />
         <div style={{ fontSize: 88, fontWeight: 700, color: '#18181b' }}>{SITE_NAME}</div>
       </div>
       <div style={{ fontSize: 44, fontWeight: 400, color: '#52525b' }}>{SITE_DESCRIPTION}</div>
