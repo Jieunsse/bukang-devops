@@ -18,11 +18,14 @@ export function DeadlineSection({
   issues,
   today,
   defaultOpen,
+  emptyText,
 }: {
   bucket: Bucket
   issues: Issue[]
   today: string
   defaultOpen: boolean
+  /** 묶음 하나만 볼 때 티켓이 없으면 보여 줄 안내 */
+  emptyText?: string
 }) {
   const [isOpen, setOpen] = useState(defaultOpen)
   const [shown, setShown] = useState(PAGE)
@@ -43,6 +46,7 @@ export function DeadlineSection({
           </Button>
         )}
       </div>
+      {emptyText && issues.length === 0 && <p className="text-sm text-muted">{emptyText}</p>}
       {isOpen && issues.length > 0 && (
         <Table>
           <Table.ScrollContainer>
@@ -59,13 +63,14 @@ export function DeadlineSection({
                 {visible.map((issue) => {
                   const due = dueLabel(issue.dueDate, today)
                   return (
-                    <Table.Row key={issue.id} id={issue.id}>
+                    <Table.Row key={issue.id} id={issue.id} className="relative">
                       <Table.Cell>
                         <a
                           href={issue.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="font-medium hover:underline"
+                          // 글자 링크를 줄 전체로 넓혀, 어느 칸을 눌러도 Linear 이슈로 간다.
+                          className="font-medium after:absolute after:inset-0 hover:underline"
                         >
                           {issue.title}
                         </a>

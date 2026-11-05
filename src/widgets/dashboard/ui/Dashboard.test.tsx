@@ -115,6 +115,19 @@ describe('대시보드', () => {
     expect(replace).toHaveBeenCalledWith('/?milestone=m1', { scroll: false })
   })
 
+  it('고른 묶음에 티켓이 없으면 그 묶음의 빈 안내를 보여 준다', async () => {
+    render(<Dashboard snapshot={snapshot(overdue)} now={NOW} />)
+    await userEvent.click(screen.getByRole('button', { name: /오늘\s*0/ }))
+    expect(screen.getByText('이 묶음에 남은 티켓이 없어요')).toBeInTheDocument()
+  })
+
+  it('이미 걸린 담당자를 다시 누르면 그 필터를 푼다', async () => {
+    search = 'assignee=none&label=l1'
+    render(<Dashboard snapshot={snapshot([issue(10, null, { assignee: null })])} now={NOW} />)
+    await userEvent.click(screen.getByRole('button', { name: /담당 없음 1건/ }))
+    expect(replace).toHaveBeenCalledWith('/?label=l1', { scroll: false })
+  })
+
   it('티켓이 하나도 없으면 빈 안내를 보여 준다', () => {
     render(<Dashboard snapshot={snapshot([])} now={NOW} />)
     expect(screen.getByText('남은 티켓이 없어요')).toBeInTheDocument()
