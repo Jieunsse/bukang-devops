@@ -2,11 +2,12 @@
 
 import { ChevronLeft, ChevronRight } from '@gravity-ui/icons'
 import { Button, Card, Popover } from '@heroui/react'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 
 import { dayTone, inCycle, type DueTone } from '@/entities/ticket'
-import { applyFilters, useFilters } from '@/features/filter'
+import { applyFilters, FilterChips, useFilters } from '@/features/filter'
 import type { Issue, Snapshot } from '@/shared/api/linear'
+import { PageToolbar } from '@/shared/ui'
 import { formatMonthDay, kstDate, weekdayOf, type DateString } from '@/shared/lib/date'
 
 import {
@@ -33,7 +34,16 @@ const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
 const cellLabel = (date: DateString) =>
   `${Number(date.slice(5, 7))}월 ${Number(date.slice(8))}일 ${DAY_NAMES[weekdayOf(date)]}요일`
 
-export function MonthCalendar({ snapshot, now }: { snapshot: Snapshot; now: number }) {
+export function MonthCalendar({
+  snapshot,
+  now,
+  actions,
+}: {
+  snapshot: Snapshot
+  now: number
+  /** 도구 줄 오른쪽 버튼(새로고침, 필터). 화면을 그리는 쪽이 넘긴다. */
+  actions?: ReactNode
+}) {
   const { filters } = useFilters()
   const today = kstDate(now)
   const [month, setMonth] = useState<Month>(today.slice(0, 7))
@@ -45,83 +55,92 @@ export function MonthCalendar({ snapshot, now }: { snapshot: Snapshot; now: numb
   const days = monthWeeks(month).flat()
   // 앞뒤 달 칸에 보이는 티켓도 센다. 칸에 티켓이 보이는데 빈 달이라고 하지 않게 한다.
   const isEmpty = !days.some((date) => byDate.has(date))
+  // 도구 줄 개수는 앞뒤 달 칸을 빼고 이 달 날짜만 센다.
+  const monthCount = days
+    .filter((date) => date.startsWith(month))
+    .reduce((n, date) => n + (byDate.get(date)?.length ?? 0), 0)
 
   return (
-    <Card>
-      <Card.Header className="flex-row flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">{monthLabel(month)}</h2>
-        <div className="flex items-center gap-1">
-          <Button
-            isIconOnly
-            size="sm"
-            variant="ghost"
-            aria-label="이전 달"
-            className="cursor-pointer"
-            onPress={() => setMonth((m) => shiftMonth(m, -1))}
-          >
-            <ChevronLeft aria-hidden className="size-4" />
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            className="cursor-pointer"
-            onPress={() => setMonth(today.slice(0, 7))}
-          >
-            오늘
-          </Button>
-          <Button
-            isIconOnly
-            size="sm"
-            variant="ghost"
-            aria-label="다음 달"
-            className="cursor-pointer"
-            onPress={() => setMonth((m) => shiftMonth(m, 1))}
-          >
-            <ChevronRight aria-hidden className="size-4" />
-          </Button>
-        </div>
-      </Card.Header>
-      <Card.Content className="flex flex-col gap-3">
-        {isEmpty && <p className="text-sm text-muted">이 달에 기한인 남은 티켓이 없어요</p>}
-        <div>
-          <div aria-hidden className="grid grid-cols-7 text-center text-xs text-muted">
-            {WEEKDAYS.map((w) => (
-              <span key={w} className="pb-1">
-                {w}
-              </span>
-            ))}
+    <div className="flex flex-col gap-4">
+      <PageToolbar title="기한 달력" summary={`이 달 기한 ${monthCount}건`} actions={actions}>
+        <FilterChips issues={snapshot.issues} />
+      </PageToolbar>
+      <Card>
+        <Card.Header className="flex-row flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">{monthLabel(month)}</h2>
+          <div className="flex items-center gap-1">
+            <Button
+              isIconOnly
+              size="sm"
+              variant="ghost"
+              aria-label="이전 달"
+              className="cursor-pointer"
+              onPress={() => setMonth((m) => shiftMonth(m, -1))}
+            >
+              <ChevronLeft aria-hidden className="size-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="cursor-pointer"
+              onPress={() => setMonth(today.slice(0, 7))}
+            >
+              오늘
+            </Button>
+            <Button
+              isIconOnly
+              size="sm"
+              variant="ghost"
+              aria-label="다음 달"
+              className="cursor-pointer"
+              onPress={() => setMonth((m) => shiftMonth(m, 1))}
+            >
+              <ChevronRight aria-hidden className="size-4" />
+            </Button>
           </div>
-          <ol
-            aria-label={`${monthLabel(month)} 달력`}
-            className="grid grid-cols-7 border-t border-l border-separator"
-          >
-            {days.map((date) => (
-              <DayCell
-                key={date}
-                date={date}
-                today={today}
-                outside={!date.startsWith(month)}
-                cycle={inCycle(date, snapshot.cycles)}
-                issues={byDate.get(date) ?? []}
-                colors={colors}
-              />
-            ))}
-          </ol>
-        </div>
-        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-          <li className="flex items-center gap-1">
-            <span aria-hidden className="size-3 rounded bg-accent-soft" />
-            사이클 기간
-          </li>
-          <li className="flex items-center gap-1">
-            <span aria-hidden className="size-3 rounded ring-2 ring-accent ring-inset" />
-            최종 발표 {formatMonthDay(FINAL_PRESENTATION)}
-          </li>
-          <li>앞의 색 막대는 담당자를 구분해요</li>
-          <li>기한 지난 날은 빨강, 오늘은 주황이에요</li>
-        </ul>
-      </Card.Content>
-    </Card>
+        </Card.Header>
+        <Card.Content className="flex flex-col gap-3">
+          {isEmpty && <p className="text-sm text-muted">이 달에 기한인 남은 티켓이 없어요</p>}
+          <div>
+            <div aria-hidden className="grid grid-cols-7 text-center text-xs text-muted">
+              {WEEKDAYS.map((w) => (
+                <span key={w} className="pb-1">
+                  {w}
+                </span>
+              ))}
+            </div>
+            <ol
+              aria-label={`${monthLabel(month)} 달력`}
+              className="grid grid-cols-7 border-t border-l border-separator"
+            >
+              {days.map((date) => (
+                <DayCell
+                  key={date}
+                  date={date}
+                  today={today}
+                  outside={!date.startsWith(month)}
+                  cycle={inCycle(date, snapshot.cycles)}
+                  issues={byDate.get(date) ?? []}
+                  colors={colors}
+                />
+              ))}
+            </ol>
+          </div>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+            <li className="flex items-center gap-1">
+              <span aria-hidden className="size-3 rounded bg-accent-soft" />
+              사이클 기간
+            </li>
+            <li className="flex items-center gap-1">
+              <span aria-hidden className="size-3 rounded ring-2 ring-accent ring-inset" />
+              최종 발표 {formatMonthDay(FINAL_PRESENTATION)}
+            </li>
+            <li>앞의 색 막대는 담당자를 구분해요</li>
+            <li>기한 지난 날은 빨강, 오늘은 주황이에요</li>
+          </ul>
+        </Card.Content>
+      </Card>
+    </div>
   )
 }
 

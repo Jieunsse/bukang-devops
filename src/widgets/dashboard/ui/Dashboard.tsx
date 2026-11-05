@@ -1,7 +1,7 @@
 'use client'
 
 import { Button, EmptyState, Tabs } from '@heroui/react'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 
 import {
   BUCKET_LABEL,
@@ -12,9 +12,10 @@ import {
   milestoneColumnWidth,
   type Bucket,
 } from '@/entities/ticket'
-import { applyFilters, useFilters, type Filters } from '@/features/filter'
+import { applyFilters, FilterChips, useFilters, type Filters } from '@/features/filter'
 import type { Snapshot } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
+import { PageToolbar } from '@/shared/ui'
 
 import { dueCountsByDate } from '../lib/calendar'
 import { assigneeLoad, milestoneProgress } from '../lib/summary'
@@ -33,12 +34,21 @@ const toggle = (filters: Filters, key: 'assignee' | 'milestone', id: string): Fi
   [key]: filters[key] === id ? undefined : id,
 })
 
-export function Dashboard({ snapshot, now }: { snapshot: Snapshot; now: number }) {
+export function Dashboard({
+  snapshot,
+  now,
+  actions,
+}: {
+  snapshot: Snapshot
+  now: number
+  /** 도구 줄 오른쪽 버튼(새로고침, 필터). 화면을 그리는 쪽이 넘긴다. */
+  actions?: ReactNode
+}) {
   const { filters, setFilters } = useFilters()
   const bucket = useDashboardStore((s) => s.bucket)
   const setBucket = useDashboardStore((s) => s.setBucket)
-  // 카드나 풀기 버튼은 누르면 사라진다. 포커스를 잃지 않게 마감 목록 제목으로 옮긴다.
-  const listTitle = useRef<HTMLHeadingElement>(null)
+  // 카드나 풀기 버튼은 누르면 사라진다. 포커스를 잃지 않게 마감 목록 영역으로 옮긴다.
+  const listArea = useRef<HTMLElement>(null)
   const moveFocus = useRef(false)
   const selectFromList = (b: Bucket | 'all') => {
     moveFocus.current = true
@@ -47,7 +57,7 @@ export function Dashboard({ snapshot, now }: { snapshot: Snapshot; now: number }
   useEffect(() => {
     if (!moveFocus.current) return
     moveFocus.current = false
-    listTitle.current?.focus()
+    listArea.current?.focus()
   }, [bucket])
   const date = useDashboardStore((s) => s.date)
   const setDate = useDashboardStore((s) => s.setDate)
@@ -69,8 +79,11 @@ export function Dashboard({ snapshot, now }: { snapshot: Snapshot; now: number }
     Bucket,
     number
   >
+  const sections: readonly Bucket[] = bucket === 'all' ? BUCKETS : [bucket]
   const dueCounts = useMemo(() => dueCountsByDate(issues), [issues])
   const dateIssues = date ? issues.filter((i) => i.dueDate === date) : []
+  // 도구 줄 개수는 지금 목록에 보이는 묶음(또는 고른 날짜)만 센다.
+  const shownCount = date ? dateIssues.length : sections.reduce((n, b) => n + groups[b].length, 0)
 
   return (
     <div className="flex flex-col gap-6">
@@ -122,50 +135,57 @@ export function Dashboard({ snapshot, now }: { snapshot: Snapshot; now: number }
           </div>
 
           <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between gap-2">
-              <h2 ref={listTitle} tabIndex={-1} className="text-lg font-semibold outline-none">
-                마감 목록
-              </h2>
-              {date ? (
-                <Button size="sm" variant="tertiary" onPress={() => setDate(null)}>
-                  날짜 선택 풀기
-                </Button>
+            <PageToolbar
+              title="마감 목록"
+              summary={`${shownCount}건`}
+              actions={
+                <>
+                  {date && (
+                    <Button size="sm" variant="tertiary" onPress={() => setDate(null)}>
+                      날짜 선택 풀기
+                    </Button>
+                  )}
+                  {!date && bucket !== 'all' && (
+                    <Button size="sm" variant="tertiary" onPress={() => selectFromList('all')}>
+                      묶음 선택 풀기
+                    </Button>
+                  )}
+                  {actions}
+                </>
+              }
+            >
+              <FilterChips issues={snapshot.issues} />
+            </PageToolbar>
+            <section ref={listArea} tabIndex={-1} aria-label="마감 목록" className="outline-none">
+              {issues.length === 0 ? (
+                <EmptyState className="py-12">
+                  <p className="font-medium">남은 티켓이 없어요</p>
+                  <p className="text-sm text-muted">
+                    필터를 바꾸거나 Linear에서 티켓을 확인해 주세요.
+                  </p>
+                </EmptyState>
+              ) : date ? (
+                <DeadlineSection
+                  key={date}
+                  bucket={bucketOf(date, range)}
+                  title={`${formatMonthDay(date)} 기한`}
+                  issues={dateIssues}
+                  today={today}
+                  emptyText="이날 기한인 남은 티켓이 없어요"
+                  milestoneWidth={milestoneWidth}
+                />
+              ) : bucket === 'all' ? (
+                <DeadlineGrid groups={groups} today={today} onSelect={selectFromList} />
               ) : (
-                bucket !== 'all' && (
-                  <Button size="sm" variant="tertiary" onPress={() => selectFromList('all')}>
-                    묶음 선택 풀기
-                  </Button>
-                )
+                <DeadlineSection
+                  bucket={bucket}
+                  issues={groups[bucket]}
+                  today={today}
+                  milestoneWidth={milestoneWidth}
+                  emptyText="이 묶음에 남은 티켓이 없어요"
+                />
               )}
-            </div>
-            {issues.length === 0 ? (
-              <EmptyState className="py-12">
-                <p className="font-medium">남은 티켓이 없어요</p>
-                <p className="text-sm text-muted">
-                  필터를 바꾸거나 Linear에서 티켓을 확인해 주세요.
-                </p>
-              </EmptyState>
-            ) : date ? (
-              <DeadlineSection
-                key={date}
-                bucket={bucketOf(date, range)}
-                title={`${formatMonthDay(date)} 기한`}
-                issues={dateIssues}
-                today={today}
-                emptyText="이날 기한인 남은 티켓이 없어요"
-                milestoneWidth={milestoneWidth}
-              />
-            ) : bucket === 'all' ? (
-              <DeadlineGrid groups={groups} today={today} onSelect={selectFromList} />
-            ) : (
-              <DeadlineSection
-                bucket={bucket}
-                issues={groups[bucket]}
-                today={today}
-                milestoneWidth={milestoneWidth}
-                emptyText="이 묶음에 남은 티켓이 없어요"
-              />
-            )}
+            </section>
           </div>
         </Tabs.Panel>
       </Tabs>

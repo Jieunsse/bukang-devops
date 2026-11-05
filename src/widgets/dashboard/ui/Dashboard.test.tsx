@@ -102,7 +102,7 @@ describe('대시보드', () => {
     expect(more).toHaveClass('cursor-pointer')
 
     await userEvent.click(more)
-    expect(screen.getByRole('heading', { level: 2, name: '마감 목록' })).toHaveFocus()
+    expect(screen.getByRole('region', { name: '마감 목록' })).toHaveFocus()
     expect(screen.getByRole('tab', { name: '기한 지남' })).toHaveAttribute('aria-selected', 'true')
     const section = screen.getByRole('region', { name: '기한 지남' })
     expect(within(section).getAllByRole('row')).toHaveLength(1 + 7)
@@ -147,8 +147,8 @@ describe('대시보드', () => {
     ).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: '묶음 선택 풀기' }))
     expect(screen.getByRole('tab', { name: '전체' })).toHaveAttribute('aria-selected', 'true')
-    // 누른 버튼이 사라져도 포커스는 마감 목록 제목으로 옮겨 간다.
-    expect(screen.getByRole('heading', { level: 2, name: '마감 목록' })).toHaveFocus()
+    // 누른 버튼이 사라져도 포커스는 마감 목록 영역으로 옮겨 간다.
+    expect(screen.getByRole('region', { name: '마감 목록' })).toHaveFocus()
     expect(screen.getByRole('list', { name: '마감 묶음 카드' })).toBeInTheDocument()
   })
 
@@ -286,6 +286,13 @@ describe('대시보드', () => {
     await userEvent.click(within(calendar).getByRole('button', { name: /11월 7일/ }))
     expect(screen.queryByRole('region', { name: '11/7 기한' })).not.toBeInTheDocument()
     expect(screen.getByRole('region', { name: '기한 지남' })).toBeInTheDocument()
+  })
+
+  it('마감 목록 위 도구 줄에 제목, 개수, 넘겨받은 버튼을 둔다', () => {
+    render(<Dashboard snapshot={snapshot(rest)} now={NOW} actions={<button>필터</button>} />)
+    const bar = screen.getByRole('group', { name: '마감 목록 도구' })
+    expect(within(bar).getByText('4건')).toBeInTheDocument()
+    expect(within(bar).getByRole('button', { name: '필터' })).toBeInTheDocument()
   })
 
   it('주소의 필터를 적용한다', () => {

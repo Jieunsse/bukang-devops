@@ -5,6 +5,12 @@ export const NONE = 'none'
 
 export const FILTER_KEYS = ['assignee', 'label', 'milestone'] as const
 export type FilterKey = (typeof FILTER_KEYS)[number]
+
+export const FIELD_LABEL: Record<FilterKey, string> = {
+  assignee: '담당자',
+  label: '라벨',
+  milestone: '마일스톤',
+}
 /** 값은 Linear id. 고르지 않은 항목은 없다. */
 export type Filters = Partial<Record<FilterKey, string>>
 
