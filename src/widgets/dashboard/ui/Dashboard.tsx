@@ -135,6 +135,7 @@ export function Dashboard({ snapshot, now }: { snapshot: Snapshot; now: number }
                   issues={groups[b]}
                   today={today}
                   defaultOpen={bucket !== 'all' || !COLLAPSED.includes(b)}
+                  collapsible={bucket === 'all'}
                   emptyText={bucket === 'all' ? undefined : '이 묶음에 남은 티켓이 없어요'}
                 />
               ))
