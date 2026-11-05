@@ -39,9 +39,11 @@ const CYCLES_QUERY = `
   }
 `
 
+// teams는 개수를 정하지 않으면 Linear가 기본값 50팀으로 계산해 멤버 수와 곱한다.
+// 그러면 「Query too complex」로 실패하므로 팀을 하나만 받는다.
 const MEMBERS_QUERY = `
   query Members($teamKey: String!, $after: String) {
-    teams(filter: { key: { eq: $teamKey } }) {
+    teams(first: 1, filter: { key: { eq: $teamKey } }) {
       nodes {
         members(first: ${PAGE_SIZE}, after: $after) {
           nodes { id name avatarUrl active }

@@ -103,6 +103,18 @@ describe('Linear에서 한 번에 받기', () => {
     expect(variables.teamKey).toBe('BUK')
   })
 
+  it('팀 멤버 질의는 팀을 하나만 받아 Linear 질의 복잡도 한도를 넘지 않는다', async () => {
+    // teams에 개수를 정하지 않으면 Linear가 기본값 50팀으로 계산해 멤버 수와 곱한다.
+    // 그래서 「Query too complex」로 운영 화면 전체가 멈췄다.
+    const fetchImpl = fakeLinear([issuesPage([rawIssue])])
+    await fetchSnapshot('k', fetchImpl, NOW)
+    const queries = fetchImpl.mock.calls.map(
+      ([, init]) => (JSON.parse(String(init?.body)) as { query: string }).query,
+    )
+    const members = queries.find((q) => q.includes('members('))
+    expect(members).toMatch(/teams\(first: 1,/)
+  })
+
   it('BUK 팀 멤버를 받아 비활성 멤버는 빼고 실명 규칙으로 이름을 바꾼다', async () => {
     const snapshot = await fetchSnapshot('k', fakeLinear([issuesPage([rawIssue])]), NOW)
     expect(snapshot.members).toEqual([
