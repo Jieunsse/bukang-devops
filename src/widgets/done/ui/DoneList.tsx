@@ -47,7 +47,9 @@ export function DoneList({ issues }: { issues: DoneIssue[] }) {
 }
 
 /** 대시보드 사람별 카드와 같은 모양으로 완료 수만 막대로 견준다. */
-function CompletedCard({ groups }: { groups: DoneGroup[] }) {
+function CompletedCard({ groups: all }: { groups: DoneGroup[] }) {
+  const groups = all.filter((g) => g.completed > 0)
+  if (groups.length === 0) return null
   const max = Math.max(1, ...groups.map((g) => g.completed))
   return (
     <Card>
@@ -100,8 +102,13 @@ function GroupSection({ group, milestoneWidth }: { group: DoneGroup; milestoneWi
           ) : (
             <ChevronRight aria-hidden className="size-4" />
           )}
-          {group.id !== NONE && <MemberAvatar name={group.name} avatarUrl={group.avatarUrl} />}
-          {group.name}
+          {/* 사진이 없을 때 보이는 첫 글자가 버튼 이름에 섞이지 않게 숨긴다. */}
+          {group.id !== NONE && (
+            <span aria-hidden>
+              <MemberAvatar name={group.name} avatarUrl={group.avatarUrl} />
+            </span>
+          )}
+          {group.name}{' '}
           <span className="text-sm font-normal text-muted">
             완료 {group.completed} · 취소 {group.canceled}
           </span>
@@ -112,7 +119,9 @@ function GroupSection({ group, milestoneWidth }: { group: DoneGroup; milestoneWi
           <Table.ScrollContainer>
             <Table.Content
               aria-label={`${group.name} 완료·취소 티켓`}
-              className="min-w-[700px] table-fixed"
+              className="table-fixed"
+              // 마일스톤 칸이 길어져도 제목 칸이 240px은 남게 표 최소 폭을 늘린다(번호·닫은 날·라벨 320px).
+              style={{ minWidth: milestoneWidth + 320 + 240 }}
             >
               <Table.Header>
                 <Table.Column isRowHeader>제목</Table.Column>
