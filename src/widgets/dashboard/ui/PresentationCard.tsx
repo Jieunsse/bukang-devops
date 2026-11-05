@@ -1,6 +1,7 @@
 'use client'
 
-import { Card, Label, ProgressBar } from '@heroui/react'
+import { Card, ProgressBar, Tooltip } from '@heroui/react'
+import type { ReactNode } from 'react'
 
 import type { Cycle, Issue } from '@/shared/api/linear'
 import { kstDate } from '@/shared/lib/date'
@@ -27,54 +28,62 @@ export function PresentationCard({
   const cycle = cycleProgress(now, cycles, cycleIssues)
   const pace = dailyPace(openIssues.length, daysLeft)
 
+  const paceHint =
+    pace === null
+      ? `끝나지 않은 티켓 ${openIssues.length}건 · ${dDay === 'D-day' ? '오늘이 발표일이에요' : '발표일이 지났어요'}`
+      : `끝나지 않은 티켓 ${openIssues.length}건 ÷ 발표까지 ${daysLeft}일`
+
   return (
     <section aria-label="한눈에 보기" className="grid gap-4 md:grid-cols-3">
-      <Card>
-        <Card.Content className="flex flex-col gap-1">
-          <p className="text-sm text-muted">최종 발표 {dateLabel}</p>
-          <p className="text-4xl font-semibold tabular-nums">{dDay}</p>
-        </Card.Content>
-      </Card>
-
-      <Card>
-        <Card.Content className="flex flex-col gap-2">
-          <p className="text-sm text-muted">지금 사이클</p>
-          <p className="text-lg font-semibold">{cycle.label}</p>
-          {cycle.progress ? (
-            <ProgressBar
-              aria-label="지금 사이클 완료 비율"
-              value={cycle.progress.completed}
-              maxValue={Math.max(1, cycle.progress.total)}
-            >
-              <Label className="text-sm text-muted">
-                완료 {cycle.progress.completed} / 전체 {cycle.progress.total}
-              </Label>
-              <ProgressBar.Output />
-              <ProgressBar.Track>
-                <ProgressBar.Fill />
-              </ProgressBar.Track>
-            </ProgressBar>
-          ) : (
-            <p className="text-sm text-muted">
-              {cycle.next
-                ? `다음 ${cycle.next.title} · ${cycle.next.start} 시작`
-                : '예정된 사이클이 없어요'}
-            </p>
-          )}
-        </Card.Content>
-      </Card>
-
-      <Card>
-        <Card.Content className="flex flex-col gap-1">
-          <p className="text-sm text-muted">하루 평균 끝내야 하는 티켓</p>
-          <p className="text-4xl font-semibold tabular-nums">{pace === null ? '-' : `${pace}건`}</p>
-          <p className="text-sm text-muted">
-            {pace === null
-              ? `끝나지 않은 티켓 ${openIssues.length}건 · ${dDay === 'D-day' ? '오늘이 발표일이에요' : '발표일이 지났어요'}`
-              : `끝나지 않은 티켓 ${openIssues.length}건 · 발표까지 ${daysLeft}일`}
-          </p>
-        </Card.Content>
-      </Card>
+      <StatCard name="최종 발표" value={dDay} hint={dateLabel} />
+      <StatCard name={cycle.name} value={cycle.value} hint={cycle.hint}>
+        {cycle.ratio !== null && (
+          <ProgressBar
+            aria-label={cycle.name}
+            value={Math.round(cycle.ratio * 100)}
+            size="sm"
+            className="mt-1"
+          >
+            <ProgressBar.Track>
+              <ProgressBar.Fill />
+            </ProgressBar.Track>
+          </ProgressBar>
+        )}
+      </StatCard>
+      <StatCard name="하루에 끝낼 티켓" value={pace === null ? '-' : `${pace}건`} hint={paceHint} />
     </section>
+  )
+}
+
+/** 아래 숫자 카드와 같은 모양: 짧은 이름 한 줄과 큰 값 하나. 설명은 값에 마우스를 올리면 보인다. */
+function StatCard({
+  name,
+  value,
+  hint,
+  children,
+}: {
+  name: string
+  value: string
+  hint: string | null
+  children?: ReactNode
+}) {
+  const big = <span className="text-3xl font-semibold tabular-nums">{value}</span>
+  return (
+    <Card>
+      <Card.Content className="flex flex-col gap-1">
+        <span className="text-sm text-muted">{name}</span>
+        {hint ? (
+          <Tooltip delay={300} closeDelay={0}>
+            <Tooltip.Trigger className="w-fit" aria-label={`${value}, ${hint}`}>
+              {big}
+            </Tooltip.Trigger>
+            <Tooltip.Content className="text-xs">{hint}</Tooltip.Content>
+          </Tooltip>
+        ) : (
+          big
+        )}
+        {children}
+      </Card.Content>
+    </Card>
   )
 }

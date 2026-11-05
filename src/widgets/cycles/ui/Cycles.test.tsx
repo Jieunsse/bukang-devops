@@ -66,6 +66,13 @@ describe('사이클 페이지', () => {
     search = ''
   })
 
+  it('보드 위 도구 줄에 묶음 방식 이름, 개수, 넘겨받은 버튼을 둔다', () => {
+    render(<Cycles snapshot={snapshot([issue(1)])} now={NOW} actions={<button>필터</button>} />)
+    const bar = screen.getByRole('group', { name: '상태별 티켓 도구' })
+    expect(within(bar).getByText('1건')).toBeInTheDocument()
+    expect(within(bar).getByRole('button', { name: '필터' })).toBeInTheDocument()
+  })
+
   it('탭에는 이름만 두고 사이클 밖은 「사이클 N 시작 전」으로 부르며, 지금 기간 탭은 이름 앞 표시와 화면 낭독용 「진행 중」으로 구분해 먼저 연다', () => {
     render(<Cycles snapshot={snapshot([issue(1), issue(2, inC1)])} now={NOW} />)
     const tabs = screen.getAllByRole('tab')

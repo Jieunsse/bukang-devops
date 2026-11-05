@@ -11,7 +11,7 @@ import {
   ToggleButtonGroup,
 } from '@heroui/react'
 import { cardVariants } from '@heroui/styles'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
 import {
@@ -23,10 +23,10 @@ import {
   StateIcon,
   stateLabel,
 } from '@/entities/ticket'
-import { applyFilters, NONE, useFilters } from '@/features/filter'
+import { applyFilters, FilterChips, NONE, useFilters } from '@/features/filter'
 import type { Cycle, Issue, Snapshot } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
-import { CollapseButton, CountChip, StatCards } from '@/shared/ui'
+import { CollapseButton, CountChip, PageToolbar, StatCards } from '@/shared/ui'
 
 import {
   cycleTabs,
@@ -44,7 +44,16 @@ import {
 /** 열마다 처음 보여 줄 카드 수 */
 const PAGE = 5
 
-export function Cycles({ snapshot, now }: { snapshot: Snapshot; now: number }) {
+export function Cycles({
+  snapshot,
+  now,
+  actions,
+}: {
+  snapshot: Snapshot
+  now: number
+  /** 도구 줄 오른쪽 버튼(새로고침, 필터). 화면을 그리는 쪽이 넘긴다. */
+  actions?: ReactNode
+}) {
   const { filters } = useFilters()
   const tabs = useMemo(
     () => cycleTabs(snapshot.issues, snapshot.cycles),
@@ -103,8 +112,10 @@ export function Cycles({ snapshot, now }: { snapshot: Snapshot; now: number }) {
           key={selected.key}
           tab={selected}
           issues={applyFilters(selected.issues, filters)}
+          allIssues={snapshot.issues}
           cycles={snapshot.cycles}
           now={now}
+          actions={actions}
         />
       </Tabs.Panel>
     </Tabs>
@@ -122,14 +133,19 @@ const STATS: { key: SummaryBucket; label: string; className?: string }[] = [
 function TabContent({
   tab,
   issues,
+  allIssues,
   cycles,
   now,
+  actions,
 }: {
   tab: CycleTab
   /** 필터를 건 이 탭의 티켓 */
   issues: Issue[]
+  /** 필터 칩 이름을 찾는 전체 티켓 */
+  allIssues: Issue[]
   cycles: Cycle[]
   now: number
+  actions?: ReactNode
 }) {
   const [picked, setPicked] = useState<Picked>('all')
   // 보드가 빈 안내로 바뀌었다 돌아와도 접은 열과 묶음 방식을 기억하려고 여기에 둔다. 접은 열은 열 id로 기억한다.
@@ -178,6 +194,13 @@ function TabContent({
           )}
         </div>
       )}
+      <PageToolbar
+        title={`${GROUP_BY_LABEL[groupBy]} 티켓`}
+        summary={`${shown.length}건`}
+        actions={actions}
+      >
+        <FilterChips issues={allIssues} />
+      </PageToolbar>
       <Board
         issues={shown}
         today={kstDate(now)}
