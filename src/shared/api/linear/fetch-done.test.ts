@@ -62,6 +62,14 @@ describe('완료·취소 티켓 받기', () => {
     // 10/23 00:00 한국 시간부터 11/6 00:00 한국 시간 전까지
     expect(query).toContain('gte: "2026-10-22T15:00:00.000Z"')
     expect(query).toContain('lt: "2026-11-05T15:00:00.000Z"')
+    // Linear는 닫힌 지 오래된 티켓을 자동으로 보관한다. 지난 기간을 고르면 그 티켓도 보여야 한다.
+    expect(query).toContain('includeArchived: true')
+  })
+
+  it('완료했다가 취소한 티켓은 취소 시각을 닫힌 시각으로 쓴다', async () => {
+    const reopened = { ...rawCanceled, completedAt: '2026-09-01T01:00:00.000Z' }
+    const [issue] = await fetchDone('k', RANGE, fakeLinear([page([reopened])]))
+    expect(issue?.closedAt).toBe('2026-11-05T01:00:00.000Z')
   })
 
   it('화면에서 쓰는 모양으로 바꾸고 닫힌 시각이 늦은 순으로 놓는다', async () => {
@@ -142,6 +150,8 @@ describe('완료·취소 티켓 받기', () => {
     ['90일을 넘는 기간', { start: '2026-08-07', end: '2026-11-05' }],
     ['날짜 모양이 아닌 값', { start: '2026-11-05"}', end: '2026-11-05' }],
     ['없는 날짜', { start: '2026-02-30', end: '2026-03-01' }],
+    ['너무 먼 과거', { start: '0000-01-01', end: '0000-01-02' }],
+    ['너무 먼 미래', { start: '9999-12-30', end: '9999-12-31' }],
   ])('%s은 Linear를 부르지 않고 거절한다', async (_, range) => {
     const fetchImpl = fakeLinear([page([rawDone])])
     await expect(fetchDone('k', range, fetchImpl)).rejects.toThrow()
