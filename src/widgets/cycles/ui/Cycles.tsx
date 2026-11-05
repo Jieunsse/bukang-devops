@@ -1,15 +1,15 @@
 'use client'
 
-import { Button, Card, Chip, EmptyState, Label, ProgressBar, Tabs } from '@heroui/react'
+import { Button, Card, EmptyState, Label, ProgressBar, Tabs } from '@heroui/react'
 import { cardVariants } from '@heroui/styles'
 import { useMemo, useState } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
-import { dueLabel, type DueTone } from '@/entities/ticket'
+import { dueLabel, LabelChip, type DueTone } from '@/entities/ticket'
 import { applyFilters, NONE, useFilters } from '@/features/filter'
 import type { Issue, Snapshot } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
-import { CollapseButton } from '@/shared/ui'
+import { CollapseButton, CountChip } from '@/shared/ui'
 
 import {
   cycleTabs,
@@ -240,7 +240,7 @@ function Column({
                 </span>
               )}
               <span className="truncate">{group.name}</span>
-              <Chip size="sm">{group.issues.length}건</Chip>
+              <CountChip>{group.issues.length}건</CountChip>
             </CollapseButton>
           </h3>
         </Card.Header>
@@ -270,9 +270,7 @@ function Column({
                       {issue.labels.length > 0 && (
                         <span className="flex flex-wrap gap-1">
                           {issue.labels.map((l) => (
-                            <Chip key={l.id} size="sm">
-                              {l.name}
-                            </Chip>
+                            <LabelChip key={l.id} label={l} />
                           ))}
                         </span>
                       )}

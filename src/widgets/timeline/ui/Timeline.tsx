@@ -1,7 +1,7 @@
 'use client'
 
 import { ChevronDown, ChevronRight } from '@gravity-ui/icons'
-import { Card, Chip, EmptyState, ToggleButton, ToggleButtonGroup, Tooltip } from '@heroui/react'
+import { Card, EmptyState, ToggleButton, ToggleButtonGroup, Tooltip } from '@heroui/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
@@ -16,6 +16,7 @@ import {
   weekdayOf,
   type DateString,
 } from '@/shared/lib/date'
+import { CountChip } from '@/shared/ui'
 
 import {
   groupRows,
@@ -181,7 +182,7 @@ export function Timeline({ snapshot, now }: { snapshot: Snapshot; now: number })
                             <MemberAvatar name={row.name} avatarUrl={row.avatarUrl} />
                           )}
                           <span className="truncate">{row.name}</span>
-                          <Chip size="sm">{row.issues.length}</Chip>
+                          <CountChip>{row.issues.length}</CountChip>
                         </button>
                       </div>
                       {open &&

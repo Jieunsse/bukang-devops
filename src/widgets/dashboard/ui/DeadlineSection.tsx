@@ -1,16 +1,23 @@
 'use client'
 
 import { ChevronDown, ChevronRight } from '@gravity-ui/icons'
-import { Button, Chip, Table } from '@heroui/react'
+import { Button, Table } from '@heroui/react'
 import { useState } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
-import { BUCKET_LABEL, dueLabel, TITLE_MIN_PX, type Bucket, type DueTone } from '@/entities/ticket'
+import {
+  BUCKET_LABEL,
+  dueLabel,
+  LabelChip,
+  MilestoneChip,
+  TITLE_MIN_PX,
+  type Bucket,
+  type DueTone,
+} from '@/entities/ticket'
+import { CountChip } from '@/shared/ui'
 import type { Issue } from '@/shared/api/linear'
 
 const PAGE = 5
-/** 라벨과 마일스톤 칩. 기본 칩은 안쪽 여백이 좁아 글자가 테두리에 붙어 보여서 넓힌다. */
-const TAG_CHIP = 'h-6 max-w-full px-2.5'
 const TONE_CLASS: Record<DueTone, string> = {
   danger: 'text-danger',
   warning: 'text-warning',
@@ -64,7 +71,7 @@ export function DeadlineSection({
               <ChevronRight aria-hidden className="size-4" />
             )}
             {label}
-            <Chip size="sm">{issues.length}</Chip>
+            <CountChip>{issues.length}</CountChip>
           </Button>
         </h3>
       ) : collapsible ? (
@@ -73,12 +80,12 @@ export function DeadlineSection({
           {/* 버튼 안 아이콘처럼 좌우 여백을 줄여 다른 머리줄과 글자 위치를 맞춘다. */}
           <ChevronRight aria-hidden className="-mx-0.5 size-4 opacity-30" />
           {label}
-          <Chip size="sm">{issues.length}</Chip>
+          <CountChip>{issues.length}</CountChip>
         </h3>
       ) : (
         <div className="flex items-center gap-2">
           <h3 className="font-semibold">{label}</h3>
-          <Chip size="sm">{issues.length}</Chip>
+          <CountChip>{issues.length}</CountChip>
         </div>
       )}
       {emptyText && issues.length === 0 && <p className="text-sm text-muted">{emptyText}</p>}
@@ -135,32 +142,13 @@ export function DeadlineSection({
                       <Table.Cell>
                         <div className="flex flex-wrap gap-1">
                           {issue.labels.map((l) => (
-                            <Chip
-                              key={l.id}
-                              size="sm"
-                              className={TAG_CHIP}
-                              // 라벨마다 Linear에 정해 둔 색을 옅게 깔아 종류를 나눈다.
-                              style={
-                                l.color
-                                  ? {
-                                      backgroundColor: `color-mix(in oklab, ${l.color} 22%, transparent)`,
-                                      color: `color-mix(in oklab, ${l.color} 65%, var(--foreground))`,
-                                    }
-                                  : undefined
-                              }
-                            >
-                              <span title={l.name} className="truncate">
-                                {l.name}
-                              </span>
-                            </Chip>
+                            <LabelChip key={l.id} label={l} />
                           ))}
                         </div>
                       </Table.Cell>
                       {/* 마일스톤은 자르면 어느 것인지 몰라서, 칸을 가장 긴 이름만큼 잡고 한 줄로 보여 준다. */}
                       <Table.Cell className="whitespace-nowrap">
-                        <Chip size="sm" className="h-6 px-2.5">
-                          {issue.milestone?.name ?? '마일스톤 없음'}
-                        </Chip>
+                        <MilestoneChip name={issue.milestone?.name ?? null} />
                       </Table.Cell>
                     </Table.Row>
                   )

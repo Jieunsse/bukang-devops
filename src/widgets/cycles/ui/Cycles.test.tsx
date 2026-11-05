@@ -256,4 +256,17 @@ describe('사이클 페이지', () => {
     await userEvent.click(screen.getByRole('button', { name: /^지훈\s*1건$/ }))
     expect(screen.getByRole('button', { name: '모두 접기' })).toBeInTheDocument()
   })
+
+  it('카드의 라벨 칩은 대시보드와 같이 Linear 라벨 색을 쓴다', () => {
+    render(
+      <Cycles
+        snapshot={snapshot([
+          issue(1, { labels: [{ id: 'l1', name: '프론트', color: '#4ea7fc' }] }),
+        ])}
+        now={NOW}
+      />,
+    )
+    const chip = screen.getByText('프론트').closest('.chip') as HTMLElement
+    expect(chip.style.backgroundColor).toMatch(/#4ea7fc|rgb\(78, 167, 252\)/)
+  })
 })
