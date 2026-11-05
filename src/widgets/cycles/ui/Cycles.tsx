@@ -1,11 +1,20 @@
 'use client'
 
-import { Button, Card, EmptyState, Label, ProgressBar, Tabs } from '@heroui/react'
+import {
+  Button,
+  Card,
+  EmptyState,
+  Label,
+  ProgressBar,
+  Tabs,
+  ToggleButton,
+  ToggleButtonGroup,
+} from '@heroui/react'
 import { cardVariants } from '@heroui/styles'
 import { useMemo, useState } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
-import { dueLabel, LabelChip, type DueTone } from '@/entities/ticket'
+import { DueChip, LabelChip, PriorityIcon, StateIcon } from '@/entities/ticket'
 import { applyFilters, NONE, useFilters } from '@/features/filter'
 import type { Cycle, Issue, Snapshot } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
@@ -16,18 +25,13 @@ import {
   defaultTabKey,
   formatDayWithWeekday,
   groupByAssignee,
+  groupByState,
   inBucket,
   tabSummary,
-  type AssigneeGroup,
   type CycleTab,
   type SummaryBucket,
 } from '../lib/cycles'
 
-const TONE_CLASS: Record<DueTone, string> = {
-  danger: 'text-danger',
-  warning: 'text-warning',
-  default: 'text-muted',
-}
 /** 열마다 처음 보여 줄 카드 수 */
 const PAGE = 5
 
@@ -113,8 +117,9 @@ function TabContent({
   now: number
 }) {
   const [picked, setPicked] = useState<Picked>('all')
-  // 보드가 빈 안내로 바뀌었다 돌아와도 접은 열을 기억하려고 여기에 둔다. 접은 열은 담당자 id로 기억한다.
+  // 보드가 빈 안내로 바뀌었다 돌아와도 접은 열과 묶음 방식을 기억하려고 여기에 둔다. 접은 열은 열 id로 기억한다.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set())
+  const [groupBy, setGroupBy] = useState<GroupBy>('state')
   // 숫자 칸은 보드와 같은 수를 세도록 필터를 건 티켓으로 센다. 진행 막대는 사이클 전체 기준이다.
   const { period, counts } = tabSummary(tab, cycles, now, issues)
   const { progress } = tab
@@ -171,14 +176,19 @@ function TabContent({
         showFilterHint={tab.issues.length > 0 && issues.length === 0}
         collapsed={collapsed}
         setCollapsed={setCollapsed}
+        groupBy={groupBy}
+        setGroupBy={setGroupBy}
       />
     </>
   )
 }
 
+/** 보드가 빈 안내로 바뀌었다 돌아와도 남아야 하는 보드 상태 */
 type CollapseState = {
   collapsed: ReadonlySet<string>
   setCollapsed: React.Dispatch<React.SetStateAction<ReadonlySet<string>>>
+  groupBy: GroupBy
+  setGroupBy: (groupBy: GroupBy) => void
 }
 
 function Board({
@@ -204,14 +214,34 @@ function Board({
   return <BoardColumns issues={issues} today={today} {...collapse} />
 }
 
-/** 처음에는 모든 열을 펼쳐 둔다. */
+type GroupBy = 'state' | 'assignee'
+const GROUP_BY_LABEL: Record<GroupBy, string> = { state: '상태별', assignee: '담당자별' }
+
+type BoardGroup = { id: string; name: string; icon: React.ReactNode; issues: Issue[] }
+
+const toBoardGroups = (issues: Issue[], groupBy: GroupBy): BoardGroup[] =>
+  groupBy === 'state'
+    ? groupByState(issues).map((g) => ({ ...g, icon: <StateIcon state={g.state} /> }))
+    : groupByAssignee(issues).map((g) => ({
+        ...g,
+        icon:
+          g.id === NONE ? (
+            <span className="size-6 shrink-0" />
+          ) : (
+            <MemberAvatar name={g.name} avatarUrl={g.avatarUrl} />
+          ),
+      }))
+
+/** 처음에는 상태별로 묶고 모든 열을 펼쳐 둔다. */
 function BoardColumns({
   issues,
   today,
   collapsed,
   setCollapsed,
+  groupBy,
+  setGroupBy,
 }: { issues: Issue[]; today: string } & CollapseState) {
-  const groups = groupByAssignee(issues)
+  const groups = toBoardGroups(issues, groupBy)
   const allCollapsed = groups.every((g) => collapsed.has(g.id))
   const toggle = (id: string) =>
     setCollapsed((prev) => {
@@ -222,18 +252,30 @@ function BoardColumns({
 
   return (
     <div className="flex flex-col gap-3">
-      <Button
-        size="sm"
-        variant="tertiary"
-        className="self-end"
-        onPress={() => setCollapsed(allCollapsed ? new Set() : new Set(groups.map((g) => g.id)))}
-      >
-        {allCollapsed ? '모두 펼치기' : '모두 접기'}
-      </Button>
+      <div className="flex items-center justify-between gap-2">
+        <ToggleButtonGroup
+          aria-label="보드 묶음"
+          size="sm"
+          selectionMode="single"
+          disallowEmptySelection
+          selectedKeys={[groupBy]}
+          onSelectionChange={(keys) => setGroupBy([...keys][0] as GroupBy)}
+        >
+          <ToggleButton id="state">{GROUP_BY_LABEL.state}</ToggleButton>
+          <ToggleButton id="assignee">{GROUP_BY_LABEL.assignee}</ToggleButton>
+        </ToggleButtonGroup>
+        <Button
+          size="sm"
+          variant="tertiary"
+          onPress={() => setCollapsed(allCollapsed ? new Set() : new Set(groups.map((g) => g.id)))}
+        >
+          {allCollapsed ? '모두 펼치기' : '모두 접기'}
+        </Button>
+      </div>
       <section
-        aria-label="담당자별 티켓"
+        aria-label={`${GROUP_BY_LABEL[groupBy]} 티켓`}
         // 넓은 화면에서는 열을 화면 폭에 맞춰 나누고, 열이 많으면 가로로 밀어 본다. 휴대폰에서는 세로로 쌓는다.
-        className="flex flex-col gap-4 md:grid md:auto-cols-[minmax(13rem,1fr)] md:grid-flow-col md:items-start md:overflow-x-auto md:pb-2"
+        className="flex flex-col gap-4 md:grid md:auto-cols-[minmax(15rem,1fr)] md:grid-flow-col md:items-start md:overflow-x-auto md:pb-2"
       >
         {groups.map((group) => (
           <Column
@@ -255,7 +297,7 @@ function Column({
   isOpen,
   onToggle,
 }: {
-  group: AssigneeGroup
+  group: BoardGroup
   today: string
   isOpen: boolean
   onToggle: () => void
@@ -263,21 +305,16 @@ function Column({
   const [expanded, setExpanded] = useState(false)
   const visible = expanded ? group.issues : group.issues.slice(0, PAGE)
   const hidden = group.issues.length - visible.length
-  const ticket = cardVariants({ variant: 'secondary' })
   return (
     <Card>
       <section aria-label={group.name} className="flex flex-col gap-3">
         <Card.Header>
           <h3 className="min-w-0">
             <CollapseButton isOpen={isOpen} onToggle={onToggle} className="max-w-full">
-              {group.id === NONE ? (
-                <span aria-hidden className="size-6 shrink-0" />
-              ) : (
-                // 사진이 없을 때 보이는 첫 글자가 버튼 이름에 섞이지 않게 숨긴다.
-                <span aria-hidden>
-                  <MemberAvatar name={group.name} avatarUrl={group.avatarUrl} />
-                </span>
-              )}
+              {/* 아이콘의 이름이나 사진 대신 보이는 첫 글자가 버튼 이름에 섞이지 않게 숨긴다. */}
+              <span aria-hidden className="flex">
+                {group.icon}
+              </span>
               <span className="truncate">{group.name}</span>
               <CountChip>{group.issues.length}건</CountChip>
             </CollapseButton>
@@ -286,37 +323,11 @@ function Column({
         {isOpen && (
           <Card.Content>
             <ul className="flex flex-col gap-2">
-              {visible.map((issue) => {
-                const due = dueLabel(issue.dueDate, today)
-                return (
-                  <li key={issue.id}>
-                    <a
-                      href={issue.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={ticket.base({
-                        className:
-                          'gap-1.5 p-3 outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-accent',
-                      })}
-                    >
-                      <span className="flex items-center justify-between gap-2 text-xs">
-                        <span className="text-muted">{issue.identifier}</span>
-                        <span className={`whitespace-nowrap ${TONE_CLASS[due.tone]}`}>
-                          {due.text}
-                        </span>
-                      </span>
-                      <span className="line-clamp-2 text-sm font-medium">{issue.title}</span>
-                      {issue.labels.length > 0 && (
-                        <span className="flex flex-wrap gap-1">
-                          {issue.labels.map((l) => (
-                            <LabelChip key={l.id} label={l} />
-                          ))}
-                        </span>
-                      )}
-                    </a>
-                  </li>
-                )
-              })}
+              {visible.map((issue) => (
+                <li key={issue.id}>
+                  <TicketCard issue={issue} today={today} />
+                </li>
+              ))}
             </ul>
             {hidden > 0 && (
               <Button
@@ -332,5 +343,56 @@ function Column({
         )}
       </section>
     </Card>
+  )
+}
+
+/** Linear 보드 카드 모양. 누르면 Linear 이슈를 새 탭으로 연다. */
+function TicketCard({ issue, today }: { issue: Issue; today: string }) {
+  const ticket = cardVariants({ variant: 'secondary' })
+  return (
+    <a
+      href={issue.url}
+      target="_blank"
+      rel="noreferrer"
+      className={ticket.base({
+        className:
+          'gap-1.5 p-3 outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-accent',
+      })}
+    >
+      {issue.parent && (
+        <span className="truncate text-xs text-muted">
+          {`${issue.parent.identifier} › ${issue.parent.title}`}
+        </span>
+      )}
+      <span className="flex items-center justify-between gap-2 text-xs">
+        <span className="text-muted">{issue.identifier}</span>
+        {issue.assignee && (
+          <>
+            <span aria-hidden>
+              <MemberAvatar {...issue.assignee} />
+            </span>
+            <span className="sr-only">담당 {issue.assignee.name}</span>
+          </>
+        )}
+      </span>
+      <span className="flex items-start gap-1.5">
+        <span className="mt-0.5 flex">
+          <StateIcon state={issue.state} />
+        </span>
+        <span className="line-clamp-2 text-sm font-medium">{issue.title}</span>
+      </span>
+      <span className="flex flex-wrap items-center gap-1">
+        <PriorityIcon priority={issue.priority} />
+        {issue.dueDate && <DueChip dueDate={issue.dueDate} today={today} />}
+        {issue.labels.map((l) => (
+          <LabelChip key={l.id} label={l} />
+        ))}
+      </span>
+      {issue.createdAt && (
+        <span className="text-xs text-muted">
+          만든 날 {formatMonthDay(kstDate(issue.createdAt))}
+        </span>
+      )}
+    </a>
   )
 }

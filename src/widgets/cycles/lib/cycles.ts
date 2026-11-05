@@ -1,4 +1,4 @@
-import { bucketOf, currentPeriod } from '@/entities/ticket'
+import { bucketOf, currentPeriod, STATE_TYPE_ORDER, stateLabel } from '@/entities/ticket'
 import { NONE } from '@/features/filter'
 import type { Cycle, Issue } from '@/shared/api/linear'
 import { daysBetween, formatMonthDay, kstDate, weekdayOf, type DateString } from '@/shared/lib/date'
@@ -65,6 +65,37 @@ export function defaultTabKey(tabs: CycleTab[], cycles: Cycle[], now: Instant): 
   return next?.key ?? tabs[0]?.key ?? null
 }
 
+/** 기한이 이른 순, 기한 없음은 뒤 */
+const byDue = (a: Issue, b: Issue) =>
+  Number(a.dueDate === null) - Number(b.dueDate === null) ||
+  (a.dueDate ?? '').localeCompare(b.dueDate ?? '')
+
+export type StateGroup = { id: string; name: string; state: Issue['state']; issues: Issue[] }
+
+const typeRank = (type: string) => {
+  const rank = STATE_TYPE_ORDER.indexOf(type)
+  return rank === -1 ? STATE_TYPE_ORDER.length : rank
+}
+
+/** 상태 종류 순(대기 → 할 일 → 진행 중), 같은 종류 안에서는 Linear 순서대로 둔다. 열 안은 기한 순이다. */
+export function groupByState(issues: Issue[]): StateGroup[] {
+  const groups = new Map<string, StateGroup>()
+  for (const issue of issues) {
+    const { state } = issue
+    // 예전에 저장한 값처럼 상태 id가 없으면 종류와 이름으로 묶는다.
+    const id = state.id ?? `${state.type}:${state.name}`
+    const group = groups.get(id) ?? { id, name: stateLabel(state), state, issues: [] }
+    group.issues.push(issue)
+    groups.set(id, group)
+  }
+  for (const group of groups.values()) group.issues.sort(byDue)
+  return [...groups.values()].sort(
+    (a, b) =>
+      typeRank(a.state.type) - typeRank(b.state.type) ||
+      (a.state.position ?? 0) - (b.state.position ?? 0),
+  )
+}
+
 export type AssigneeGroup = {
   id: string
   name: string
@@ -81,13 +112,7 @@ export function groupByAssignee(issues: Issue[]): AssigneeGroup[] {
     group.issues.push(issue)
     groups.set(id, group)
   }
-  for (const group of groups.values()) {
-    group.issues.sort(
-      (a, b) =>
-        Number(a.dueDate === null) - Number(b.dueDate === null) ||
-        (a.dueDate ?? '').localeCompare(b.dueDate ?? ''),
-    )
-  }
+  for (const group of groups.values()) group.issues.sort(byDue)
   return [...groups.values()].sort(
     (a, b) =>
       Number(a.id === NONE) - Number(b.id === NONE) ||
