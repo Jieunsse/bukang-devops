@@ -12,7 +12,13 @@ import {
   milestoneColumnWidth,
   type Bucket,
 } from '@/entities/ticket'
-import { applyFilters, FilterChips, useFilters, type Filters } from '@/features/filter'
+import {
+  applyFilters,
+  FilterChips,
+  useFilters,
+  visibleMembers,
+  type Filters,
+} from '@/features/filter'
 import type { Snapshot } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
 import { PageToolbar } from '@/shared/ui'
@@ -118,7 +124,7 @@ export function Dashboard({
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <AssigneeCard
-              rows={assigneeLoad(issues, range)}
+              rows={assigneeLoad(issues, range, visibleMembers(snapshot.members ?? [], filters))}
               onSelect={(id) => setFilters(toggle(filters, 'assignee', id))}
             />
             <MilestoneCard

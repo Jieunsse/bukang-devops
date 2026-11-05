@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Issue } from '@/shared/api/linear'
 
-import { applyFilters, NONE, parseFilters, toSearch } from './filter'
+import { applyFilters, NONE, parseFilters, toSearch, visibleMembers } from './filter'
 
 const base: Issue = {
   id: '1',
@@ -71,5 +71,15 @@ describe('필터', () => {
 
   it('여러 조건은 모두 맞는 티켓만 남긴다', () => {
     expect(ids(applyFilters(issues, { milestone: 'm1', assignee: NONE }))).toEqual(['3'])
+  })
+
+  it('담당자를 고르면 팀원 목록도 그 사람만 남기고, 담당 없음을 고르면 팀원은 비운다', () => {
+    const members = [
+      { id: 'u1', name: '지훈' },
+      { id: 'u2', name: '소희' },
+    ]
+    expect(visibleMembers(members, {})).toEqual(members)
+    expect(visibleMembers(members, { assignee: 'u2' })).toEqual([{ id: 'u2', name: '소희' }])
+    expect(visibleMembers(members, { assignee: NONE })).toEqual([])
   })
 })

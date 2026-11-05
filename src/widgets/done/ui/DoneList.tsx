@@ -11,18 +11,28 @@ import {
   TagChip,
   TITLE_MIN_PX,
 } from '@/entities/ticket'
-import { applyFilters, NONE, useFilters } from '@/features/filter'
-import type { DoneIssue } from '@/shared/api/linear'
+import { applyFilters, NONE, useFilters, visibleMembers } from '@/features/filter'
+import type { DoneIssue, Member } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
 import { CollapseButton } from '@/shared/ui'
 
 import { groupDone, type DoneGroup } from '../lib/group'
 
 /** 완료·취소 티켓을 사람별로 묶어 누가 무엇을 끝냈는지 보여 준다. */
-export function DoneList({ issues }: { issues: DoneIssue[] }) {
+export function DoneList({
+  issues,
+  members = [],
+}: {
+  issues: DoneIssue[]
+  /** 완료·취소가 0건이어도 묶음을 둘 팀원 */
+  members?: Member[]
+}) {
   const { filters } = useFilters()
   const shown = useMemo(() => applyFilters(issues, filters), [issues, filters])
-  const groups = useMemo(() => groupDone(shown), [shown])
+  const groups = useMemo(
+    () => groupDone(shown, visibleMembers(members, filters)),
+    [shown, members, filters],
+  )
   // 표가 묶음마다 따로라서 칸 폭을 모든 묶음에서 같게 맞춘다.
   // 필터 전 목록으로 재서 필터를 바꿔도 칸 폭이 흔들리지 않는다.
   const milestoneWidth = useMemo(

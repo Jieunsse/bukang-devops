@@ -130,6 +130,21 @@ describe('담당자별 묶음', () => {
     expect(groups.map((g) => g.name)).toEqual(['지훈', '소희', '담당 없음'])
   })
 
+  it('티켓이 0건인 팀원도 빈 묶음으로 두고 담당 없음 위에 둔다', () => {
+    const groups = groupByAssignee(
+      [issue(1, { assignee: null }), issue(2)],
+      [
+        { id: 'u2', name: '소희' },
+        { id: 'u1', name: '지훈' },
+      ],
+    )
+    expect(groups.map((g) => [g.name, g.issues.length])).toEqual([
+      ['지훈', 1],
+      ['소희', 0],
+      ['담당 없음', 1],
+    ])
+  })
+
   it('묶음 안은 기한이 이른 순이고 기한 없음은 뒤에 둔다', () => {
     const [group] = groupByAssignee([
       issue(1, { dueDate: null }),

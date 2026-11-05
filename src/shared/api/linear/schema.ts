@@ -50,13 +50,23 @@ export const cycleSchema = z.object({
   completedIssueCount: z.number().optional(),
 })
 
+/** BUK 팀 멤버. 남은 티켓이 0건이어도 사람별 화면에 보여 주려고 받는다. 이름은 실명 규칙을 거친 값이다. */
+export const memberSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  avatarUrl: z.url().nullish(),
+})
+
 export const snapshotSchema = z.object({
   fetchedAt: z.iso.datetime(),
   issues: z.array(issueSchema),
   cycles: z.array(cycleSchema),
+  /** 예전에 저장된 값이나 예시 데이터에는 없을 수 있다. 없으면 빈 목록으로 본다. */
+  members: z.array(memberSchema).optional(),
 })
 
 export type Issue = z.infer<typeof issueSchema>
+export type Member = z.infer<typeof memberSchema>
 export type Cycle = z.infer<typeof cycleSchema>
 export type Snapshot = z.infer<typeof snapshotSchema>
 
@@ -114,3 +124,29 @@ const rawCycleSchema = cycleSchema
 export const cyclesResponseSchema = z.object({
   cycles: z.object({ nodes: z.array(rawCycleSchema), pageInfo }),
 })
+
+/** 비활성 멤버는 빼고, 이름은 실명 규칙으로 바꾼다. */
+const rawMemberSchema = memberSchema.extend({ active: z.boolean() })
+
+export const membersResponseSchema = z
+  .object({
+    teams: z.object({
+      nodes: z.array(
+        z.object({ members: z.object({ nodes: z.array(rawMemberSchema), pageInfo }) }),
+      ),
+    }),
+  })
+  .transform(({ teams }) => {
+    const page = teams.nodes[0]?.members ?? {
+      nodes: [],
+      pageInfo: { hasNextPage: false, endCursor: null },
+    }
+    return {
+      members: {
+        nodes: page.nodes
+          .filter((m) => m.active)
+          .map(({ id, name, avatarUrl }) => ({ id, name: displayName({ id, name }), avatarUrl })),
+        pageInfo: page.pageInfo,
+      },
+    }
+  })

@@ -1,6 +1,6 @@
 import { bucketOf, currentPeriod, STATE_TYPE_ORDER, stateLabel } from '@/entities/ticket'
 import { NONE } from '@/features/filter'
-import type { Cycle, Issue } from '@/shared/api/linear'
+import type { Cycle, Issue, Member } from '@/shared/api/linear'
 import { daysBetween, kstDate, type DateString } from '@/shared/lib/date'
 
 /** 사이클 밖 기간 탭의 키 */
@@ -104,8 +104,10 @@ export type AssigneeGroup = {
 }
 
 /** 티켓이 많은 사람부터, 담당 없음은 맨 아래. 묶음 안은 기한 순이고 기한 없음은 뒤다. */
-export function groupByAssignee(issues: Issue[]): AssigneeGroup[] {
+export function groupByAssignee(issues: Issue[], members: Member[] = []): AssigneeGroup[] {
   const groups = new Map<string, AssigneeGroup>()
+  // 티켓이 0건인 팀원도 빈 묶음으로 둔다.
+  for (const { id, name, avatarUrl } of members) groups.set(id, { id, name, avatarUrl, issues: [] })
   for (const issue of issues) {
     const { id, name, avatarUrl } = issue.assignee ?? { id: NONE, name: '담당 없음' }
     const group = groups.get(id) ?? { id, name, avatarUrl, issues: [] }

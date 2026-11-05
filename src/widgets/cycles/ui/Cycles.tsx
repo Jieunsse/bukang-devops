@@ -23,8 +23,8 @@ import {
   StateIcon,
   stateLabel,
 } from '@/entities/ticket'
-import { applyFilters, FilterChips, NONE, useFilters } from '@/features/filter'
-import type { Cycle, Issue, Snapshot } from '@/shared/api/linear'
+import { applyFilters, FilterChips, NONE, useFilters, visibleMembers } from '@/features/filter'
+import type { Cycle, Issue, Member, Snapshot } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
 import { CollapseButton, CountChip, PageToolbar, StatCards } from '@/shared/ui'
 
@@ -113,6 +113,7 @@ export function Cycles({
           tab={selected}
           issues={applyFilters(selected.issues, filters)}
           allIssues={snapshot.issues}
+          members={visibleMembers(snapshot.members ?? [], filters)}
           cycles={snapshot.cycles}
           now={now}
           actions={actions}
@@ -134,11 +135,14 @@ function TabContent({
   tab,
   issues,
   allIssues,
+  members,
   cycles,
   now,
   actions,
 }: {
   tab: CycleTab
+  /** 담당자별로 묶을 때 0건이어도 열을 둘 팀원 */
+  members: Member[]
   /** 필터를 건 이 탭의 티켓 */
   issues: Issue[]
   /** 필터 칩 이름을 찾는 전체 티켓 */
@@ -216,6 +220,7 @@ function TabContent({
         setCollapsed={setCollapsed}
         groupBy={groupBy}
         setGroupBy={setGroupBy}
+        members={members}
       />
     </>
   )
@@ -227,6 +232,8 @@ type CollapseState = {
   setCollapsed: React.Dispatch<React.SetStateAction<ReadonlySet<string>>>
   groupBy: GroupBy
   setGroupBy: (groupBy: GroupBy) => void
+  /** 담당자별로 묶을 때 0건이어도 열을 둘 팀원 */
+  members: Member[]
 }
 
 function Board({
@@ -257,10 +264,10 @@ const GROUP_BY_LABEL: Record<GroupBy, string> = { state: '상태별', assignee: 
 
 type BoardGroup = { id: string; name: string; icon: React.ReactNode; issues: Issue[] }
 
-const toBoardGroups = (issues: Issue[], groupBy: GroupBy): BoardGroup[] =>
+const toBoardGroups = (issues: Issue[], groupBy: GroupBy, members: Member[]): BoardGroup[] =>
   groupBy === 'state'
     ? groupByState(issues).map((g) => ({ ...g, icon: <StateIcon state={g.state} /> }))
-    : groupByAssignee(issues).map((g) => ({
+    : groupByAssignee(issues, members).map((g) => ({
         ...g,
         icon:
           g.id === NONE ? (
@@ -278,8 +285,9 @@ function BoardColumns({
   setCollapsed,
   groupBy,
   setGroupBy,
+  members,
 }: { issues: Issue[]; today: string } & CollapseState) {
-  const groups = toBoardGroups(issues, groupBy)
+  const groups = toBoardGroups(issues, groupBy, members)
   const allCollapsed = groups.every((g) => collapsed.has(g.id))
   const toggle = (id: string) =>
     setCollapsed((prev) => {

@@ -1,4 +1,4 @@
-export { applyFilters, NONE, parseFilters, toSearch } from './lib/filter'
+export { applyFilters, NONE, parseFilters, toSearch, visibleMembers } from './lib/filter'
 export type { Filters } from './lib/filter'
 export { useFilters } from './lib/use-filters'
 export { FilterButton } from './ui/FilterButton'

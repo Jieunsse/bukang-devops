@@ -45,3 +45,9 @@ export function applyFilters<T extends Issue>(issues: T[], filters: Filters): T[
       (filters.label === undefined || issue.labels.some((l) => l.id === filters.label)),
   )
 }
+
+/** 담당자를 고르면 팀원 목록도 그 사람만 남긴다. 「담당 없음」을 고르면 팀원은 없다. */
+export function visibleMembers<M extends { id: string }>(members: M[], filters: Filters): M[] {
+  if (!filters.assignee) return members
+  return members.filter((m) => m.id === filters.assignee)
+}
