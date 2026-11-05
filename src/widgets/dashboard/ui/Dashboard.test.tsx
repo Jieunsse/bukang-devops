@@ -61,128 +61,98 @@ describe('대시보드', () => {
     expect(within(summary).getByRole('button', { name: /기한 없음\s*1/ })).toBeInTheDocument()
   })
 
-  it('묶음마다 5개까지 보여 주고 나머지는 더 보기로 연다', async () => {
-    render(<Dashboard snapshot={snapshot(overdue)} now={NOW} />)
-    const section = screen.getByRole('region', { name: '기한 지남' })
-    expect(within(section).getAllByRole('row')).toHaveLength(1 + 5)
-    await userEvent.click(within(section).getByRole('button', { name: '2건 더 보기' }))
-    expect(within(section).getAllByRole('row')).toHaveLength(1 + 7)
-  })
-
-  it('그 뒤와 기한 없음은 접혀 있다', () => {
-    render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
-    expect(screen.queryByText('티켓 12')).not.toBeInTheDocument()
-    expect(screen.queryByText('티켓 13')).not.toBeInTheDocument()
-    expect(screen.getByText('티켓 11')).toBeInTheDocument()
-  })
-
-  it('접힌 묶음은 머리줄 전체가 버튼이라 누르면 펼치고 다시 누르면 접는다', async () => {
-    render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
-    const header = screen.getByRole('button', { name: /그 뒤\s*1/ })
-    expect(header).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByRole('button', { name: '펼치기' })).not.toBeInTheDocument()
-
-    await userEvent.click(header)
-    expect(header).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('티켓 12')).toBeInTheDocument()
-
-    await userEvent.click(header)
-    expect(screen.queryByText('티켓 12')).not.toBeInTheDocument()
-  })
-
-  it('모든 묶음 머리줄이 버튼이라 기한 지남·오늘·이번 주도 누르면 접고 다시 누르면 펼친다', async () => {
+  it('전체 보기에서는 묶음마다 카드 하나를 놓고 머리줄에 티켓 수를 적는다', () => {
     render(<Dashboard snapshot={snapshot([...overdue, ...rest])} now={NOW} />)
-    for (const name of ['기한 지남', '오늘', '이번 주']) {
-      const section = screen.getByRole('region', { name })
-      const header = within(section).getByRole('button', { name: new RegExp(`^${name}`) })
-      expect(header).toHaveAttribute('aria-expanded', 'true')
-      expect(within(section).getByRole('grid')).toBeInTheDocument()
-
-      await userEvent.click(header)
-      expect(header).toHaveAttribute('aria-expanded', 'false')
-      expect(within(section).queryByRole('grid')).not.toBeInTheDocument()
-
-      await userEvent.click(header)
-      expect(within(section).getByRole('grid')).toBeInTheDocument()
+    const grid = screen.getByRole('list', { name: '마감 묶음 카드' })
+    expect(within(grid).getAllByRole('region')).toHaveLength(5)
+    for (const [name, count] of [
+      ['기한 지남', 7],
+      ['오늘', 1],
+      ['이번 주', 1],
+      ['그 뒤', 1],
+      ['기한 없음', 1],
+    ] as const) {
+      const card = within(grid).getByRole('region', { name })
+      expect(
+        within(card).getByRole('button', { name: new RegExp(`^${name}\\s*${count}`) }),
+      ).toBeInTheDocument()
     }
+    // 카드에는 표를 두지 않는다.
+    expect(within(grid).queryByRole('grid')).not.toBeInTheDocument()
   })
 
-  it('티켓이 0건인 묶음은 누를 수 없고 0은 그대로 보여 준다', () => {
+  it('카드 한 줄에 번호, 제목, 담당자, 기한을 적고 Linear 이슈로 이어진다', () => {
     render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
+    const card = screen.getByRole('region', { name: '오늘' })
+    const item = within(card).getByRole('listitem')
+    expect(within(item).getByText('BUK-10')).toBeInTheDocument()
+    expect(within(item).getByText('오늘')).toBeInTheDocument()
+    expect(within(item).getByText('담당 없음')).toBeInTheDocument()
+    const link = within(item).getByRole('link', { name: /티켓 10/ })
+    expect(link).toHaveAttribute('href', 'https://linear.app/bukang/issue/BUK-10')
+    expect(link).toHaveClass('cursor-pointer')
+    expect(within(item).getByTitle('티켓 10')).toHaveClass('truncate')
+  })
+
+  it('카드에는 5건까지 보이고, n건 더 보기를 누르면 그 묶음 전체를 표로 보여 준다', async () => {
+    render(<Dashboard snapshot={snapshot(overdue)} now={NOW} />)
+    const card = screen.getByRole('region', { name: '기한 지남' })
+    expect(within(card).getAllByRole('listitem')).toHaveLength(5)
+    const more = within(card).getByRole('button', { name: '2건 더 보기' })
+    expect(more).toHaveClass('cursor-pointer')
+
+    await userEvent.click(more)
+    expect(screen.getByRole('region', { name: '마감 목록' })).toHaveFocus()
+    expect(screen.getByRole('tab', { name: '기한 지남' })).toHaveAttribute('aria-selected', 'true')
     const section = screen.getByRole('region', { name: '기한 지남' })
-    expect(within(section).queryByRole('button')).not.toBeInTheDocument()
-    expect(within(section).getByText('0')).toBeInTheDocument()
+    expect(within(section).getAllByRole('row')).toHaveLength(1 + 7)
+    expect(screen.queryByRole('region', { name: '오늘' })).not.toBeInTheDocument()
+  })
+
+  it('5건 이하인 카드는 전체 보기를 두고, 카드 머리줄이나 전체 보기를 누르면 그 묶음 표로 간다', async () => {
+    render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
+    const today = screen.getByRole('region', { name: '오늘' })
+    expect(within(today).queryByRole('button', { name: /더 보기/ })).not.toBeInTheDocument()
+    await userEvent.click(within(today).getByRole('button', { name: '전체 보기' }))
     expect(
-      within(section).getByRole('heading', { level: 3, name: /기한 지남/ }),
+      within(screen.getByRole('region', { name: '오늘' })).getByRole('grid'),
+    ).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: '묶음 선택 풀기' }))
+    const later = screen.getByRole('region', { name: '그 뒤' })
+    await userEvent.click(within(later).getByRole('button', { name: /^그 뒤\s*1/ }))
+    expect(screen.getByRole('tab', { name: '그 뒤' })).toHaveAttribute('aria-selected', 'true')
+    expect(
+      within(screen.getByRole('region', { name: '그 뒤' })).getByRole('grid'),
     ).toBeInTheDocument()
   })
 
-  it('키보드 Enter와 Space로 묶음을 접고 펼친다', async () => {
+  it('0건 카드는 없어요만 보여 주고 누를 곳을 두지 않는다', () => {
     render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
-    const section = screen.getByRole('region', { name: '오늘' })
-    const header = within(section).getByRole('button', { name: /^오늘/ })
-    header.focus()
-    await userEvent.keyboard('{Enter}')
-    expect(header).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByText('티켓 10')).not.toBeInTheDocument()
-    await userEvent.keyboard(' ')
-    expect(header).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('티켓 10')).toBeInTheDocument()
+    const card = screen.getByRole('region', { name: '기한 지남' })
+    expect(within(card).getByText('없어요')).toBeInTheDocument()
+    expect(within(card).getByText('0')).toBeInTheDocument()
+    expect(within(card).queryByRole('button')).not.toBeInTheDocument()
+    expect(within(card).getByRole('heading', { level: 3, name: /기한 지남/ })).toBeInTheDocument()
   })
 
-  it('접었다 펼쳐도 더 보기로 연 줄이 남고, 접으면 더 보기 버튼도 숨긴다', async () => {
-    render(<Dashboard snapshot={snapshot(overdue)} now={NOW} />)
-    const section = screen.getByRole('region', { name: '기한 지남' })
-    const header = within(section).getByRole('button', { name: /^기한 지남/ })
-
-    await userEvent.click(header)
-    expect(within(section).queryByRole('button', { name: '2건 더 보기' })).not.toBeInTheDocument()
-    await userEvent.click(header)
-    await userEvent.click(within(section).getByRole('button', { name: '2건 더 보기' }))
-    await userEvent.click(header)
-    await userEvent.click(header)
-    expect(within(section).getAllByRole('row')).toHaveLength(1 + 7)
-  })
-
-  it('탭으로 묶음 하나만 고르면 펼친 채로 보여 주고 접기 버튼을 두지 않는다', async () => {
-    render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
-    await userEvent.click(screen.getByRole('tab', { name: '그 뒤' }))
-    const section = screen.getByRole('region', { name: '그 뒤' })
-    expect(within(section).queryByRole('button', { name: /^그 뒤/ })).not.toBeInTheDocument()
-    expect(screen.getByText('티켓 12')).toBeInTheDocument()
-  })
-
-  it('달력에서 날짜를 고르면 펼친 채로 보여 주고 접기 버튼을 두지 않는다', async () => {
-    render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
-    const calendar = screen.getByRole('application', { name: /^달력/ })
-    await userEvent.click(within(calendar).getByRole('button', { name: /11월 7일/ }))
-    const section = screen.getByRole('region', { name: '11/7 기한' })
-    expect(within(section).queryByRole('button', { name: /^11\/7 기한/ })).not.toBeInTheDocument()
-    expect(screen.getByText('티켓 11')).toBeInTheDocument()
-  })
-
-  it('묶음을 바꿨다 돌아오면 접은 상태를 처음으로 돌린다', async () => {
-    render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
-    await userEvent.click(
-      within(screen.getByRole('region', { name: '오늘' })).getByRole('button', { name: /^오늘/ }),
-    )
-    expect(screen.queryByText('티켓 10')).not.toBeInTheDocument()
+  it('묶음을 고르면 카드 대신 그 묶음 표만 보이고, 묶음 선택 풀기로 카드로 돌아온다', async () => {
+    render(<Dashboard snapshot={snapshot([...overdue, ...rest])} now={NOW} />)
+    expect(screen.queryByRole('button', { name: '묶음 선택 풀기' })).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('tab', { name: '이번 주' }))
-    await userEvent.click(screen.getByRole('tab', { name: '전체' }))
-    expect(screen.getByText('티켓 10')).toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: '마감 묶음 카드' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: '기한 지남' })).not.toBeInTheDocument()
+    expect(
+      within(screen.getByRole('region', { name: '이번 주' })).getByRole('grid'),
+    ).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '묶음 선택 풀기' }))
+    expect(screen.getByRole('tab', { name: '전체' })).toHaveAttribute('aria-selected', 'true')
+    // 누른 버튼이 사라져도 포커스는 마감 목록 영역으로 옮겨 간다.
+    expect(screen.getByRole('region', { name: '마감 목록' })).toHaveFocus()
+    expect(screen.getByRole('list', { name: '마감 묶음 카드' })).toBeInTheDocument()
   })
 
-  it('전체 보기에서 접은 묶음을 탭으로 고르면 펼친 채로 보여 준다', async () => {
-    render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
-    await userEvent.click(
-      within(screen.getByRole('region', { name: '오늘' })).getByRole('button', { name: /^오늘/ }),
-    )
-    expect(screen.queryByText('티켓 10')).not.toBeInTheDocument()
-    await userEvent.click(screen.getByRole('tab', { name: '오늘' }))
-    expect(screen.getByText('티켓 10')).toBeInTheDocument()
-  })
-
-  it('긴 마일스톤 이름은 말줄임 없이 줄바꿈하지 않는 칸에 두고, 라벨과 제목은 잘라도 전체를 마우스 올림 설명으로 남긴다', () => {
+  it('긴 마일스톤 이름은 말줄임 없이 줄바꿈하지 않는 칸에 두고, 라벨과 제목은 잘라도 전체를 마우스 올림 설명으로 남긴다', async () => {
     const long = '충전 한도·이상 감지와 아주 긴 마일스톤 이름'
     render(
       <Dashboard
@@ -195,6 +165,7 @@ describe('대시보드', () => {
         now={NOW}
       />,
     )
+    await userEvent.click(screen.getByRole('tab', { name: '이번 주' }))
     const row = screen.getByRole('row', { name: /티켓 30/ })
     const milestone = within(row).getByText(long)
     expect(milestone).not.toHaveClass('truncate')
@@ -204,7 +175,7 @@ describe('대시보드', () => {
     expect(within(row).getByRole('link', { name: '티켓 30' })).toHaveClass('truncate')
   })
 
-  it('묶음마다 표가 달라도 마일스톤 칸 폭을 가장 긴 이름에 맞춰 똑같이 둔다', () => {
+  it('탭으로 묶음을 바꿔도 마일스톤 칸 폭을 가장 긴 이름에 맞춰 똑같이 둔다', async () => {
     const long = '충전 한도·이상 감지와 아주 긴 마일스톤 이름'
     render(
       <Dashboard
@@ -215,14 +186,18 @@ describe('대시보드', () => {
         now={NOW}
       />,
     )
-    const widthOf = (name: string) =>
-      within(screen.getByRole('region', { name })).getByRole('columnheader', { name: '마일스톤' })
-        .style.width
-    expect(widthOf('기한 지남')).not.toBe('')
-    expect(widthOf('오늘')).toBe(widthOf('기한 지남'))
+    const widthOf = async (name: string) => {
+      await userEvent.click(screen.getByRole('tab', { name }))
+      return within(screen.getByRole('region', { name })).getByRole('columnheader', {
+        name: '마일스톤',
+      }).style.width
+    }
+    const overdueWidth = await widthOf('기한 지남')
+    expect(overdueWidth).not.toBe('')
+    expect(await widthOf('오늘')).toBe(overdueWidth)
   })
 
-  it('마일스톤 칸이 넓어져도 제목 칸에 240px이 남도록 표를 넓힌다', () => {
+  it('마일스톤 칸이 넓어져도 제목 칸에 240px이 남도록 표를 넓힌다', async () => {
     const long = '아주 긴 마일스톤 이름'.repeat(4)
     render(
       <Dashboard
@@ -232,6 +207,7 @@ describe('대시보드', () => {
         now={NOW}
       />,
     )
+    await userEvent.click(screen.getByRole('tab', { name: '기한 지남' }))
     const section = screen.getByRole('region', { name: '기한 지남' })
     const milestone = parseFloat(
       within(section).getByRole('columnheader', { name: '마일스톤' }).style.width,
@@ -264,8 +240,9 @@ describe('대시보드', () => {
     expect(screen.getByText('티켓 13')).toBeInTheDocument()
   })
 
-  it('한 줄에 기한 표시와 마일스톤 없음, 담당 없음을 적고 Linear 이슈로 이어진다', () => {
+  it('표 한 줄에 기한 표시와 마일스톤 없음, 담당 없음을 적고 Linear 이슈로 이어진다', async () => {
     render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
+    await userEvent.click(screen.getByRole('tab', { name: '오늘' }))
     const row = screen.getByRole('row', { name: /티켓 10/ })
     expect(within(row).getByText('오늘')).toBeInTheDocument()
     expect(within(row).getByText('담당 없음')).toBeInTheDocument()
@@ -279,7 +256,7 @@ describe('대시보드', () => {
 
   it('프로필 이미지가 없는 담당자는 이름 첫 글자로 보여 준다', () => {
     render(<Dashboard snapshot={snapshot([issue(20, '2026-11-07')])} now={NOW} />)
-    const row = screen.getByRole('row', { name: /티켓 20/ })
+    const row = within(screen.getByRole('region', { name: '이번 주' })).getByRole('listitem')
     expect(within(row).getByText('지')).toBeInTheDocument()
     expect(within(row).getByText('지훈')).toBeInTheDocument()
   })

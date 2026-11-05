@@ -1,7 +1,7 @@
 'use client'
 
 import { Button, EmptyState, Tabs } from '@heroui/react'
-import { useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 
 import {
   BUCKET_LABEL,
@@ -22,13 +22,11 @@ import { assigneeLoad, milestoneProgress } from '../lib/summary'
 import { useDashboardStore } from '../model/store'
 import { AssigneeCard } from './AssigneeCard'
 import { CalendarCard } from './CalendarCard'
+import { DeadlineGrid } from './DeadlineGrid'
 import { DeadlineSection } from './DeadlineSection'
 import { MilestoneCard } from './MilestoneCard'
 import { PresentationCard } from './PresentationCard'
 import { SummaryCards } from './SummaryCards'
-
-/** 처음부터 접어 두는 묶음 */
-const COLLAPSED: Bucket[] = ['later', 'noDue']
 
 /** 이미 걸린 값을 다시 누르면 그 필터를 푼다. */
 const toggle = (filters: Filters, key: 'assignee' | 'milestone', id: string): Filters => ({
@@ -49,6 +47,18 @@ export function Dashboard({
   const { filters, setFilters } = useFilters()
   const bucket = useDashboardStore((s) => s.bucket)
   const setBucket = useDashboardStore((s) => s.setBucket)
+  // 카드나 풀기 버튼은 누르면 사라진다. 포커스를 잃지 않게 마감 목록 영역으로 옮긴다.
+  const listArea = useRef<HTMLElement>(null)
+  const moveFocus = useRef(false)
+  const selectFromList = (b: Bucket | 'all') => {
+    moveFocus.current = true
+    setBucket(b)
+  }
+  useEffect(() => {
+    if (!moveFocus.current) return
+    moveFocus.current = false
+    listArea.current?.focus()
+  }, [bucket])
   const date = useDashboardStore((s) => s.date)
   const setDate = useDashboardStore((s) => s.setDate)
 
@@ -135,45 +145,47 @@ export function Dashboard({
                       날짜 선택 풀기
                     </Button>
                   )}
+                  {!date && bucket !== 'all' && (
+                    <Button size="sm" variant="tertiary" onPress={() => selectFromList('all')}>
+                      묶음 선택 풀기
+                    </Button>
+                  )}
                   {actions}
                 </>
               }
             >
               <FilterChips issues={snapshot.issues} />
             </PageToolbar>
-            {issues.length === 0 ? (
-              <EmptyState className="py-12">
-                <p className="font-medium">남은 티켓이 없어요</p>
-                <p className="text-sm text-muted">
-                  필터를 바꾸거나 Linear에서 티켓을 확인해 주세요.
-                </p>
-              </EmptyState>
-            ) : date ? (
-              <DeadlineSection
-                key={date}
-                bucket={bucketOf(date, range)}
-                title={`${formatMonthDay(date)} 기한`}
-                issues={dateIssues}
-                today={today}
-                defaultOpen
-                emptyText="이날 기한인 남은 티켓이 없어요"
-                milestoneWidth={milestoneWidth}
-              />
-            ) : (
-              sections.map((b) => (
+            <section ref={listArea} tabIndex={-1} aria-label="마감 목록" className="outline-none">
+              {issues.length === 0 ? (
+                <EmptyState className="py-12">
+                  <p className="font-medium">남은 티켓이 없어요</p>
+                  <p className="text-sm text-muted">
+                    필터를 바꾸거나 Linear에서 티켓을 확인해 주세요.
+                  </p>
+                </EmptyState>
+              ) : date ? (
                 <DeadlineSection
-                  // 묶음을 바꾸면 접기와 더 보기 상태를 처음으로 돌린다.
-                  key={`${bucket}-${b}`}
-                  bucket={b}
-                  issues={groups[b]}
+                  key={date}
+                  bucket={bucketOf(date, range)}
+                  title={`${formatMonthDay(date)} 기한`}
+                  issues={dateIssues}
+                  today={today}
+                  emptyText="이날 기한인 남은 티켓이 없어요"
+                  milestoneWidth={milestoneWidth}
+                />
+              ) : bucket === 'all' ? (
+                <DeadlineGrid groups={groups} today={today} onSelect={selectFromList} />
+              ) : (
+                <DeadlineSection
+                  bucket={bucket}
+                  issues={groups[bucket]}
                   today={today}
                   milestoneWidth={milestoneWidth}
-                  defaultOpen={bucket !== 'all' || !COLLAPSED.includes(b)}
-                  collapsible={bucket === 'all'}
-                  emptyText={bucket === 'all' ? undefined : '이 묶음에 남은 티켓이 없어요'}
+                  emptyText="이 묶음에 남은 티켓이 없어요"
                 />
-              ))
-            )}
+              )}
+            </section>
           </div>
         </Tabs.Panel>
       </Tabs>

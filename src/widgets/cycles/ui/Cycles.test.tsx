@@ -70,11 +70,11 @@ describe('사이클 페이지', () => {
     render(<Cycles snapshot={snapshot([issue(1), issue(2, inC1)])} now={NOW} />)
     const tabs = screen.getAllByRole('tab')
     expect(tabs.map((t) => t.textContent)).toEqual([
-      '사이클 밖 기간11/5~11/8 · 진행 중',
+      '사이클 1 시작 전11/5~11/8 · 진행 중',
       '사이클 111/9~11/15',
       '사이클 211/16~11/22',
     ])
-    expect(screen.getByRole('tab', { name: /사이클 밖 기간/ })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: /사이클 1 시작 전/ })).toHaveAttribute(
       'aria-selected',
       'true',
     )
@@ -99,7 +99,7 @@ describe('사이클 페이지', () => {
       .map((b) => b.textContent)
     expect(names).toEqual(['남은 티켓4', '기한 지남1', '오늘1', '이번 주2'])
     // 탭에 있는 기간 이름을 아래에 큰 제목으로 다시 적지 않는다.
-    expect(screen.queryByRole('heading', { name: '사이클 밖 기간' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '사이클 1 시작 전' })).not.toBeInTheDocument()
   })
 
   it('숫자 칸 아래 한 줄에 기간과 남은 날을 적는다', () => {
@@ -109,7 +109,7 @@ describe('사이클 페이지', () => {
 
   it('사이클 탭은 기간 옆에 완료 수 / 전체 수 진행 막대를 둔다', async () => {
     render(<Cycles snapshot={snapshot([issue(1), issue(2, inC1)])} now={NOW} />)
-    await userEvent.click(screen.getByRole('tab', { name: /사이클 1/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /^사이클 1(?! 시작 전)/ }))
     expect(screen.getByText('11/9(월) ~ 11/15(일)')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /남은 티켓\s*1/ })).toBeInTheDocument()
     expect(screen.getByRole('progressbar', { name: '완료 1 / 전체 2' })).toBeInTheDocument()
@@ -160,7 +160,7 @@ describe('사이클 페이지', () => {
       />,
     )
     await userEvent.click(screen.getByRole('button', { name: /기한 지남\s*1/ }))
-    await userEvent.click(screen.getByRole('tab', { name: /사이클 1/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /^사이클 1(?! 시작 전)/ }))
     expect(screen.getByText('티켓 2')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /남은 티켓\s*1/ })).toHaveAttribute(
       'aria-pressed',
@@ -231,7 +231,7 @@ describe('사이클 페이지', () => {
         now={NOW}
       />,
     )
-    await userEvent.click(screen.getByRole('tab', { name: /사이클 1/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /^사이클 1(?! 시작 전)/ }))
     expect(screen.getByRole('progressbar', { name: '완료 1 / 전체 3' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /남은 티켓\s*1/ })).toBeInTheDocument()
     expect(screen.getByText('티켓 2')).toBeInTheDocument()
@@ -263,7 +263,10 @@ describe('사이클 페이지', () => {
     )
     await userEvent.click(screen.getByRole('tab', { name: /사이클 2/ }))
     rerender(<Cycles snapshot={snapshot([issue(2, inC1)], [cycle1])} now={NOW} />)
-    expect(screen.getByRole('tab', { name: /사이클 1/ })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: /^사이클 1(?! 시작 전)/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
     expect(screen.getByText('티켓 2')).toBeInTheDocument()
   })
 
@@ -284,7 +287,7 @@ describe('사이클 페이지', () => {
     await userEvent.click(screen.getByRole('tab', { name: /사이클 2/ }))
     rerender(<Cycles snapshot={snapshot([issue(1), issue(2, inC1)], [cycle1])} now={NOW} />)
     rerender(<Cycles snapshot={snapshot([issue(1), issue(2, inC1)])} now={NOW} />)
-    expect(screen.getByRole('tab', { name: /사이클 밖 기간/ })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: /사이클 1 시작 전/ })).toHaveAttribute(
       'aria-selected',
       'true',
     )
