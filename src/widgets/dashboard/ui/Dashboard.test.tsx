@@ -76,6 +76,38 @@ describe('대시보드', () => {
     expect(screen.getByText('티켓 11')).toBeInTheDocument()
   })
 
+  it('접힌 묶음은 머리줄 전체가 버튼이라 누르면 펼치고 다시 누르면 접는다', async () => {
+    render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
+    const header = screen.getByRole('button', { name: /그 뒤\s*1/ })
+    expect(header).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('button', { name: '펼치기' })).not.toBeInTheDocument()
+
+    await userEvent.click(header)
+    expect(header).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('티켓 12')).toBeInTheDocument()
+
+    await userEvent.click(header)
+    expect(screen.queryByText('티켓 12')).not.toBeInTheDocument()
+  })
+
+  it('긴 마일스톤과 라벨 이름은 한 줄로 자르고 전체 이름을 마우스 올림 설명으로 남긴다', () => {
+    const long = '충전 한도·이상 감지와 아주 긴 마일스톤 이름'
+    render(
+      <Dashboard
+        snapshot={snapshot([
+          issue(30, '2026-11-07', {
+            milestone: { id: 'm9', name: long, progress: 0 },
+            labels: [{ id: 'l9', name: '아주 긴 라벨 이름입니다' }],
+          }),
+        ])}
+        now={NOW}
+      />,
+    )
+    const row = screen.getByRole('row', { name: /티켓 30/ })
+    expect(within(row).getByTitle(long)).toHaveClass('truncate')
+    expect(within(row).getByTitle('아주 긴 라벨 이름입니다')).toHaveClass('truncate')
+  })
+
   it('숫자 칸을 누르면 마감 목록이 그 묶음만 보여 준다', async () => {
     render(<Dashboard snapshot={snapshot([...overdue, ...rest])} now={NOW} />)
     await userEvent.click(screen.getByRole('button', { name: /기한 없음\s*1/ }))
