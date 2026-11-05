@@ -101,6 +101,8 @@ describe('타임라인', () => {
 
   it('마우스를 올리면 전체 제목, 담당자, 상태, 기간, 남은 날을 보여 준다', async () => {
     show([started(1, '2026-11-10')])
+    // React Aria는 마우스가 한 번 움직인 뒤에만 툴팁을 연다. 실제로는 줄에 닿기 전에 마우스가 움직인다.
+    await userEvent.hover(document.body)
     await userEvent.hover(screen.getByRole('link', { name: /티켓 1/ }))
     const tip = await screen.findByRole('tooltip')
     expect(tip).toHaveTextContent('BUK-1 티켓 1')
