@@ -27,8 +27,9 @@ const doneQuery = (from: string, until: string) => `
         id identifier title url dueDate startedAt completedAt canceledAt
         state { name type }
         assignee { id name avatarUrl }
-        labels(first: 20) { nodes { id name } }
+        labels(first: 20) { nodes { id name color } }
         projectMilestone { id name progress }
+        cycle { id }
       }
       pageInfo { hasNextPage endCursor }
     }
