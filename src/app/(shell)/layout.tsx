@@ -2,18 +2,20 @@ import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query
 import { connection } from 'next/server'
 
 import { AppShell } from '@/widgets/app-shell'
-import type { Snapshot } from '@/shared/api/linear'
 import { SNAPSHOT_QUERY_KEY } from '@/shared/api/linear/query'
-import { getSnapshot, MissingApiKeyError } from '@/shared/api/linear/server'
+import { loadSnapshot, MissingApiKeyError, type SnapshotResult } from '@/shared/api/linear/server'
 import { ErrorScreen } from '@/shared/ui'
+
+import { SaveSnapshot } from './SaveSnapshot'
+import { SnapshotFallback } from './SnapshotFallback'
 
 export default async function ShellLayout({ children }: { children: React.ReactNode }) {
   // 빌드할 때 Linear를 부르지 않고, 요청이 올 때마다 서버 캐시에서 읽는다.
   await connection()
 
-  let snapshot: Snapshot
+  let result: SnapshotResult
   try {
-    snapshot = await getSnapshot()
+    result = await loadSnapshot()
   } catch (error) {
     if (error instanceof MissingApiKeyError) {
       return (
@@ -26,14 +28,24 @@ export default async function ShellLayout({ children }: { children: React.ReactN
     throw error
   }
 
+  // 서버에 보여 줄 값이 없으면 브라우저에 남긴 값으로 그린다.
+  if (!result.snapshot) {
+    return (
+      <SnapshotFallback failure={result.failure}>
+        <AppShell>{children}</AppShell>
+      </SnapshotFallback>
+    )
+  }
+
   // 받은 시각을 넣어 두면, 브라우저에 더 새로운 저장분이 있을 때 그쪽을 남긴다.
   const queryClient = new QueryClient()
-  queryClient.setQueryData(SNAPSHOT_QUERY_KEY, snapshot, {
-    updatedAt: Date.parse(snapshot.fetchedAt),
+  queryClient.setQueryData(SNAPSHOT_QUERY_KEY, result.snapshot, {
+    updatedAt: Date.parse(result.snapshot.fetchedAt),
   })
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
+      <SaveSnapshot />
       <AppShell>{children}</AppShell>
     </HydrationBoundary>
   )
