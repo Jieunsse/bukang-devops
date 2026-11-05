@@ -53,8 +53,8 @@ describe('완료·취소 목록', () => {
     render(<DoneList issues={issues} />)
     const groups = screen.getAllByRole('region')
     expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual(['지훈', '담당 없음'])
-    expect(within(groups[0]).getByText('완료 1 · 취소 0')).toBeInTheDocument()
-    expect(within(groups[1]).getByText('완료 0 · 취소 1')).toBeInTheDocument()
+    expect(within(groups[0]!).getByText('완료 1 · 취소 0')).toBeInTheDocument()
+    expect(within(groups[1]!).getByText('완료 0 · 취소 1')).toBeInTheDocument()
   })
 
   it('한 줄에 한국 날짜로 닫힌 날을 적고, 취소만 칩으로 표시하고, Linear로 이어진다', () => {
@@ -88,8 +88,8 @@ describe('완료·취소 목록', () => {
     expect(
       within(card)
         .getAllByRole('listitem')
-        .map((li) => li.textContent),
-    ).toEqual(['지훈1', '담당 없음0'])
+        .map((li) => li.getAttribute('aria-label')),
+    ).toEqual(['지훈 완료 1건', '담당 없음 완료 0건'])
   })
 
   it('주소의 필터를 적용한다', () => {

@@ -40,10 +40,10 @@ describe('완료·취소 티켓을 사람별로 묶기', () => {
       issue(3, '2026-11-03T00:00:00Z', sohee),
     ])
     expect(groups.map((g) => [g.name, g.completed, g.canceled])).toEqual([
-      ['지훈', 1, 1],
       ['소희', 1, 0],
+      ['지훈', 1, 1],
     ])
-    expect(groups[0]).toMatchObject({ id: 'u1', avatarUrl: 'https://example.com/a.png' })
+    expect(groups[1]).toMatchObject({ id: 'u1', avatarUrl: 'https://example.com/a.png' })
   })
 
   it('완료 수가 많은 사람부터 두고, 같으면 이름 순이다', () => {
@@ -76,6 +76,6 @@ describe('완료·취소 티켓을 사람별로 묶기', () => {
       issue(2, '2026-11-03T00:00:00Z', jihoon, true),
       issue(3, '2026-11-02T00:00:00Z', jihoon),
     ])
-    expect(group.issues.map((i) => i.identifier)).toEqual(['BUK-2', 'BUK-3', 'BUK-1'])
+    expect(group!.issues.map((i) => i.identifier)).toEqual(['BUK-2', 'BUK-3', 'BUK-1'])
   })
 })
