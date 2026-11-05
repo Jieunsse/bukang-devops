@@ -43,7 +43,7 @@ export function cycleTabs(issues: Issue[], cycles: Cycle[]): CycleTab[] {
   return [
     {
       key: OUTSIDE,
-      title: '사이클 밖 기간',
+      title: '사이클 없는 티켓',
       days: null,
       issues: outside,
       progress: null,

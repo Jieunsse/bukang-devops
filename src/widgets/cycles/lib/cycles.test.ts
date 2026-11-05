@@ -51,7 +51,7 @@ describe('사이클 탭', () => {
   it('사이클 밖 티켓이 있으면 사이클 밖 기간을 맨 앞에 두고, 사이클은 시작 순으로 둔다', () => {
     const tabs = cycleTabs([issue(1), issue(2, { cycle: { id: 'c1' } })], [cycle2, cycle1])
     expect(tabs.map((t) => t.key)).toEqual([OUTSIDE, 'c1', 'c2'])
-    expect(tabs.map((t) => t.title)).toEqual(['사이클 밖 기간', '사이클 1', '사이클 2'])
+    expect(tabs.map((t) => t.title)).toEqual(['사이클 없는 티켓', '사이클 1', '사이클 2'])
   })
 
   it('사이클 밖 티켓이 없으면 사이클 밖 기간 탭을 두지 않는다', () => {

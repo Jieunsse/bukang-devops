@@ -89,7 +89,7 @@ describe('사이클 페이지', () => {
     expect(screen.getByRole('tab', { name: '사이클 1' }).querySelector('[data-current]')).toBeNull()
   })
 
-  it('지금 사이클 중이면 사이클에 들지 않은 티켓 탭은 「사이클 밖 기간」이라고 부른다', () => {
+  it('지금 사이클 중이면 사이클에 들지 않은 티켓 탭은 「사이클 없는 티켓」이라고 부른다', () => {
     render(
       <Cycles
         snapshot={snapshot([issue(1), issue(2, inC1)])}
@@ -97,7 +97,7 @@ describe('사이클 페이지', () => {
       />,
     )
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
-      '사이클 밖 기간',
+      '사이클 없는 티켓',
       '사이클 1, 진행 중',
       '사이클 2',
     ])
