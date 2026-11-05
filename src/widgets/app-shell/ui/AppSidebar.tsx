@@ -6,6 +6,8 @@ import { buttonVariants } from '@heroui/styles'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 
+import { ThemeToggle } from '@/features/theme'
+
 import { NAV_ITEMS } from './nav'
 
 /** 페이지를 옮겨도 필터가 남도록 지금 주소의 뒷부분을 그대로 붙인다. */
@@ -40,8 +42,9 @@ export function AppSidebar() {
           </Link>
         ))}
       </nav>
-      <div className="mt-auto">
+      <div role="group" aria-label="메뉴 아래쪽" className="mt-auto flex flex-col gap-1">
         <HelpPopover />
+        <ThemeToggle showLabel />
       </div>
     </aside>
   )
@@ -51,18 +54,22 @@ export function AppSidebar() {
 export function MobileNav() {
   const links = useNavLinks()
   return (
-    <nav aria-label="페이지" className="flex gap-1 overflow-x-auto md:hidden">
-      {links.map((l) => (
-        <Link
-          key={l.label}
-          href={l.href}
-          aria-current={l.isCurrent ? 'page' : undefined}
-          className={buttonVariants({ variant: l.isCurrent ? 'secondary' : 'ghost', size: 'sm' })}
-        >
-          {l.label}
-        </Link>
-      ))}
-    </nav>
+    <div className="flex items-center gap-2 md:hidden">
+      <nav aria-label="페이지" className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+        {links.map((l) => (
+          <Link
+            key={l.label}
+            href={l.href}
+            aria-current={l.isCurrent ? 'page' : undefined}
+            className={buttonVariants({ variant: l.isCurrent ? 'secondary' : 'ghost', size: 'sm' })}
+          >
+            {l.label}
+          </Link>
+        ))}
+      </nav>
+      {/* 휴대폰에서는 왼쪽 메뉴가 없어서 화면 전환 버튼을 아이콘으로 위쪽 메뉴 끝에 둔다. */}
+      <ThemeToggle />
+    </div>
   )
 }
 

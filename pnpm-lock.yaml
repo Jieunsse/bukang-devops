@@ -20,6 +20,9 @@ importers:
       '@hookform/resolvers':
         specifier: 5.9.2
         version: 5.9.2(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.1))(zod@4.6.7)
+      '@internationalized/date':
+        specifier: 3.12.4
+        version: 3.12.4
       '@tanstack/query-sync-storage-persister':
         specifier: 5.104.5
         version: 5.104.5
