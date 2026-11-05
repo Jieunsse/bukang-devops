@@ -86,7 +86,7 @@ function BucketCard({
                 <ChevronRight aria-hidden className="size-4" />
               </Button>
             ) : (
-              <span className="flex items-center gap-2 font-semibold">
+              <span className="flex h-10 items-center gap-2 font-semibold md:h-9">
                 {label}
                 <CountChip>0</CountChip>
               </span>
@@ -132,8 +132,8 @@ function TicketLine({ issue, today }: { issue: Issue; today: string }) {
         {issue.title}
       </a>
       {issue.assignee ? (
-        // 좁은 카드라 이름은 프로필 위 마우스 올림 설명과 화면 읽기 글자로만 남긴다.
-        <span title={issue.assignee.name} className="flex shrink-0">
+        // 좁은 카드라 이름은 프로필 위 마우스 올림 설명과 화면 읽기 글자로만 남긴다. 줄 링크 덮개보다 위에 둔다.
+        <span title={issue.assignee.name} className="relative z-10 flex shrink-0">
           <span aria-hidden>
             <MemberAvatar {...issue.assignee} />
           </span>

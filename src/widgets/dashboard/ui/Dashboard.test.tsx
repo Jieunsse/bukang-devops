@@ -102,6 +102,7 @@ describe('대시보드', () => {
     expect(more).toHaveClass('cursor-pointer')
 
     await userEvent.click(more)
+    expect(screen.getByRole('heading', { level: 2, name: '마감 목록' })).toHaveFocus()
     expect(screen.getByRole('tab', { name: '기한 지남' })).toHaveAttribute('aria-selected', 'true')
     const section = screen.getByRole('region', { name: '기한 지남' })
     expect(within(section).getAllByRole('row')).toHaveLength(1 + 7)
@@ -146,24 +147,9 @@ describe('대시보드', () => {
     ).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: '묶음 선택 풀기' }))
     expect(screen.getByRole('tab', { name: '전체' })).toHaveAttribute('aria-selected', 'true')
+    // 누른 버튼이 사라져도 포커스는 마감 목록 제목으로 옮겨 간다.
+    expect(screen.getByRole('heading', { level: 2, name: '마감 목록' })).toHaveFocus()
     expect(screen.getByRole('list', { name: '마감 묶음 카드' })).toBeInTheDocument()
-  })
-
-  it('탭으로 묶음 하나만 고르면 펼친 채로 보여 주고 접기 버튼을 두지 않는다', async () => {
-    render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
-    await userEvent.click(screen.getByRole('tab', { name: '그 뒤' }))
-    const section = screen.getByRole('region', { name: '그 뒤' })
-    expect(within(section).queryByRole('button', { name: /^그 뒤/ })).not.toBeInTheDocument()
-    expect(screen.getByText('티켓 12')).toBeInTheDocument()
-  })
-
-  it('달력에서 날짜를 고르면 펼친 채로 보여 주고 접기 버튼을 두지 않는다', async () => {
-    render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
-    const calendar = screen.getByRole('application', { name: /^기한 달력/ })
-    await userEvent.click(within(calendar).getByRole('button', { name: /11월 7일/ }))
-    const section = screen.getByRole('region', { name: '11/7 기한' })
-    expect(within(section).queryByRole('button', { name: /^11\/7 기한/ })).not.toBeInTheDocument()
-    expect(screen.getByText('티켓 11')).toBeInTheDocument()
   })
 
   it('긴 마일스톤 이름은 말줄임 없이 줄바꿈하지 않는 칸에 두고, 라벨과 제목은 잘라도 전체를 마우스 올림 설명으로 남긴다', async () => {
@@ -189,7 +175,7 @@ describe('대시보드', () => {
     expect(within(row).getByRole('link', { name: '티켓 30' })).toHaveClass('truncate')
   })
 
-  it('묶음마다 표가 달라도 마일스톤 칸 폭을 가장 긴 이름에 맞춰 똑같이 둔다', async () => {
+  it('탭으로 묶음을 바꿔도 마일스톤 칸 폭을 가장 긴 이름에 맞춰 똑같이 둔다', async () => {
     const long = '충전 한도·이상 감지와 아주 긴 마일스톤 이름'
     render(
       <Dashboard

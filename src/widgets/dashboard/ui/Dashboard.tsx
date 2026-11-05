@@ -1,7 +1,7 @@
 'use client'
 
 import { Button, EmptyState, Tabs } from '@heroui/react'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 
 import {
   BUCKET_LABEL,
@@ -37,6 +37,18 @@ export function Dashboard({ snapshot, now }: { snapshot: Snapshot; now: number }
   const { filters, setFilters } = useFilters()
   const bucket = useDashboardStore((s) => s.bucket)
   const setBucket = useDashboardStore((s) => s.setBucket)
+  // 카드나 풀기 버튼은 누르면 사라진다. 포커스를 잃지 않게 마감 목록 제목으로 옮긴다.
+  const listTitle = useRef<HTMLHeadingElement>(null)
+  const moveFocus = useRef(false)
+  const selectFromList = (b: Bucket | 'all') => {
+    moveFocus.current = true
+    setBucket(b)
+  }
+  useEffect(() => {
+    if (!moveFocus.current) return
+    moveFocus.current = false
+    listTitle.current?.focus()
+  }, [bucket])
   const date = useDashboardStore((s) => s.date)
   const setDate = useDashboardStore((s) => s.setDate)
 
@@ -111,14 +123,16 @@ export function Dashboard({ snapshot, now }: { snapshot: Snapshot; now: number }
 
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-lg font-semibold">마감 목록</h2>
+              <h2 ref={listTitle} tabIndex={-1} className="text-lg font-semibold outline-none">
+                마감 목록
+              </h2>
               {date ? (
                 <Button size="sm" variant="tertiary" onPress={() => setDate(null)}>
                   날짜 선택 풀기
                 </Button>
               ) : (
                 bucket !== 'all' && (
-                  <Button size="sm" variant="tertiary" onPress={() => setBucket('all')}>
+                  <Button size="sm" variant="tertiary" onPress={() => selectFromList('all')}>
                     묶음 선택 풀기
                   </Button>
                 )
@@ -142,7 +156,7 @@ export function Dashboard({ snapshot, now }: { snapshot: Snapshot; now: number }
                 milestoneWidth={milestoneWidth}
               />
             ) : bucket === 'all' ? (
-              <DeadlineGrid groups={groups} today={today} onSelect={setBucket} />
+              <DeadlineGrid groups={groups} today={today} onSelect={selectFromList} />
             ) : (
               <DeadlineSection
                 bucket={bucket}
