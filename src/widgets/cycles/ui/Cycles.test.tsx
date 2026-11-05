@@ -59,11 +59,11 @@ describe('사이클 페이지', () => {
     search = ''
   })
 
-  it('탭마다 이름 아래 기간을 작게 적고, 지금 기간 탭을 먼저 연다', () => {
+  it('탭마다 이름 아래 기간을 작게 적고, 지금 기간 탭에 진행 중을 붙여 먼저 연다', () => {
     render(<Cycles snapshot={snapshot([issue(1), issue(2, inC1)])} now={NOW} />)
     const tabs = screen.getAllByRole('tab')
     expect(tabs.map((t) => t.textContent)).toEqual([
-      '사이클 밖 기간11/5~11/8',
+      '사이클 밖 기간11/5~11/8 · 진행 중',
       '사이클 111/9~11/15',
       '사이클 211/16~11/22',
     ])
@@ -73,7 +73,7 @@ describe('사이클 페이지', () => {
     )
   })
 
-  it('요약 카드에 기간과 남은 날, 남은 티켓 수, 기한 지남·오늘·이번 주 개수를 보여 준다', () => {
+  it('숫자 칸 네 개에 남은 티켓, 기한 지남, 오늘, 이번 주 개수를 나란히 보여 준다', () => {
     render(
       <Cycles
         snapshot={snapshot([
@@ -86,25 +86,79 @@ describe('사이클 페이지', () => {
         now={NOW}
       />,
     )
-    const summary = screen.getByRole('region', { name: '사이클 밖 기간 요약' })
-    expect(within(summary).getByRole('heading', { name: '사이클 밖 기간' })).toBeInTheDocument()
-    expect(within(summary).getByText('11/5(목) ~ 11/8(일) · 3일 남음')).toBeInTheDocument()
-    expect(within(summary).getByText('남은 티켓 4건')).toBeInTheDocument()
-    const counts = within(summary).getByRole('group', { name: '기한별 개수' })
-    expect(within(counts).getByText('기한 지남').nextSibling).toHaveTextContent('1')
-    expect(within(counts).getByText('오늘').nextSibling).toHaveTextContent('1')
-    expect(within(counts).getByText('이번 주').nextSibling).toHaveTextContent('2')
+    const summary = screen.getByRole('group', { name: '숫자 요약' })
+    const names = within(summary)
+      .getAllByRole('button')
+      .map((b) => b.textContent)
+    expect(names).toEqual(['남은 티켓4', '기한 지남1', '오늘1', '이번 주2'])
+    // 탭에 있는 기간 이름을 아래에 큰 제목으로 다시 적지 않는다.
+    expect(screen.queryByRole('heading', { name: '사이클 밖 기간' })).not.toBeInTheDocument()
   })
 
-  it('사이클 탭 요약에는 사이클 기간과 완료 수 / 전체 수 진행 막대가 있다', async () => {
+  it('숫자 칸 아래 한 줄에 기간과 남은 날을 적는다', () => {
+    render(<Cycles snapshot={snapshot([issue(1)])} now={NOW} />)
+    expect(screen.getByText('11/5(목) ~ 11/8(일) · 3일 남음')).toBeInTheDocument()
+  })
+
+  it('사이클 탭은 기간 옆에 완료 수 / 전체 수 진행 막대를 둔다', async () => {
     render(<Cycles snapshot={snapshot([issue(1), issue(2, inC1)])} now={NOW} />)
     await userEvent.click(screen.getByRole('tab', { name: /사이클 1/ }))
-    const summary = screen.getByRole('region', { name: '사이클 1 요약' })
-    expect(within(summary).getByText('11/9(월) ~ 11/15(일)')).toBeInTheDocument()
-    expect(within(summary).getByText('남은 티켓 1건')).toBeInTheDocument()
-    expect(
-      within(summary).getByRole('progressbar', { name: '완료 1 / 전체 2' }),
-    ).toBeInTheDocument()
+    expect(screen.getByText('11/9(월) ~ 11/15(일)')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /남은 티켓\s*1/ })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: '완료 1 / 전체 2' })).toBeInTheDocument()
+  })
+
+  it('숫자 칸을 누르면 보드가 그 묶음만 보여 주고, 다시 누르거나 남은 티켓을 누르면 모두 보여 준다', async () => {
+    render(
+      <Cycles
+        snapshot={snapshot([
+          issue(1, { dueDate: '2026-11-03' }),
+          issue(2, { dueDate: '2026-11-05' }),
+        ])}
+        now={NOW}
+      />,
+    )
+    const overdue = screen.getByRole('button', { name: /기한 지남\s*1/ })
+    await userEvent.click(overdue)
+    expect(overdue).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('티켓 1')).toBeInTheDocument()
+    expect(screen.queryByText('티켓 2')).not.toBeInTheDocument()
+
+    await userEvent.click(overdue)
+    expect(screen.getByText('티켓 2')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /오늘\s*1/ }))
+    await userEvent.click(screen.getByRole('button', { name: /남은 티켓\s*2/ }))
+    expect(screen.getByText('티켓 1')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /남은 티켓\s*2/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('고른 묶음에 티켓이 없으면 그 묶음이 비었다고 알려 준다', async () => {
+    render(<Cycles snapshot={snapshot([issue(1, { dueDate: '2026-11-03' })])} now={NOW} />)
+    await userEvent.click(screen.getByRole('button', { name: /오늘\s*0/ }))
+    expect(screen.getByText('이 묶음에 남은 티켓이 없어요')).toBeInTheDocument()
+  })
+
+  it('탭을 바꾸면 고른 묶음을 풀고 모두 보여 준다', async () => {
+    render(
+      <Cycles
+        snapshot={snapshot([
+          issue(1, { dueDate: '2026-11-03' }),
+          issue(2, { ...inC1, dueDate: '2026-11-10' }),
+        ])}
+        now={NOW}
+      />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /기한 지남\s*1/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /사이클 1/ }))
+    expect(screen.getByText('티켓 2')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /남은 티켓\s*1/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
   })
 
   it('담당자별 열을 나란히 두고 담당 없음 열은 맨 끝에 둔다', () => {
@@ -162,7 +216,7 @@ describe('사이클 페이지', () => {
     expect(within(column).getAllByRole('link')).toHaveLength(7)
   })
 
-  it('필터는 아래 보드에만 걸고 요약은 사이클 전체로 센다', async () => {
+  it('숫자 칸은 필터를 따라 보드와 같은 수를 세고, 진행 막대는 사이클 전체로 센다', async () => {
     search = 'assignee=none'
     render(
       <Cycles
@@ -172,7 +226,7 @@ describe('사이클 페이지', () => {
     )
     await userEvent.click(screen.getByRole('tab', { name: /사이클 1/ }))
     expect(screen.getByRole('progressbar', { name: '완료 1 / 전체 3' })).toBeInTheDocument()
-    expect(screen.getByText('남은 티켓 2건')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /남은 티켓\s*1/ })).toBeInTheDocument()
     expect(screen.getByText('티켓 2')).toBeInTheDocument()
     expect(screen.queryByText('티켓 1')).not.toBeInTheDocument()
   })
