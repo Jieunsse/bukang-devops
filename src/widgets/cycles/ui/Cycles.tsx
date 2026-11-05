@@ -234,7 +234,10 @@ function Column({
               {group.id === NONE ? (
                 <span aria-hidden className="size-6 shrink-0" />
               ) : (
-                <MemberAvatar name={group.name} avatarUrl={group.avatarUrl} />
+                // 사진이 없을 때 보이는 첫 글자가 버튼 이름에 섞이지 않게 숨긴다.
+                <span aria-hidden>
+                  <MemberAvatar name={group.name} avatarUrl={group.avatarUrl} />
+                </span>
               )}
               <span className="truncate">{group.name}</span>
               <Chip size="sm">{group.issues.length}건</Chip>
