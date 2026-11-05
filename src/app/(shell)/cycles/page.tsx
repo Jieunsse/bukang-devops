@@ -1,5 +1,5 @@
-import { ComingSoon } from '@/shared/ui'
+import { CyclesView } from '@/widgets/cycles'
 
 export default function CyclesPage() {
-  return <ComingSoon title="사이클" />
+  return <CyclesView />
 }

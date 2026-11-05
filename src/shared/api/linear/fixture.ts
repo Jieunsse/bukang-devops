@@ -61,6 +61,7 @@ export function createFixtureSnapshot(now: Date = new Date()): Snapshot {
       name: null,
       startsAt: kstMidnight(addDays(nextMonday, -21)),
       endsAt: kstMidnight(addDays(nextMonday, -14)),
+      completedIssueCount: 9,
     },
     {
       id: 'c-7',
@@ -68,6 +69,7 @@ export function createFixtureSnapshot(now: Date = new Date()): Snapshot {
       name: null,
       startsAt: kstMidnight(nextMonday),
       endsAt: kstMidnight(addDays(nextMonday, 7)),
+      completedIssueCount: 1,
     },
   ]
 
@@ -84,6 +86,8 @@ export function createFixtureSnapshot(now: Date = new Date()): Snapshot {
       assignee: person === null ? null : { ...people[person]! },
       labels: labelKeys.map((k) => labels[k]),
       milestone: milestone === null ? null : milestones[milestone],
+      // 기한이 다음 사이클 안인 티켓은 그 사이클에 넣어, 사이클 탭과 사이클 밖 탭이 모두 채워지게 한다.
+      cycle: due !== null && due >= daysToMonday && due < daysToMonday + 7 ? { id: 'c-7' } : null,
     }
   })
 
