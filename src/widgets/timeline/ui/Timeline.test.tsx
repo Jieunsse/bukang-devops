@@ -103,7 +103,7 @@ describe('타임라인', () => {
     expect(screen.getByRole('rowgroup', { name: '지훈' })).toBeInTheDocument()
     expect(screen.getByRole('rowgroup', { name: '담당 없음' })).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: '마일스톤별' }))
+    await userEvent.click(screen.getByRole('radio', { name: '마일스톤별' }))
     expect(
       within(screen.getByRole('rowgroup', { name: '세미 발표' })).getByText(/티켓 1/),
     ).toBeInTheDocument()
