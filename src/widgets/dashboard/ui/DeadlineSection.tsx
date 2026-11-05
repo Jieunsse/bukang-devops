@@ -22,6 +22,7 @@ export function DeadlineSection({
   issues,
   today,
   defaultOpen,
+  collapsible,
   emptyText,
   title,
 }: {
@@ -29,6 +30,8 @@ export function DeadlineSection({
   issues: Issue[]
   today: string
   defaultOpen: boolean
+  /** 머리줄을 눌러 접고 펼칠 수 있는지(전체 보기일 때) */
+  collapsible?: boolean
   /** 묶음 하나만 볼 때 티켓이 없으면 보여 줄 안내 */
   emptyText?: string
   /** 묶음 이름 대신 쓸 제목(달력에서 날짜를 골랐을 때) */
@@ -39,12 +42,12 @@ export function DeadlineSection({
   const label = title ?? BUCKET_LABEL[bucket]
   const visible = issues.slice(0, shown)
   const hidden = issues.length - visible.length
-  const canToggle = !defaultOpen && issues.length > 0
+  const canToggle = collapsible && issues.length > 0
 
   return (
     <section aria-label={label} className="flex flex-col gap-3">
       {canToggle ? (
-        // 접어 둔 묶음은 머리줄 전체를 눌러 펼치고 접는다.
+        // 머리줄 전체를 눌러 펼치고 접는다.
         <h3>
           <Button
             variant="ghost"
@@ -60,6 +63,13 @@ export function DeadlineSection({
             {label}
             <Chip size="sm">{issues.length}</Chip>
           </Button>
+        </h3>
+      ) : collapsible ? (
+        // 0건이라 펼칠 게 없다. 버튼 대신 같은 자리·같은 크기의 글자로 두고 화살표만 흐리게 한다.
+        <h3 className="-ml-3 flex h-10 items-center gap-2 px-3 text-sm font-semibold md:h-9">
+          <ChevronRight aria-hidden className="size-4 opacity-30" />
+          {label}
+          <Chip size="sm">{issues.length}</Chip>
         </h3>
       ) : (
         <div className="flex items-center gap-2">
