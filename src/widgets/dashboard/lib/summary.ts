@@ -1,6 +1,6 @@
 import { bucketOf, type BucketRange } from '@/entities/ticket'
 import { NONE } from '@/features/filter'
-import type { Issue } from '@/shared/api/linear'
+import type { Issue, Member } from '@/shared/api/linear'
 
 export type AssigneeLoad = {
   id: string
@@ -33,8 +33,16 @@ export function segmentText(row: AssigneeLoad): string {
 }
 
 /** 담당자마다 남은 티켓을 세고, 많은 사람부터 둔다. 담당 없음은 맨 아래다. */
-export function assigneeLoad(issues: Issue[], range: BucketRange): AssigneeLoad[] {
+export function assigneeLoad(
+  issues: Issue[],
+  range: BucketRange,
+  members: Member[] = [],
+): AssigneeLoad[] {
   const rows = new Map<string, AssigneeLoad>()
+  // 남은 티켓이 0건인 팀원도 0건 줄로 둔다.
+  for (const { id, name, avatarUrl } of members) {
+    rows.set(id, { id, name, avatarUrl, overdue: 0, thisWeek: 0, later: 0, noDue: 0, total: 0 })
+  }
   for (const issue of issues) {
     const { id, name, avatarUrl } = issue.assignee ?? { id: NONE, name: '담당 없음' }
     const row = rows.get(id) ?? {

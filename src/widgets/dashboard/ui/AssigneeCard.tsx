@@ -68,7 +68,7 @@ export function AssigneeCard({
                     ref={ref as React.Ref<HTMLButtonElement>}
                     type="button"
                     onClick={() => onSelect(row.id)}
-                    aria-label={`${row.name} ${row.total}건: ${segmentText(row)}`}
+                    aria-label={`${row.name} ${row.total}건${row.total > 0 ? `: ${segmentText(row)}` : ''}`}
                     className="grid w-full grid-cols-[7rem_1fr_auto] items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm outline-none hover:bg-default focus-visible:ring-2 focus-visible:ring-accent"
                   />
                 )}

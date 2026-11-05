@@ -63,7 +63,7 @@ export function DoneView() {
           </Button>
         </div>
       ) : (
-        <DoneList issues={query.data} />
+        <DoneList issues={query.data} members={snapshot.members ?? []} />
       )}
     </div>
   )

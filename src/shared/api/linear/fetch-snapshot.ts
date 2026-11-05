@@ -2,7 +2,13 @@ import 'server-only'
 
 import { z } from 'zod'
 
-import { cyclesResponseSchema, ISSUE_FIELDS, issuesResponseSchema, type Snapshot } from './schema'
+import {
+  cyclesResponseSchema,
+  ISSUE_FIELDS,
+  issuesResponseSchema,
+  membersResponseSchema,
+  type Snapshot,
+} from './schema'
 
 const ENDPOINT = 'https://api.linear.app/graphql'
 const TEAM_KEY = 'BUK'
@@ -29,6 +35,19 @@ const CYCLES_QUERY = `
     cycles(first: ${PAGE_SIZE}, after: $after, filter: { team: { key: { eq: $teamKey } } }) {
       nodes { id number name startsAt endsAt completedIssueCountHistory }
       pageInfo { hasNextPage endCursor }
+    }
+  }
+`
+
+const MEMBERS_QUERY = `
+  query Members($teamKey: String!, $after: String) {
+    teams(filter: { key: { eq: $teamKey } }) {
+      nodes {
+        members(first: ${PAGE_SIZE}, after: $after) {
+          nodes { id name avatarUrl active }
+          pageInfo { hasNextPage endCursor }
+        }
+      }
     }
   }
 `
@@ -121,5 +140,12 @@ export async function fetchSnapshot(
     cyclesResponseSchema,
     (d) => d.cycles,
   )
-  return { fetchedAt: now.toISOString(), issues, cycles }
+  const members = await paginate(
+    fetchImpl,
+    apiKey,
+    MEMBERS_QUERY,
+    membersResponseSchema,
+    (d) => d.members,
+  )
+  return { fetchedAt: now.toISOString(), issues, cycles, members }
 }

@@ -10,6 +10,15 @@ type Row = [
   milestone: boolean,
 ]
 
+// 대시보드 예시 데이터의 팀원 id와 맞춘다. 그래야 0건 팀원과 같은 사람으로 묶인다.
+const PERSON_ID: Record<string, string> = {
+  지훈: 'u-jihoon',
+  소희: 'u-sohee',
+  민준: 'u-minjun',
+  서연: 'u-seoyeon',
+  도윤: 'u-doyun',
+}
+
 const rows: Row[] = [
   ['회원 가입 이메일 인증', 0, '지훈', false, true],
   ['예치금 충전 결과 확인', 1, '소희', false, true],
@@ -36,7 +45,7 @@ export function createFixtureDone(range: DoneRange, now: Date = new Date()): Don
         // 한국 시간 오후 2시
         closedAt: new Date(`${addDays(today, -daysAgo)}T14:00:00+09:00`).toISOString(),
         state: canceled ? { name: '취소', type: 'canceled' } : { name: '완료', type: 'completed' },
-        assignee: person === null ? null : { id: `u-${person}`, name: person },
+        assignee: person === null ? null : { id: PERSON_ID[person] ?? `u-${person}`, name: person },
         labels: [{ id: 'l-fe', name: '프론트' }],
         milestone: milestone ? { id: 'm-semi', name: '세미 발표', progress: 0.82 } : null,
       }
