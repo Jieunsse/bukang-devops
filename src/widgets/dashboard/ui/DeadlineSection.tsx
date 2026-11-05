@@ -38,7 +38,7 @@ export function DeadlineSection({
     <section aria-label={label} className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
         <h3 className="font-semibold">{label}</h3>
-        <Chip size="sm" variant="soft">
+        <Chip size="sm">
           {issues.length}
         </Chip>
         {!defaultOpen && issues.length > 0 && (
@@ -95,14 +95,14 @@ export function DeadlineSection({
                       <Table.Cell>
                         <div className="flex flex-wrap gap-1">
                           {issue.labels.map((l) => (
-                            <Chip key={l.id} size="sm" variant="soft">
+                            <Chip key={l.id} size="sm">
                               {l.name}
                             </Chip>
                           ))}
                         </div>
                       </Table.Cell>
                       <Table.Cell>
-                        <Chip size="sm" variant="soft">
+                        <Chip size="sm">
                           {issue.milestone?.name ?? '마일스톤 없음'}
                         </Chip>
                       </Table.Cell>
