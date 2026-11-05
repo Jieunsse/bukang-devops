@@ -1,5 +1,6 @@
 'use client'
 
+import { CircleQuestion } from '@gravity-ui/icons'
 import { Button, Popover } from '@heroui/react'
 import { buttonVariants } from '@heroui/styles'
 import Link from 'next/link'
@@ -24,7 +25,7 @@ const linkClass = (isCurrent: boolean) =>
 export function AppSidebar() {
   const links = useNavLinks()
   return (
-    <aside className="hidden w-60 shrink-0 flex-col gap-6 p-4 md:flex">
+    <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-6 border-r border-separator p-3 md:flex">
       <p className="px-3 pt-2 text-lg font-semibold">bukang-devops</p>
       <nav aria-label="페이지" className="flex flex-col gap-1">
         {links.map((l) => (
@@ -34,6 +35,7 @@ export function AppSidebar() {
             aria-current={l.isCurrent ? 'page' : undefined}
             className={linkClass(l.isCurrent)}
           >
+            <l.Icon aria-hidden className="size-4" />
             {l.label}
           </Link>
         ))}
@@ -68,6 +70,7 @@ function HelpPopover() {
   return (
     <Popover>
       <Button variant="ghost" fullWidth className="justify-start">
+        <CircleQuestion aria-hidden className="size-4" />
         도움말
       </Button>
       <Popover.Content placement="top start" className="max-w-xs">

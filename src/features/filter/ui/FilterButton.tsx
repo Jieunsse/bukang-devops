@@ -1,5 +1,6 @@
 'use client'
 
+import { Sliders } from '@gravity-ui/icons'
 import { Button, Label, ListBox, Popover, Select } from '@heroui/react'
 import { useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
@@ -42,7 +43,10 @@ export function FilterButton() {
 
   return (
     <Popover isOpen={isOpen} onOpenChange={setOpen}>
-      <Button variant="tertiary">{count > 0 ? `필터 ${count}` : '필터'}</Button>
+      <Button variant="primary">
+        <Sliders aria-hidden className="size-4" />
+        {count > 0 ? `필터 ${count}` : '필터'}
+      </Button>
       <Popover.Content placement="bottom end" className="w-72">
         <Popover.Dialog>
           <form onSubmit={apply} className="flex flex-col gap-3">

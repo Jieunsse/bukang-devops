@@ -1,5 +1,6 @@
 'use client'
 
+import { ArrowsRotateRight } from '@gravity-ui/icons'
 import { Button, toast, Tooltip } from '@heroui/react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
@@ -30,25 +31,9 @@ export function RefreshButton() {
         isPending={isPending}
         onPress={() => mutate()}
       >
-        <RefreshIcon />
+        <ArrowsRotateRight aria-hidden className="size-4" />
       </Button>
       <Tooltip.Content placement="bottom">Linear에서 새로 받기</Tooltip.Content>
     </Tooltip>
-  )
-}
-
-function RefreshIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="size-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden
-    >
-      <path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2" strokeLinecap="round" />
-      <path d="M21 4v5h-5M3 20v-5h5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   )
 }
