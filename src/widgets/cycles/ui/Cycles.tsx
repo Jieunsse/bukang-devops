@@ -113,6 +113,8 @@ function TabContent({
   now: number
 }) {
   const [picked, setPicked] = useState<Picked>('all')
+  // 보드가 빈 안내로 바뀌었다 돌아와도 접은 열을 기억하려고 여기에 둔다. 접은 열은 담당자 id로 기억한다.
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set())
   // 숫자 칸은 보드와 같은 수를 세도록 필터를 건 티켓으로 센다. 진행 막대는 사이클 전체 기준이다.
   const { period, counts } = tabSummary(tab, cycles, now, issues)
   const { progress } = tab
@@ -167,9 +169,16 @@ function TabContent({
               : '이 묶음에 남은 티켓이 없어요'
         }
         showFilterHint={tab.issues.length > 0 && issues.length === 0}
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
       />
     </>
   )
+}
+
+type CollapseState = {
+  collapsed: ReadonlySet<string>
+  setCollapsed: React.Dispatch<React.SetStateAction<ReadonlySet<string>>>
 }
 
 function Board({
@@ -177,12 +186,13 @@ function Board({
   today,
   emptyText,
   showFilterHint,
+  ...collapse
 }: {
   issues: Issue[]
   today: string
   emptyText: string
   showFilterHint: boolean
-}) {
+} & CollapseState) {
   if (issues.length === 0) {
     return (
       <EmptyState className="py-12">
@@ -191,13 +201,17 @@ function Board({
       </EmptyState>
     )
   }
-  return <BoardColumns issues={issues} today={today} />
+  return <BoardColumns issues={issues} today={today} {...collapse} />
 }
 
-/** 처음에는 모든 열을 펼쳐 둔다. 접은 열은 담당자 id로 기억한다. */
-function BoardColumns({ issues, today }: { issues: Issue[]; today: string }) {
+/** 처음에는 모든 열을 펼쳐 둔다. */
+function BoardColumns({
+  issues,
+  today,
+  collapsed,
+  setCollapsed,
+}: { issues: Issue[]; today: string } & CollapseState) {
   const groups = groupByAssignee(issues)
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set())
   const allCollapsed = groups.every((g) => collapsed.has(g.id))
   const toggle = (id: string) =>
     setCollapsed((prev) => {

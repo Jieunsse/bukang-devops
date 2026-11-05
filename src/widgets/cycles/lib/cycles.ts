@@ -114,7 +114,7 @@ export const inBucket = (issues: Issue[], bucket: SummaryBucket, cycles: Cycle[]
 export type TabSummary = {
   /** daysLeft는 지금 이 기간 안일 때만 있다. 마지막 날이면 0이다. */
   period: { start: DateString; end: DateString; daysLeft: number | null } | null
-  /** 필터를 걸기 전 티켓으로 센다. */
+  /** 넘겨받은 티켓으로 센다. 화면은 필터를 건 티켓을 넘긴다. */
   counts: { overdue: number; today: number; thisWeek: number }
 }
 
