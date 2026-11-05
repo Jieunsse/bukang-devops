@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Issue } from '@/shared/api/linear'
 
-import { assigneeLoad, milestoneProgress } from './summary'
+import { assigneeLoad, milestoneProgress, segmentText } from './summary'
 
 const base: Issue = {
   id: 'x',
@@ -23,7 +23,7 @@ const semi = { id: 'm1', name: '세미', progress: 0.8 }
 const final = { id: 'm2', name: '최종', progress: 0.3 }
 
 describe('사람별 남은 티켓', () => {
-  it('지남, 이번 주(오늘 포함), 그 뒤(기한 없음 포함)로 나누고 많은 사람부터 둔다', () => {
+  it('지남, 이번 주(오늘 포함), 다음 주 이후, 기한 없음 네 구간으로 나누고 많은 사람부터 둔다', () => {
     const rows = assigneeLoad(
       [
         { ...base, assignee: jihoon, dueDate: '2026-11-01' },
@@ -36,8 +36,8 @@ describe('사람별 남은 티켓', () => {
       range,
     )
     expect(rows).toEqual([
-      { id: 'u2', name: '소희', overdue: 1, thisWeek: 2, later: 1, total: 4 },
-      { id: 'u1', name: '지훈', overdue: 1, thisWeek: 0, later: 1, total: 2 },
+      { id: 'u2', name: '소희', overdue: 1, thisWeek: 2, later: 0, noDue: 1, total: 4 },
+      { id: 'u1', name: '지훈', overdue: 1, thisWeek: 0, later: 1, noDue: 0, total: 2 },
     ])
   })
 
@@ -58,6 +58,18 @@ describe('사람별 남은 티켓', () => {
 
   it('티켓이 없으면 빈 목록이다', () => {
     expect(assigneeLoad([], range)).toEqual([])
+  })
+})
+
+describe('막대 구간 글자', () => {
+  const row = { id: 'u1', name: '지훈', overdue: 0, thisWeek: 6, later: 9, noDue: 2, total: 17 }
+
+  it('0이 아닌 구간만 「이름 개수」로 이어 쓴다', () => {
+    expect(segmentText(row)).toBe('이번 주 6 · 다음 주 이후 9 · 기한 없음 2')
+  })
+
+  it('모든 구간이 0이면 빈 글자다', () => {
+    expect(segmentText({ ...row, thisWeek: 0, later: 0, noDue: 0, total: 0 })).toBe('')
   })
 })
 

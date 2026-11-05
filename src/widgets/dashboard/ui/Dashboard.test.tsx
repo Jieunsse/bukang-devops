@@ -284,15 +284,29 @@ describe('대시보드', () => {
     expect(within(row).getByText('지훈')).toBeInTheDocument()
   })
 
-  it('맨 위에 최종 발표, 지금 사이클, 남은 일의 속도 카드 세 개를 보여 준다', () => {
+  it('맨 위 카드 세 개는 짧은 이름 한 줄과 큰 값 하나만 보여 준다', () => {
     render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
     const summary = screen.getByRole('region', { name: '한눈에 보기' })
-    expect(within(summary).getByText('최종 발표 11/23(월)')).toBeInTheDocument()
+    expect(within(summary).getByText('최종 발표')).toBeInTheDocument()
     expect(within(summary).getByText('D-18')).toBeInTheDocument()
-    expect(within(summary).getByText('사이클 밖 · 11/5~11/8')).toBeInTheDocument()
+    // 이 예시에는 사이클이 없어서 다음 사이클도 없다.
+    expect(within(summary).getByText('다음 사이클')).toBeInTheDocument()
+    expect(within(summary).getByText('없음')).toBeInTheDocument()
+    expect(within(summary).getByText('하루에 끝낼 티켓')).toBeInTheDocument()
     // 끝나지 않은 티켓 4건 ÷ 발표까지 18일 = 0.2건
     expect(within(summary).getByText('0.2건')).toBeInTheDocument()
-    expect(within(summary).getByText('끝나지 않은 티켓 4건 · 발표까지 18일')).toBeInTheDocument()
+    expect(within(summary).queryByText(/발표까지 18일/)).not.toBeInTheDocument()
+  })
+
+  it('사람별 막대는 네 구간 범례와 단위가 붙은 합계를 보여 준다', () => {
+    render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
+    expect(screen.getByText('사람별 남은 티켓(끝나지 않은 티켓)')).toBeInTheDocument()
+    for (const name of ['기한 지남', '이번 주', '다음 주 이후']) {
+      expect(screen.getAllByText(name).length).toBeGreaterThan(0)
+    }
+    // 지훈: 이번 주 1(11/7), 다음 주 이후 1(11/20), 기한 없음 1
+    const jihoon = screen.getByRole('button', { name: /^지훈 3건/ })
+    expect(within(jihoon).getByText('3건')).toBeInTheDocument()
   })
 
   it('달력 날짜에 기한 티켓 수를 적고, 날짜를 누르면 그날 티켓만 보이고 다시 누르면 풀린다', async () => {
