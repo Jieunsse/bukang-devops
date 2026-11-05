@@ -122,7 +122,8 @@ describe('사이클 페이지', () => {
     const board = screen.getByRole('region', { name: '담당자별 티켓' })
     const columns = within(board).getAllByRole('region')
     expect(columns.map((c) => c.getAttribute('aria-label'))).toEqual(['지훈', '소희', '담당 없음'])
-    expect(within(columns[0]!).getByText('2')).toBeInTheDocument()
+    expect(within(columns[0]!).getByText('2건')).toBeInTheDocument()
+    expect(within(columns[2]!).getByText('1건')).toBeInTheDocument()
   })
 
   it('열 안 카드는 기한 순이고 번호, 제목, 기한, 라벨을 담아 Linear 이슈를 새 탭으로 연다', () => {
@@ -203,5 +204,28 @@ describe('사이클 페이지', () => {
     rerender(<Cycles snapshot={snapshot([issue(2, inC1)], [cycle1])} now={NOW} />)
     expect(screen.getByRole('tab', { name: /사이클 1/ })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByText('티켓 2')).toBeInTheDocument()
+  })
+
+  it('더 보기로 펼친 열은 새로 받은 목록에서 티켓이 늘어도 펼친 채로 둔다', async () => {
+    const many = (n: number) => Array.from({ length: n }, (_, i) => issue(i + 1))
+    const { rerender } = render(<Cycles snapshot={snapshot(many(7))} now={NOW} />)
+    await userEvent.click(screen.getByRole('button', { name: '2건 더 보기' }))
+    rerender(<Cycles snapshot={snapshot(many(9))} now={NOW} />)
+    expect(within(screen.getByRole('region', { name: '지훈' })).getAllByRole('link')).toHaveLength(
+      9,
+    )
+  })
+
+  it('사라졌던 탭이 다시 생겨도 보던 지금 기간 탭에 머문다', async () => {
+    const { rerender } = render(
+      <Cycles snapshot={snapshot([issue(1), issue(2, inC1)])} now={NOW} />,
+    )
+    await userEvent.click(screen.getByRole('tab', { name: /사이클 2/ }))
+    rerender(<Cycles snapshot={snapshot([issue(1), issue(2, inC1)], [cycle1])} now={NOW} />)
+    rerender(<Cycles snapshot={snapshot([issue(1), issue(2, inC1)])} now={NOW} />)
+    expect(screen.getByRole('tab', { name: /사이클 밖 기간/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   })
 })
