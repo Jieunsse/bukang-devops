@@ -46,6 +46,18 @@ describe('타임라인', () => {
     search = ''
   })
 
+  it('그림 위 도구 줄에 넘겨받은 버튼을 둔다', () => {
+    render(
+      <Timeline
+        snapshot={snapshot([started(1, '2026-11-10')])}
+        now={NOW}
+        actions={<button>필터</button>}
+      />,
+    )
+    const bar = screen.getByRole('group', { name: '타임라인 도구' })
+    expect(within(bar).getByRole('button', { name: '필터' })).toBeInTheDocument()
+  })
+
   it('줄을 누르면 Linear 이슈를 새 탭으로 연다', () => {
     show([started(1, '2026-11-10')])
     const link = screen.getByRole('link', { name: /티켓 1/ })

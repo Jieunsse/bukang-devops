@@ -325,6 +325,13 @@ describe('대시보드', () => {
     expect(screen.getByRole('region', { name: '기한 지남' })).toBeInTheDocument()
   })
 
+  it('마감 목록 위 도구 줄에 제목, 개수, 넘겨받은 버튼을 둔다', () => {
+    render(<Dashboard snapshot={snapshot(rest)} now={NOW} actions={<button>필터</button>} />)
+    const bar = screen.getByRole('group', { name: '마감 목록 도구' })
+    expect(within(bar).getByText('4건')).toBeInTheDocument()
+    expect(within(bar).getByRole('button', { name: '필터' })).toBeInTheDocument()
+  })
+
   it('주소의 필터를 적용한다', () => {
     search = 'assignee=none'
     render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
