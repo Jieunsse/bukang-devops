@@ -53,7 +53,7 @@ const snapshot = (issues: Issue[], cycles: Cycle[] = [cycle1, cycle2]): Snapshot
 })
 
 const inC1 = { cycle: { id: 'c1' } }
-const byAssignee = () => userEvent.click(screen.getByRole('button', { name: '담당자별' }))
+const byAssignee = () => userEvent.click(screen.getByRole('radio', { name: '담당자별' }))
 const state = {
   backlog: { id: 's-backlog', name: 'Backlog', type: 'backlog', position: 0 },
   todo: { id: 's-todo', name: 'Todo', type: 'unstarted', position: 1 },
@@ -264,7 +264,7 @@ describe('사이클 페이지', () => {
         now={NOW}
       />,
     )
-    expect(screen.getByRole('button', { name: '상태별' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('radio', { name: '상태별' })).toBeChecked()
     const board = screen.getByRole('region', { name: '상태별 티켓' })
     const columns = within(board).getAllByRole('region')
     expect(columns.map((c) => c.getAttribute('aria-label'))).toEqual([
@@ -283,7 +283,7 @@ describe('사이클 페이지', () => {
     render(<Cycles snapshot={snapshot([issue(1, { state: state.todo })])} now={NOW} />)
     await byAssignee()
     expect(screen.getByRole('region', { name: '지훈' })).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: '상태별' }))
+    await userEvent.click(screen.getByRole('radio', { name: '상태별' }))
     expect(screen.getByRole('region', { name: '할 일' })).toBeInTheDocument()
   })
 
