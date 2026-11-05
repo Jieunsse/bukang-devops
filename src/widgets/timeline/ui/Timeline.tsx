@@ -1,9 +1,11 @@
 'use client'
 
-import { Card, EmptyState, ToggleButton, ToggleButtonGroup } from '@heroui/react'
+import { ChevronDown, ChevronRight } from '@gravity-ui/icons'
+import { Card, Chip, EmptyState, ToggleButton, ToggleButtonGroup, Tooltip } from '@heroui/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
+import { dueLabel } from '@/entities/ticket'
 import { applyFilters, NONE, useFilters } from '@/features/filter'
 import type { Snapshot } from '@/shared/api/linear'
 import {
@@ -16,57 +18,112 @@ import {
 } from '@/shared/lib/date'
 
 import {
-  FINAL_PRESENTATION,
   groupRows,
   markOf,
-  timelineRange,
+  toneOf,
+  viewRange,
   type DatedIssue,
   type GroupBy,
+  type Range,
+  type Tone,
+  type View,
 } from '../lib/timeline'
 
-/** 하루 칸의 폭(px). 휴대폰에서는 차트 영역만 가로로 스크롤한다. */
-const DAY_PX = 28
-const LABEL_W = 'w-36 md:w-56'
+/** 하루 칸의 최소 폭(px). 카드가 넓으면 칸이 늘어나 카드 폭을 다 쓴다. */
+const MIN_DAY_PX = 24
+const LABEL_W = 'w-40 md:w-56'
+const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토']
+
+const TONE: Record<Tone, { label: string; color: string }> = {
+  progress: { label: '진행 중', color: 'bg-accent' },
+  notStarted: { label: '시작 전', color: 'bg-muted' },
+  overdue: { label: '기한 지남', color: 'bg-danger' },
+  today: { label: '오늘 마감', color: 'bg-warning' },
+}
 
 export function Timeline({ snapshot, now }: { snapshot: Snapshot; now: number }) {
   const { filters } = useFilters()
   const [groupBy, setGroupBy] = useState<GroupBy>('assignee')
+  const [view, setView] = useState<View>('4w')
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
   const today = kstDate(now)
 
   const issues = useMemo(() => applyFilters(snapshot.issues, filters), [snapshot.issues, filters])
   const dated = issues.filter((i): i is DatedIssue => i.dueDate !== null)
   const noDue = issues.length - dated.length
-  const range = timelineRange(dated, today)
+  const range = viewRange(view, today)
   const days = daysBetween(range.start, range.end) + 1
-  const x = (date: DateString) => daysBetween(range.start, date) * DAY_PX
-  const todayX = x(today)
+  const dates = Array.from({ length: days }, (_, d) => addDays(range.start, d))
+  const todayIndex = daysBetween(range.start, today)
+  const showToday = todayIndex >= 0 && todayIndex < days
 
-  // 처음 열면 오늘이 보이게 차트를 옮긴다. 오래 지난 기한이 있으면 범위가 길어지기 때문이다.
-  const chartRef = useRef<HTMLElement>(null)
+  // 휴대폰처럼 차트가 카드보다 넓으면 오늘 칸이 보이게 옮긴다.
+  const todayRef = useRef<HTMLSpanElement>(null)
   const hasChart = dated.length > 0
   useEffect(() => {
-    const chart = chartRef.current
-    if (chart) chart.scrollLeft = todayX - chart.clientWidth / 3
-  }, [hasChart]) // eslint-disable-line react-hooks/exhaustive-deps -- 처음 그릴 때만 옮긴다.
+    todayRef.current?.scrollIntoView?.({ inline: 'center', block: 'nearest' })
+  }, [view, hasChart])
+
+  const toggleGroup = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(id)) next.add(id)
+      return next
+    })
 
   return (
     <Card>
-      <Card.Header className="flex-row flex-wrap items-center justify-between gap-3">
-        <Card.Title>타임라인</Card.Title>
-        <div className="flex items-center gap-3">
-          <p className="text-sm text-muted">기한 없음 {noDue}건</p>
-          <ToggleButtonGroup
-            aria-label="줄 묶음"
-            size="sm"
-            selectionMode="single"
-            disallowEmptySelection
-            selectedKeys={[groupBy]}
-            onSelectionChange={(keys) => setGroupBy([...keys][0] as GroupBy)}
-          >
-            <ToggleButton id="assignee">담당자별</ToggleButton>
-            <ToggleButton id="milestone">마일스톤별</ToggleButton>
-          </ToggleButtonGroup>
+      <Card.Header className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Card.Title>타임라인</Card.Title>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-sm text-muted">기한 없음 {noDue}건</p>
+            <ToggleButtonGroup
+              aria-label="보기 범위"
+              size="sm"
+              selectionMode="single"
+              disallowEmptySelection
+              selectedKeys={[view]}
+              onSelectionChange={(keys) => setView([...keys][0] as View)}
+            >
+              <ToggleButton id="2w">2주</ToggleButton>
+              <ToggleButton id="4w">4주</ToggleButton>
+              <ToggleButton id="all">전체</ToggleButton>
+            </ToggleButtonGroup>
+            <ToggleButtonGroup
+              aria-label="줄 묶음"
+              size="sm"
+              selectionMode="single"
+              disallowEmptySelection
+              selectedKeys={[groupBy]}
+              onSelectionChange={(keys) => setGroupBy([...keys][0] as GroupBy)}
+            >
+              <ToggleButton id="assignee">담당자별</ToggleButton>
+              <ToggleButton id="milestone">마일스톤별</ToggleButton>
+            </ToggleButtonGroup>
+          </div>
         </div>
+        <ul aria-label="범례" className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+          <li className="flex items-center gap-1.5">
+            <span aria-hidden className={`h-2.5 w-5 rounded-full ${TONE.progress.color}`} />
+            {TONE.progress.label}
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className={`size-2.5 rotate-45 rounded-[2px] ${TONE.notStarted.color}`}
+            />
+            {TONE.notStarted.label}
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span aria-hidden className={`h-2.5 w-5 rounded-full ${TONE.overdue.color}`} />
+            {TONE.overdue.label}
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span aria-hidden className={`h-2.5 w-5 rounded-full ${TONE.today.color}`} />
+            {TONE.today.label}
+          </li>
+        </ul>
       </Card.Header>
       <Card.Content>
         {dated.length === 0 ? (
@@ -76,74 +133,60 @@ export function Timeline({ snapshot, now }: { snapshot: Snapshot; now: number })
           </EmptyState>
         ) : (
           <section
-            ref={chartRef}
             aria-label="타임라인 차트"
-            // 키보드로 막대에 갔을 때 고정된 이름 칸 밑에 가려지지 않게 한다.
-            className="scroll-pl-36 overflow-x-auto md:scroll-pl-56"
+            // 머리줄을 위에 고정하려고 차트 안에서 세로로도 스크롤한다.
+            className="max-h-[75dvh] scroll-pl-40 overflow-auto rounded-xl border border-separator md:scroll-pl-56"
           >
-            <div role="table" aria-label="티켓 일정" className="relative w-max text-sm">
-              <div role="row" className="flex h-12 items-end border-b border-separator">
-                <span
-                  role="columnheader"
-                  className={`sticky left-0 z-20 flex shrink-0 items-end self-stretch bg-surface pb-1 ${LABEL_W}`}
-                >
-                  티켓
-                </span>
-                <span
-                  role="columnheader"
-                  aria-label="일정"
-                  className="relative"
-                  style={{ width: days * DAY_PX }}
-                >
-                  {/* 월요일마다 날짜를 적는다. */}
-                  {Array.from({ length: days }, (_, d) => addDays(range.start, d))
-                    .filter((date) => weekdayOf(date) === 1)
-                    .map((date) => (
-                      <span
-                        key={date}
-                        className="absolute bottom-1 text-xs text-muted"
-                        style={{ left: x(date) }}
-                      >
-                        {formatMonthDay(date)}
-                      </span>
-                    ))}
-                </span>
+            <div
+              className="relative flex flex-col text-sm"
+              // 이름 칸(넓은 화면 224px)과 하루 칸 최소 폭을 더한 만큼은 확보한다.
+              style={{ minWidth: 224 + days * MIN_DAY_PX }}
+            >
+              <DateHeader
+                dates={dates}
+                today={today}
+                todayIndex={showToday ? todayIndex : null}
+                todayRef={todayRef}
+              />
+              <div className="relative">
+                <DayGrid dates={dates} todayIndex={showToday ? todayIndex : null} />
+                {groupRows(dated, groupBy).map((row) => {
+                  const open = !collapsed.has(row.id)
+                  return (
+                    <section key={row.id} aria-label={row.name} className="relative">
+                      <div className="flex h-9 border-b border-separator">
+                        <button
+                          type="button"
+                          aria-expanded={open}
+                          onClick={() => toggleGroup(row.id)}
+                          className={`sticky left-0 z-20 flex shrink-0 cursor-pointer items-center gap-2 bg-surface px-2 font-medium outline-none hover:bg-default focus-visible:ring-2 focus-visible:ring-accent ${LABEL_W}`}
+                        >
+                          {open ? (
+                            <ChevronDown aria-hidden className="size-3.5 shrink-0 text-muted" />
+                          ) : (
+                            <ChevronRight aria-hidden className="size-3.5 shrink-0 text-muted" />
+                          )}
+                          {groupBy === 'assignee' && row.id !== NONE && (
+                            <MemberAvatar name={row.name} avatarUrl={row.avatarUrl} />
+                          )}
+                          <span className="truncate">{row.name}</span>
+                          <Chip size="sm">{row.issues.length}</Chip>
+                        </button>
+                      </div>
+                      {open &&
+                        row.issues.map((issue) => (
+                          <IssueRow
+                            key={issue.id}
+                            issue={issue}
+                            today={today}
+                            range={range}
+                            days={days}
+                          />
+                        ))}
+                    </section>
+                  )
+                })}
               </div>
-
-              {groupRows(dated, groupBy).map((row) => (
-                <div key={row.id} role="rowgroup" aria-label={row.name}>
-                  <div role="row" className="flex h-9 items-center border-b border-separator">
-                    <span
-                      role="rowheader"
-                      className={`sticky left-0 z-20 flex shrink-0 items-center gap-2 self-stretch bg-surface font-medium ${LABEL_W}`}
-                    >
-                      {groupBy === 'assignee' && row.id !== NONE && (
-                        <MemberAvatar name={row.name} avatarUrl={row.avatarUrl} />
-                      )}
-                      <span className="truncate">{row.name}</span>
-                    </span>
-                  </div>
-                  {row.issues.map((issue) => (
-                    <IssueRow
-                      key={issue.id}
-                      issue={issue}
-                      today={today}
-                      rangeStart={range.start}
-                      x={x}
-                    />
-                  ))}
-                </div>
-              ))}
-
-              {today === FINAL_PRESENTATION ? (
-                <DayLine left={todayX} label="오늘·최종 발표" />
-              ) : (
-                <>
-                  <DayLine left={todayX} label="오늘" />
-                  {/* 최종 발표 직전 주에 이름표가 겹치지 않게 한 줄 아래에 적는다. */}
-                  <DayLine left={x(FINAL_PRESENTATION)} label="최종 발표" lower />
-                </>
-              )}
             </div>
           </section>
         )}
@@ -152,75 +195,218 @@ export function Timeline({ snapshot, now }: { snapshot: Snapshot; now: number })
   )
 }
 
-function IssueRow({
-  issue,
+/** 요일과 날짜를 하루 칸마다 적는다. 첫 칸과 월요일에는 월/일을 위에 적는다. */
+function DateHeader({
+  dates,
   today,
-  rangeStart,
-  x,
+  todayIndex,
+  todayRef,
 }: {
-  issue: DatedIssue
+  dates: DateString[]
   today: DateString
-  rangeStart: DateString
-  x: (date: DateString) => number
+  todayIndex: number | null
+  todayRef: React.RefObject<HTMLSpanElement | null>
 }) {
-  const mark = markOf(issue, rangeStart)
-  if (!mark) return null
-  const overdue = issue.dueDate < today
-  const when =
-    mark.started === null
-      ? `시작 전, 기한 ${formatMonthDay(issue.dueDate)}`
-      : mark.kind === 'dot'
-        ? `기한 ${formatMonthDay(issue.dueDate)}, ${formatMonthDay(mark.started)}에 시작`
-        : `${formatMonthDay(mark.started)}부터 ${formatMonthDay(issue.dueDate)}까지`
-  const label = `${issue.identifier} ${issue.title}: ${when}${overdue ? ', 기한 지남' : ''}`
-  const color = overdue ? 'bg-danger' : 'bg-accent'
-
+  const days = dates.length
+  // 오늘 표시와 겹치는 월/일은 적지 않는다.
+  const nearToday = (d: number) => todayIndex !== null && Math.abs(d - todayIndex) <= 2
   return (
-    <div role="row" className="flex h-8 items-center">
+    <div className="sticky top-0 z-30 flex border-b border-separator bg-surface">
       <span
-        role="rowheader"
-        className={`sticky left-0 z-20 shrink-0 self-stretch truncate bg-surface pr-2 pl-8 leading-8 ${LABEL_W}`}
+        className={`sticky left-0 z-40 flex shrink-0 items-end bg-surface px-2 pb-1 text-xs text-muted ${LABEL_W}`}
       >
-        <span className="text-muted">{issue.identifier}</span> {issue.title}
+        티켓
       </span>
-      <span role="cell" className="relative h-full flex-1">
-        <a
-          href={issue.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={label}
-          title={label}
-          className={`absolute top-1/2 -translate-y-1/2 outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 ${color} ${
-            mark.kind === 'bar' ? 'h-4 rounded-full' : 'size-3 rounded-full'
-          }`}
-          style={
-            mark.kind === 'bar'
-              ? {
-                  left: x(mark.from) + 2,
-                  width: (daysBetween(mark.from, mark.to) + 1) * DAY_PX - 4,
-                }
-              : { left: x(mark.to) + (DAY_PX - 12) / 2 }
-          }
-        />
-      </span>
+      <div className="relative flex-1">
+        <div className="relative h-6">
+          {dates.map((date, d) =>
+            (d === 0 || weekdayOf(date) === 1) && !nearToday(d) ? (
+              <span
+                key={date}
+                className="absolute bottom-0.5 pl-1 text-xs font-medium whitespace-nowrap"
+                style={{ left: `${(d / days) * 100}%` }}
+              >
+                {formatMonthDay(date)}
+              </span>
+            ) : null,
+          )}
+          {todayIndex !== null && (
+            <span
+              ref={todayRef}
+              className="absolute bottom-0.5 -translate-x-1/2 rounded-full bg-accent px-2 text-xs font-medium whitespace-nowrap text-accent-foreground"
+              style={{ left: `${((todayIndex + 0.5) / days) * 100}%` }}
+            >
+              오늘 {formatMonthDay(today)}
+            </span>
+          )}
+        </div>
+        <div className="grid" style={{ gridTemplateColumns: `repeat(${days}, minmax(0, 1fr))` }}>
+          {dates.map((date, d) => {
+            const weekday = weekdayOf(date)
+            return (
+              <span
+                key={date}
+                aria-hidden
+                className={`flex flex-col items-center py-0.5 text-[11px] leading-tight ${
+                  weekday === 0 || weekday === 6 ? 'bg-surface-secondary text-muted' : ''
+                } ${weekday === 1 ? 'border-l border-separator' : ''} ${
+                  d === todayIndex ? 'font-semibold text-accent' : ''
+                }`}
+              >
+                <span>{WEEKDAY[weekday]}</span>
+                <span className="tabular-nums">{Number(date.slice(8))}</span>
+              </span>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }
 
-/** 날짜 칸 가운데에 세로선을 긋는다. 왼쪽 이름 칸 폭만큼 밀어서 그린다. */
-function DayLine({ left, label, lower }: { left: number; label: string; lower?: boolean }) {
+/** 줄 뒤에 깔리는 칸. 주말은 연한 바탕, 주 시작(월요일)은 진한 선, 오늘은 강조색 선이다. */
+function DayGrid({ dates, todayIndex }: { dates: DateString[]; todayIndex: number | null }) {
+  const days = dates.length
   return (
-    <div className="pointer-events-none absolute inset-y-0 left-36 md:left-56">
+    <div aria-hidden className="pointer-events-none absolute inset-0 flex">
+      <span className={`shrink-0 ${LABEL_W}`} />
       <div
-        className="absolute inset-y-0 border-l border-dashed border-foreground/40"
-        style={{ left: left + DAY_PX / 2 }}
+        className="relative grid flex-1"
+        style={{ gridTemplateColumns: `repeat(${days}, minmax(0, 1fr))` }}
       >
-        <span
-          className={`absolute left-1 text-xs whitespace-nowrap text-muted ${lower ? 'top-4' : 'top-0'}`}
-        >
-          {label}
-        </span>
+        {dates.map((date) => {
+          const weekday = weekdayOf(date)
+          return (
+            <span
+              key={date}
+              className={`border-l ${weekday === 1 ? 'border-separator' : 'border-separator/30'} ${
+                weekday === 0 || weekday === 6 ? 'bg-surface-secondary' : ''
+              }`}
+            />
+          )
+        })}
+        {todayIndex !== null && (
+          <span
+            className="absolute inset-y-0 border-l-2 border-accent"
+            style={{ left: `${((todayIndex + 0.5) / days) * 100}%` }}
+          />
+        )}
       </div>
     </div>
+  )
+}
+
+function IssueRow({
+  issue,
+  today,
+  range,
+  days,
+}: {
+  issue: DatedIssue
+  today: DateString
+  range: Range
+  days: number
+}) {
+  const mark = markOf(issue, range)
+  if (!mark) return null
+  const tone = toneOf(issue, today)
+  const due = formatMonthDay(issue.dueDate)
+  const started = mark.started && formatMonthDay(mark.started)
+  const when =
+    started === null
+      ? `시작 전, 기한 ${due}`
+      : mark.kind === 'diamond'
+        ? `기한 ${due}, ${started}에 시작`
+        : `${started}부터 ${due}까지`
+  const period =
+    started === null
+      ? `시작 전 · 기한 ${due}`
+      : mark.kind === 'diamond'
+        ? `${started} 시작 · 기한 ${due}`
+        : `${started} ~ ${due}`
+  const pct = (date: DateString, offset = 0) =>
+    `${((daysBetween(range.start, date) + offset) / days) * 100}%`
+  const color = TONE[tone].color
+
+  return (
+    <Tooltip delay={300} closeDelay={0}>
+      <Tooltip.Trigger
+        // 줄 전체를 링크로 그린다. 트리거는 div용 속성을 주지만 a에도 그대로 맞는다.
+        render={({ ref, ...props }) => (
+          <a
+            {...(props as React.ComponentProps<'a'>)}
+            ref={ref as React.Ref<HTMLAnchorElement>}
+            // 툴팁 트리거가 붙이는 button 역할을 빼서 링크로 읽히게 한다.
+            role={undefined}
+            href={issue.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`${issue.identifier} ${issue.title}, ${when}, ${TONE[tone].label}`}
+            className="relative flex h-8 cursor-pointer outline-none hover:bg-default/40 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
+          />
+        )}
+      >
+        <span
+          className={`sticky left-0 z-20 shrink-0 truncate bg-surface pr-2 pl-8 leading-8 ${LABEL_W}`}
+        >
+          <span className="text-muted">{issue.identifier}</span> {issue.title}
+        </span>
+        <span className="relative flex-1">
+          {mark.outside === 'before' && (
+            <span className="absolute top-1/2 left-1 -translate-y-1/2 text-xs text-muted">
+              ← {due}
+            </span>
+          )}
+          {mark.outside === 'after' && (
+            <span className="absolute top-1/2 right-1 -translate-y-1/2 text-xs text-muted">
+              {due} →
+            </span>
+          )}
+          {mark.outside === null && (
+            <>
+              {mark.kind === 'bar' ? (
+                <span
+                  data-testid={`mark-${issue.id}`}
+                  className={`absolute top-1/2 h-4 -translate-y-1/2 rounded-full ${color}`}
+                  style={{
+                    left: pct(mark.from),
+                    width: `${((daysBetween(mark.from, mark.to) + 1) / days) * 100}%`,
+                  }}
+                />
+              ) : (
+                <span
+                  data-testid={`mark-${issue.id}`}
+                  className={`absolute top-1/2 size-3 -translate-1/2 rotate-45 rounded-[2px] ${color}`}
+                  style={{ left: pct(mark.to, 0.5) }}
+                />
+              )}
+              <span
+                // 마지막 칸에 닿으면 차트 밖으로 나가지 않게 오른쪽 끝 안쪽에 적는다.
+                className={`absolute top-1/2 -translate-y-1/2 text-xs whitespace-nowrap text-muted tabular-nums ${
+                  mark.to === range.end ? 'right-0.5 rounded bg-surface px-1' : 'pl-1.5'
+                }`}
+                style={
+                  mark.to === range.end
+                    ? undefined
+                    : { left: pct(mark.to, mark.kind === 'bar' ? 1 : 0.75) }
+                }
+              >
+                {issue.dueDate > range.end ? `${due} →` : due}
+              </span>
+            </>
+          )}
+        </span>
+      </Tooltip.Trigger>
+      <Tooltip.Content className="flex max-w-xs flex-col gap-0.5 text-xs">
+        <p className="font-medium">
+          {issue.identifier} {issue.title}
+        </p>
+        <p>
+          {issue.assignee?.name ?? '담당 없음'} · {issue.state.name}
+        </p>
+        <p>{period}</p>
+        <p>{dueLabel(issue.dueDate, today).text}</p>
+      </Tooltip.Content>
+    </Tooltip>
   )
 }
