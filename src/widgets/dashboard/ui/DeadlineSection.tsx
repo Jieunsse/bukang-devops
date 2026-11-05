@@ -3,6 +3,7 @@
 import { Button, Chip, Table } from '@heroui/react'
 import { useState } from 'react'
 
+import { MemberAvatar } from '@/entities/member'
 import { BUCKET_LABEL, dueLabel, type Bucket, type DueTone } from '@/entities/ticket'
 import type { Issue } from '@/shared/api/linear'
 
@@ -79,7 +80,14 @@ export function DeadlineSection({
                         {issue.identifier}
                       </Table.Cell>
                       <Table.Cell className="whitespace-nowrap">
-                        {issue.assignee?.name ?? <span className="text-muted">담당 없음</span>}
+                        {issue.assignee ? (
+                          <span className="flex items-center gap-2">
+                            <MemberAvatar {...issue.assignee} />
+                            {issue.assignee.name}
+                          </span>
+                        ) : (
+                          <span className="text-muted">담당 없음</span>
+                        )}
                       </Table.Cell>
                       <Table.Cell className={`whitespace-nowrap ${TONE_CLASS[due.tone]}`}>
                         {due.text}

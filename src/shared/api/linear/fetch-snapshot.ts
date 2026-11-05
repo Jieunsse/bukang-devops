@@ -21,7 +21,7 @@ const ISSUES_QUERY = `
       nodes {
         id identifier title url dueDate startedAt
         state { name type }
-        assignee { id name }
+        assignee { id name avatarUrl }
         labels(first: 20) { nodes { id name } }
         projectMilestone { id name progress }
       }

@@ -5,6 +5,7 @@ import type { Issue } from '@/shared/api/linear'
 export type AssigneeLoad = {
   id: string
   name: string
+  avatarUrl?: string | null
   overdue: number
   /** 오늘을 포함한다 */
   thisWeek: number
@@ -17,8 +18,8 @@ export type AssigneeLoad = {
 export function assigneeLoad(issues: Issue[], range: BucketRange): AssigneeLoad[] {
   const rows = new Map<string, AssigneeLoad>()
   for (const issue of issues) {
-    const { id, name } = issue.assignee ?? { id: NONE, name: '담당 없음' }
-    const row = rows.get(id) ?? { id, name, overdue: 0, thisWeek: 0, later: 0, total: 0 }
+    const { id, name, avatarUrl } = issue.assignee ?? { id: NONE, name: '담당 없음' }
+    const row = rows.get(id) ?? { id, name, avatarUrl, overdue: 0, thisWeek: 0, later: 0, total: 0 }
     const bucket = bucketOf(issue.dueDate, range)
     if (bucket === 'overdue') row.overdue++
     else if (bucket === 'today' || bucket === 'thisWeek') row.thisWeek++

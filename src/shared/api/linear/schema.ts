@@ -13,7 +13,7 @@ export const issueSchema = z.object({
   dueDate: dateString.nullable(),
   startedAt: z.iso.datetime({ offset: true }).nullable(),
   state: z.object({ name: z.string(), type: z.string() }),
-  assignee: z.object({ id: z.string(), name: z.string() }).nullable(),
+  assignee: z.object({ id: z.string(), name: z.string(), avatarUrl: z.url().nullish() }).nullable(),
   labels: z.array(z.object({ id: z.string(), name: z.string() })),
   milestone: z.object({ id: z.string(), name: z.string(), progress: z.number() }).nullable(),
 })
