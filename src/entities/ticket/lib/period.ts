@@ -1,5 +1,12 @@
 import type { Cycle } from '@/shared/api/linear'
-import { addDays, formatMonthDay, kstDate, weekdayOf, type DateString } from '@/shared/lib/date'
+import {
+  addDays,
+  daysBetween,
+  formatMonthDay,
+  kstDate,
+  weekdayOf,
+  type DateString,
+} from '@/shared/lib/date'
 
 /** 「이번 주」로 보는 기간. 지금 사이클이 없으면 오늘부터 이번 주 일요일까지다. */
 export type Period =
@@ -30,10 +37,37 @@ export function currentPeriod(now: string | number | Date, cycles: Cycle[]): Per
   return { kind: 'outside', start: today, end: end < today ? today : end }
 }
 
-/** 「사이클 1 · 11/9~11/15」, 사이클 밖이면 「사이클 밖 · 11/5~11/8」 */
-export function periodLabel(period: Period): string {
-  const range = `${formatMonthDay(period.start)}~${formatMonthDay(period.end)}`
-  if (period.kind === 'outside') return `사이클 밖 · ${range}`
-  const { number, name } = period.cycle
-  return `사이클 ${number}${name ? ` ${name}` : ''} · ${range}`
+const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토']
+const withWeekday = (date: DateString) => `${formatMonthDay(date)}(${WEEKDAY[weekdayOf(date)]})`
+const cycleName = (c: Cycle) => `사이클 ${c.number}${c.name ? ` ${c.name}` : ''}`
+
+/** 지금 사이클 밖일 때 쓰는 이름. 「사이클 밖」 대신 다음 사이클을 기준으로 말한다. */
+export function beforeCycleLabel(now: string | number | Date, cycles: Cycle[]): string {
+  const nowMs = new Date(now).getTime()
+  const next = [...cycles]
+    .filter((c) => Date.parse(c.startsAt) > nowMs)
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0]
+  return next ? `${cycleName(next)} 시작 전` : '사이클 없음'
+}
+
+export type PeriodBadge = {
+  /** 칩 글자. 사이클 안이면 「사이클 1」, 밖이면 「사이클 1 시작 전」 */
+  chip: string
+  inCycle: boolean
+  /** 「11/9(월) ~ 11/15(일)」 */
+  range: string
+  /** 사이클 안일 때만 「3일째 / 7일」 */
+  dayOf: string | null
+}
+
+/** 머리 영역에 보여 줄 지금 기간. */
+export function periodBadge(now: string | number | Date, cycles: Cycle[]): PeriodBadge {
+  const period = currentPeriod(now, cycles)
+  const range = `${withWeekday(period.start)} ~ ${withWeekday(period.end)}`
+  if (period.kind === 'outside') {
+    return { chip: beforeCycleLabel(now, cycles), inCycle: false, range, dayOf: null }
+  }
+  const day = daysBetween(period.start, kstDate(now)) + 1
+  const length = daysBetween(period.start, period.end) + 1
+  return { chip: cycleName(period.cycle), inCycle: true, range, dayOf: `${day}일째 / ${length}일` }
 }
