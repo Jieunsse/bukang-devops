@@ -1,18 +1,11 @@
 'use client'
 
-import { currentPeriod, type Period } from '@/entities/ticket'
+import { currentPeriod, periodLabel } from '@/entities/ticket'
 import { FilterButton } from '@/features/filter'
 import { RefreshButton } from '@/features/refresh'
 import { useSnapshot } from '@/shared/api/linear/query'
 import { useNow } from '@/shared/lib/use-now'
-import { formatKstDateTime, formatMonthDay } from '@/shared/lib/date'
-
-export function periodLabel(period: Period): string {
-  const range = `${formatMonthDay(period.start)}~${formatMonthDay(period.end)}`
-  if (period.kind === 'outside') return `사이클 밖 · ${range}`
-  const { number, name } = period.cycle
-  return `사이클 ${number}${name ? ` ${name}` : ''} · ${range}`
-}
+import { formatKstDateTime } from '@/shared/lib/date'
 
 export function AppHeader() {
   const { cycles, fetchedAt } = useSnapshot()
