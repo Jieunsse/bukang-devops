@@ -96,6 +96,20 @@ describe('완료·취소 목록', () => {
     expect(widthNow()).toBe(before)
   })
 
+  it('라벨 칩은 대시보드와 같이 Linear 라벨 색을 쓴다', () => {
+    render(
+      <DoneList
+        issues={[
+          done(6, '2026-11-04T16:00:00.000Z', {
+            labels: [{ id: 'l1', name: '백엔드', color: '#bec2c8' }],
+          }),
+        ]}
+      />,
+    )
+    const chip = screen.getByText('백엔드').closest('.chip') as HTMLElement
+    expect(chip.style.backgroundColor).toContain('#bec2c8')
+  })
+
   it('주소의 필터를 적용한다', () => {
     search = 'milestone=none'
     render(<DoneList issues={issues} />)
