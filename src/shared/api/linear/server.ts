@@ -34,7 +34,7 @@ export const getSnapshot: () => Promise<Snapshot> = unstable_cache(
     primed = null
     return next ?? fetchFreshSnapshot()
   },
-  ['linear-snapshot-v5'],
+  ['linear-snapshot-v6'],
   { revalidate: TEN_MINUTES, tags: [SNAPSHOT_TAG] },
 )
 

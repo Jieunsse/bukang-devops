@@ -21,6 +21,14 @@ const milestones = {
   pay: { id: 'm-pay', name: '결제·정산', progress: 0.6 },
 }
 
+// BUK 팀의 끝나지 않은 상태. 이름은 Linear에 정해 둔 그대로다.
+const STATES = {
+  backlog: { id: 's-backlog', name: 'Backlog', type: 'backlog', position: 0 },
+  todo: { id: 's-todo', name: 'Todo', type: 'unstarted', position: 1 },
+  progress: { id: 's-progress', name: 'In Progress', type: 'started', position: 2 },
+  review: { id: 's-review', name: 'In Review', type: 'started', position: 3 },
+}
+
 type Row = [
   title: string,
   dueOffset: number | null,
@@ -82,12 +90,22 @@ export function createFixtureSnapshot(now: Date = new Date()): Snapshot {
       url: `https://linear.app/bukang/issue/BUK-${number}`,
       dueDate: due === null ? null : addDays(today, due),
       startedAt: started ? kstMidnight(addDays(today, -5)) : null,
-      state: started ? { name: '진행 중', type: 'started' } : { name: '할 일', type: 'unstarted' },
+      state: started
+        ? n % 3 === 0
+          ? STATES.review
+          : STATES.progress
+        : due === null
+          ? STATES.backlog
+          : STATES.todo,
       assignee: person === null ? null : { ...people[person]! },
       labels: labelKeys.map((k) => labels[k]),
       milestone: milestone === null ? null : milestones[milestone],
       // 기한이 다음 사이클 안인 티켓은 그 사이클에 넣어, 사이클 탭과 사이클 밖 탭이 모두 채워지게 한다.
       cycle: due !== null && due >= daysToMonday && due < daysToMonday + 7 ? { id: 'c-7' } : null,
+      priority: n % 5,
+      createdAt: kstMidnight(addDays(today, -((n % 6) + 1))),
+      // 몇 개는 첫 티켓의 하위 이슈로 두어 카드의 부모 이슈 줄을 볼 수 있게 한다.
+      parent: n === 5 || n === 6 ? { identifier: 'BUK-300', title: rows[0]![0] } : null,
     }
   })
 

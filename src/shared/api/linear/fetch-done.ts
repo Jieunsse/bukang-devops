@@ -3,6 +3,7 @@ import 'server-only'
 import { addDays } from '../../lib/date'
 import { doneIssuesResponseSchema, doneRangeSchema, type DoneIssue } from './done-schema'
 import { paginate } from './fetch-snapshot'
+import { ISSUE_FIELDS } from './schema'
 
 /** 한국 날짜 하루가 시작하는 시각 */
 const kstMidnight = (date: string) => new Date(`${date}T00:00:00+09:00`).toISOString()
@@ -23,14 +24,7 @@ const doneQuery = (from: string, until: string) => `
         ]
       }
     ) {
-      nodes {
-        id identifier title url dueDate startedAt completedAt canceledAt
-        state { name type }
-        assignee { id name avatarUrl }
-        labels(first: 20) { nodes { id name color } }
-        projectMilestone { id name progress }
-        cycle { id }
-      }
+      nodes { completedAt canceledAt ${ISSUE_FIELDS} }
       pageInfo { hasNextPage endCursor }
     }
   }

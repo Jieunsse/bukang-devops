@@ -12,7 +12,13 @@ export const issueSchema = z.object({
   url: z.url(),
   dueDate: dateString.nullable(),
   startedAt: z.iso.datetime({ offset: true }).nullable(),
-  state: z.object({ name: z.string(), type: z.string() }),
+  // id와 position은 상태별 보드의 열 순서에 쓴다. 화면 모양에서는 빼도 된다.
+  state: z.object({
+    name: z.string(),
+    type: z.string(),
+    id: z.string().optional(),
+    position: z.number().optional(),
+  }),
   assignee: z.object({ id: z.string(), name: z.string(), avatarUrl: z.url().nullish() }).nullable(),
   labels: z.array(
     // 색은 Linear 라벨에 정해 둔 색 코드다. 칩 색을 Linear 화면과 맞춘다.
@@ -28,6 +34,10 @@ export const issueSchema = z.object({
   milestone: z.object({ id: z.string(), name: z.string(), progress: z.number() }).nullable(),
   // 화면 모양에서는 빼도 된다(사이클 밖과 같다). Linear 응답에서는 반드시 받는다.
   cycle: z.object({ id: z.string() }).nullish(),
+  /** 0 없음, 1 긴급, 2 높음, 3 보통, 4 낮음. 아래 세 칸도 화면 모양에서는 빼도 된다. */
+  priority: z.number().int().min(0).max(4).optional(),
+  createdAt: z.iso.datetime({ offset: true }).optional(),
+  parent: z.object({ identifier: z.string(), title: z.string() }).nullish(),
 })
 
 export const cycleSchema = z.object({
@@ -51,6 +61,17 @@ export type Cycle = z.infer<typeof cycleSchema>
 export type Snapshot = z.infer<typeof snapshotSchema>
 
 // Linear GraphQL이 돌려주는 모양
+/** 티켓마다 받는 칸. 끝나지 않은 티켓과 완료·취소 티켓이 같은 검사를 거쳐서 한곳에 둔다. */
+export const ISSUE_FIELDS = `
+  id identifier title url dueDate startedAt createdAt priority
+  state { id name type position }
+  assignee { id name avatarUrl }
+  labels(first: 20) { nodes { id name color } }
+  projectMilestone { id name progress }
+  cycle { id }
+  parent { identifier title }
+`
+
 const pageInfo = z.object({ hasNextPage: z.boolean(), endCursor: z.string().nullable() })
 
 export const rawIssueSchema = issueSchema
@@ -58,6 +79,10 @@ export const rawIssueSchema = issueSchema
   .extend({
     labels: z.object({ nodes: issueSchema.shape.labels }),
     cycle: z.object({ id: z.string() }).nullable(),
+    state: z.object({ id: z.string(), name: z.string(), type: z.string(), position: z.number() }),
+    priority: z.number().int().min(0).max(4),
+    createdAt: z.iso.datetime({ offset: true }),
+    parent: z.object({ identifier: z.string(), title: z.string() }).nullable(),
     // Linear는 마일스톤 진행률을 0~100으로 준다. 화면은 0~1로 쓴다.
     projectMilestone: z
       .object({ id: z.string(), name: z.string(), progress: z.number().min(0).max(100) })
