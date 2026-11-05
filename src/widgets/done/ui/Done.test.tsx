@@ -44,24 +44,82 @@ describe('완료·취소 목록', () => {
     search = ''
   })
 
-  it('완료와 취소 수를 보여 준다', () => {
+  it('전체 완료와 취소 수를 보여 준다', () => {
     render(<DoneList issues={issues} />)
     expect(screen.getByText('완료 1건 · 취소 1건')).toBeInTheDocument()
   })
 
-  it('한 줄에 결과, 한국 날짜로 닫힌 날, 담당 없음, 마일스톤 없음을 적고 Linear로 이어진다', () => {
+  it('사람별 묶음 머리줄에 이름과 완료·취소 수를 적고, 담당 없음은 맨 아래다', () => {
+    render(<DoneList issues={issues} />)
+    const groups = screen.getAllByRole('region')
+    expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual(['지훈', '담당 없음'])
+    expect(within(groups[0]!).getByText('완료 1 · 취소 0')).toBeInTheDocument()
+    expect(within(groups[1]!).getByText('완료 0 · 취소 1')).toBeInTheDocument()
+  })
+
+  it('한 줄에 한국 날짜로 닫힌 날을 적고, 취소만 칩으로 표시하고, Linear로 이어진다', () => {
     render(<DoneList issues={issues} />)
     const first = screen.getByRole('row', { name: /티켓 1/ })
-    expect(within(first).getByText('완료')).toBeInTheDocument()
     expect(within(first).getByText('11/5')).toBeInTheDocument()
+    expect(within(first).queryByText('완료')).not.toBeInTheDocument()
     expect(within(first).getByRole('link', { name: /티켓 1/ })).toHaveAttribute(
       'href',
       'https://linear.app/bukang/issue/BUK-1',
     )
     const second = screen.getByRole('row', { name: /티켓 2/ })
     expect(within(second).getByText('취소')).toBeInTheDocument()
-    expect(within(second).getByText('담당 없음')).toBeInTheDocument()
     expect(within(second).getByText('마일스톤 없음')).toBeInTheDocument()
+  })
+
+  it('묶음 머리줄을 누르면 접고 다시 누르면 펼친다', async () => {
+    render(<DoneList issues={issues} />)
+    const header = screen.getByRole('button', { name: /지훈/ })
+    expect(header).toHaveAttribute('aria-expanded', 'true')
+    await userEvent.click(header)
+    expect(header).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('티켓 1')).not.toBeInTheDocument()
+    await userEvent.click(header)
+    expect(screen.getByText('티켓 1')).toBeInTheDocument()
+  })
+
+  it('사람별 완료 수를 막대로 보여 준다', () => {
+    render(<DoneList issues={issues} />)
+    const card = screen.getByRole('list', { name: '사람별 완료' })
+    expect(
+      within(card)
+        .getAllByRole('listitem')
+        .map((li) => li.getAttribute('aria-label')),
+    ).toEqual(['지훈 완료 1건'])
+  })
+
+  it('완료가 하나도 없으면 사람별 완료 막대를 그리지 않는다', () => {
+    render(<DoneList issues={[issues[1]!]} />)
+    expect(screen.queryByRole('list', { name: '사람별 완료' })).not.toBeInTheDocument()
+  })
+
+  it('묶음마다 따로인 표의 마일스톤 칸 폭이 모두 같다', () => {
+    render(
+      <DoneList
+        issues={[
+          ...issues,
+          done(3, '2026-11-02T01:00:00.000Z', {
+            assignee: { id: 'u2', name: '소희' },
+            milestone: { id: 'm2', name: '아주 긴 이름의 최종 발표 마일스톤', progress: 0 },
+          }),
+        ]}
+      />,
+    )
+    const widths = screen
+      .getAllByRole('columnheader', { name: '마일스톤' })
+      .map((th) => th.style.width)
+    expect(widths).toHaveLength(3)
+    expect(new Set(widths).size).toBe(1)
+    expect(parseInt(widths[0]!)).toBeGreaterThan(0)
+  })
+
+  it('묶음 머리줄 버튼 이름에 프로필 대신 보이는 첫 글자가 섞이지 않는다', () => {
+    render(<DoneList issues={issues} />)
+    expect(screen.getByRole('button', { name: '지훈 완료 1 · 취소 0' })).toBeInTheDocument()
   })
 
   it('긴 마일스톤 이름은 말줄임 없이 줄바꿈하지 않는 칸에 두고, 제목은 잘라도 전체를 마우스 올림 설명으로 남긴다', () => {
@@ -87,7 +145,7 @@ describe('완료·취소 목록', () => {
       done(4, '2026-11-04T16:00:00.000Z', { milestone: { id: 'm9', name: long, progress: 0 } }),
       done(5, '2026-11-04T16:00:00.000Z', { assignee: { id: 'u2', name: '소희' } }),
     ]
-    const widthNow = () => screen.getByRole('columnheader', { name: '마일스톤' }).style.width
+    const widthNow = () => screen.getAllByRole('columnheader', { name: '마일스톤' })[0]!.style.width
     const { rerender } = render(<DoneList issues={list} />)
     const before = widthNow()
     search = 'assignee=u2'
