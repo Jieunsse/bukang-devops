@@ -49,7 +49,7 @@ describe('대시보드', () => {
   beforeEach(() => {
     search = ''
     replace.mockReset()
-    useDashboardStore.setState({ bucket: 'all' })
+    useDashboardStore.setState({ bucket: 'all', date: null })
   })
 
   it('숫자 요약 네 칸에 묶음별 티켓 수를 보여 준다', () => {
@@ -76,9 +76,45 @@ describe('대시보드', () => {
     expect(screen.getByText('티켓 11')).toBeInTheDocument()
   })
 
+  it('접힌 묶음은 머리줄 전체가 버튼이라 누르면 펼치고 다시 누르면 접는다', async () => {
+    render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
+    const header = screen.getByRole('button', { name: /그 뒤\s*1/ })
+    expect(header).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('button', { name: '펼치기' })).not.toBeInTheDocument()
+
+    await userEvent.click(header)
+    expect(header).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('티켓 12')).toBeInTheDocument()
+
+    await userEvent.click(header)
+    expect(screen.queryByText('티켓 12')).not.toBeInTheDocument()
+  })
+
+  it('긴 마일스톤과 라벨 이름은 한 줄로 자르고 전체 이름을 마우스 올림 설명으로 남긴다', () => {
+    const long = '충전 한도·이상 감지와 아주 긴 마일스톤 이름'
+    render(
+      <Dashboard
+        snapshot={snapshot([
+          issue(30, '2026-11-07', {
+            milestone: { id: 'm9', name: long, progress: 0 },
+            labels: [{ id: 'l9', name: '아주 긴 라벨 이름입니다' }],
+          }),
+        ])}
+        now={NOW}
+      />,
+    )
+    const row = screen.getByRole('row', { name: /티켓 30/ })
+    expect(within(row).getByTitle(long)).toHaveClass('truncate')
+    expect(within(row).getByTitle('아주 긴 라벨 이름입니다')).toHaveClass('truncate')
+  })
+
   it('숫자 칸을 누르면 마감 목록이 그 묶음만 보여 준다', async () => {
     render(<Dashboard snapshot={snapshot([...overdue, ...rest])} now={NOW} />)
-    await userEvent.click(screen.getByRole('button', { name: /기한 없음\s*1/ }))
+    await userEvent.click(
+      within(screen.getByRole('group', { name: '숫자 요약' })).getByRole('button', {
+        name: /기한 없음\s*1/,
+      }),
+    )
     expect(screen.queryByRole('region', { name: '기한 지남' })).not.toBeInTheDocument()
     expect(screen.getByText('티켓 13')).toBeInTheDocument()
   })
@@ -101,6 +137,28 @@ describe('대시보드', () => {
     const row = screen.getByRole('row', { name: /티켓 20/ })
     expect(within(row).getByText('지')).toBeInTheDocument()
     expect(within(row).getByText('지훈')).toBeInTheDocument()
+  })
+
+  it('최종 발표까지 남은 날을 크게 보여 준다', () => {
+    render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
+    expect(screen.getByText('최종 발표 11/23(월)까지')).toBeInTheDocument()
+    expect(screen.getByText('18일')).toBeInTheDocument()
+  })
+
+  it('달력 날짜에 기한 티켓 수를 적고, 날짜를 누르면 그날 티켓만 보이고 다시 누르면 풀린다', async () => {
+    render(<Dashboard snapshot={snapshot([...overdue, ...rest])} now={NOW} />)
+    const calendar = screen.getByRole('application', { name: /^기한 달력/ })
+    const day7 = within(calendar).getByRole('button', { name: /11월 7일/ })
+    expect(within(day7).getByText('1')).toBeInTheDocument()
+
+    await userEvent.click(day7)
+    expect(screen.getByRole('region', { name: '11/7 기한' })).toBeInTheDocument()
+    expect(screen.getByText('티켓 11')).toBeInTheDocument()
+    expect(screen.queryByText('티켓 1')).not.toBeInTheDocument()
+
+    await userEvent.click(within(calendar).getByRole('button', { name: /11월 7일/ }))
+    expect(screen.queryByRole('region', { name: '11/7 기한' })).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: '기한 지남' })).toBeInTheDocument()
   })
 
   it('주소의 필터를 적용한다', () => {

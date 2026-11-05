@@ -1,5 +1,6 @@
 'use client'
 
+import { ChevronDown, ChevronRight } from '@gravity-ui/icons'
 import { Button, Chip, Table } from '@heroui/react'
 import { useState } from 'react'
 
@@ -20,6 +21,7 @@ export function DeadlineSection({
   today,
   defaultOpen,
   emptyText,
+  title,
 }: {
   bucket: Bucket
   issues: Issue[]
@@ -27,24 +29,42 @@ export function DeadlineSection({
   defaultOpen: boolean
   /** 묶음 하나만 볼 때 티켓이 없으면 보여 줄 안내 */
   emptyText?: string
+  /** 묶음 이름 대신 쓸 제목(달력에서 날짜를 골랐을 때) */
+  title?: string
 }) {
   const [isOpen, setOpen] = useState(defaultOpen)
   const [shown, setShown] = useState(PAGE)
-  const label = BUCKET_LABEL[bucket]
+  const label = title ?? BUCKET_LABEL[bucket]
   const visible = issues.slice(0, shown)
   const hidden = issues.length - visible.length
+  const canToggle = !defaultOpen && issues.length > 0
 
   return (
     <section aria-label={label} className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <h3 className="font-semibold">{label}</h3>
-        <Chip size="sm">{issues.length}</Chip>
-        {!defaultOpen && issues.length > 0 && (
-          <Button size="sm" variant="ghost" className="ml-auto" onPress={() => setOpen(!isOpen)}>
-            {isOpen ? '접기' : '펼치기'}
+      {canToggle ? (
+        // 접어 둔 묶음은 머리줄 전체를 눌러 펼치고 접는다.
+        <h3>
+          <Button
+            variant="ghost"
+            aria-expanded={isOpen}
+            onPress={() => setOpen(!isOpen)}
+            className="-ml-3 gap-2 px-3 font-semibold"
+          >
+            {isOpen ? (
+              <ChevronDown aria-hidden className="size-4" />
+            ) : (
+              <ChevronRight aria-hidden className="size-4" />
+            )}
+            {label}
+            <Chip size="sm">{issues.length}</Chip>
           </Button>
-        )}
-      </div>
+        </h3>
+      ) : (
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold">{label}</h3>
+          <Chip size="sm">{issues.length}</Chip>
+        </div>
+      )}
       {emptyText && issues.length === 0 && <p className="text-sm text-muted">{emptyText}</p>}
       {isOpen && issues.length > 0 && (
         <Table>
@@ -93,14 +113,36 @@ export function DeadlineSection({
                       <Table.Cell>
                         <div className="flex flex-wrap gap-1">
                           {issue.labels.map((l) => (
-                            <Chip key={l.id} size="sm">
-                              {l.name}
+                            <Chip
+                              key={l.id}
+                              size="sm"
+                              className="max-w-full"
+                              // 라벨마다 Linear에 정해 둔 색을 옅게 깔아 종류를 나눈다.
+                              style={
+                                l.color
+                                  ? {
+                                      backgroundColor: `color-mix(in oklab, ${l.color} 22%, transparent)`,
+                                      color: `color-mix(in oklab, ${l.color} 65%, var(--foreground))`,
+                                    }
+                                  : undefined
+                              }
+                            >
+                              <span title={l.name} className="truncate">
+                                {l.name}
+                              </span>
                             </Chip>
                           ))}
                         </div>
                       </Table.Cell>
                       <Table.Cell>
-                        <Chip size="sm">{issue.milestone?.name ?? '마일스톤 없음'}</Chip>
+                        <Chip size="sm" className="max-w-full">
+                          <span
+                            title={issue.milestone?.name ?? '마일스톤 없음'}
+                            className="truncate"
+                          >
+                            {issue.milestone?.name ?? '마일스톤 없음'}
+                          </span>
+                        </Chip>
                       </Table.Cell>
                     </Table.Row>
                   )
@@ -112,11 +154,12 @@ export function DeadlineSection({
       )}
       {isOpen && hidden > 0 && (
         <Button
-          variant="tertiary"
+          variant="ghost"
           size="sm"
-          className="self-start"
+          className="-ml-3 gap-2 self-start px-3"
           onPress={() => setShown(issues.length)}
         >
+          <ChevronDown aria-hidden className="size-4" />
           {hidden}건 더 보기
         </Button>
       )}

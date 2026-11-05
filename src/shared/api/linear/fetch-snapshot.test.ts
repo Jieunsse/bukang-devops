@@ -11,7 +11,7 @@ const rawIssue = {
   startedAt: '2026-11-03T01:00:00.000Z',
   state: { name: '진행 중', type: 'started' },
   assignee: { id: 'u1', name: '지훈' },
-  labels: { nodes: [{ id: 'l1', name: 'FE' }] },
+  labels: { nodes: [{ id: 'l1', name: 'FE', color: '#4ea7fc' }] },
   // Linear는 마일스톤 진행률을 0~100으로 준다.
   projectMilestone: { id: 'm1', name: '세미 발표', progress: 40 },
 }
@@ -61,6 +61,7 @@ describe('Linear에서 한 번에 받기', () => {
     }
     expect(query).toContain('nin: ["completed", "canceled"]')
     expect(query).toContain('assignee { id name avatarUrl }')
+    expect(query).toContain('labels(first: 20) { nodes { id name color } }')
     expect(variables.teamKey).toBe('BUK')
   })
 
@@ -79,7 +80,7 @@ describe('Linear에서 한 번에 받기', () => {
           startedAt: '2026-11-03T01:00:00.000Z',
           state: { name: '진행 중', type: 'started' },
           assignee: { id: 'u1', name: '지훈' },
-          labels: [{ id: 'l1', name: 'FE' }],
+          labels: [{ id: 'l1', name: 'FE', color: '#4ea7fc' }],
           milestone: { id: 'm1', name: '세미 발표', progress: 0.4 },
         },
       ],
@@ -138,6 +139,13 @@ describe('Linear에서 한 번에 받기', () => {
       NOW,
     )
     expect(snapshot.issues.map((i) => i.assignee?.avatarUrl)).toEqual([avatar, null])
+  })
+
+  it('라벨 색이 색 코드가 아니면 응답 형식 오류로 본다', async () => {
+    const broken = { ...rawIssue, labels: { nodes: [{ id: 'l1', name: 'FE', color: 'blue' }] } }
+    await expect(fetchSnapshot('k', fakeLinear([issuesPage([broken])]), NOW)).rejects.toThrow(
+      LinearResponseError,
+    )
   })
 
   it('담당자와 마일스톤이 없는 티켓도 받는다', async () => {
