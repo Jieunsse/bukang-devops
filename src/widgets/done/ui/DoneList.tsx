@@ -17,6 +17,12 @@ export function DoneList({ issues }: { issues: DoneIssue[] }) {
   const { filters } = useFilters()
   const shown = useMemo(() => applyFilters(issues, filters), [issues, filters])
   const groups = useMemo(() => groupDone(shown), [shown])
+  // 표가 묶음마다 따로라서 칸 폭을 모든 묶음에서 같게 맞춘다.
+  // 필터 전 목록으로 재서 필터를 바꿔도 칸 폭이 흔들리지 않는다.
+  const milestoneWidth = useMemo(
+    () => milestoneColumnWidth(issues.flatMap((i) => (i.milestone ? [i.milestone.name] : []))),
+    [issues],
+  )
 
   if (shown.length === 0) {
     return (
@@ -28,11 +34,6 @@ export function DoneList({ issues }: { issues: DoneIssue[] }) {
   }
 
   const canceled = groups.reduce((sum, g) => sum + g.canceled, 0)
-  // 표가 묶음마다 따로라서, 마일스톤 칸 폭을 모든 묶음에서 같게 맞춘다.
-  const milestoneWidth = milestoneColumnWidth(
-    shown.flatMap((i) => (i.milestone ? [i.milestone.name] : [])),
-  )
-
   return (
     <div className="flex flex-col gap-6">
       <p className="text-sm text-muted">

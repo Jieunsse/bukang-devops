@@ -5,7 +5,7 @@ import { Button, Chip, Table } from '@heroui/react'
 import { useState } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
-import { BUCKET_LABEL, dueLabel, type Bucket, type DueTone } from '@/entities/ticket'
+import { BUCKET_LABEL, dueLabel, TITLE_MIN_PX, type Bucket, type DueTone } from '@/entities/ticket'
 import type { Issue } from '@/shared/api/linear'
 
 const PAGE = 5
@@ -25,6 +25,7 @@ export function DeadlineSection({
   collapsible,
   emptyText,
   title,
+  milestoneWidth,
 }: {
   bucket: Bucket
   issues: Issue[]
@@ -36,6 +37,8 @@ export function DeadlineSection({
   emptyText?: string
   /** 묶음 이름 대신 쓸 제목(달력에서 날짜를 골랐을 때) */
   title?: string
+  /** 묶음 표끼리 칸을 맞추려고 바깥에서 같은 폭(px)을 넘긴다. */
+  milestoneWidth: number
 }) {
   const [isOpen, setOpen] = useState(defaultOpen)
   const [shown, setShown] = useState(PAGE)
@@ -82,14 +85,19 @@ export function DeadlineSection({
       {isOpen && issues.length > 0 && (
         <Table>
           <Table.ScrollContainer>
-            <Table.Content aria-label={`${label} 티켓`} className="min-w-[800px] table-fixed">
+            <Table.Content
+              aria-label={`${label} 티켓`}
+              className="table-fixed"
+              // 고정 칸(번호·담당자·기한·라벨 448px)과 마일스톤 칸을 빼고도 제목 칸이 남게 넓힌다.
+              style={{ minWidth: Math.max(800, 448 + milestoneWidth + TITLE_MIN_PX) }}
+            >
               <Table.Header>
                 <Table.Column isRowHeader>제목</Table.Column>
                 <Table.Column className="w-24">번호</Table.Column>
                 <Table.Column className="w-24">담당자</Table.Column>
                 <Table.Column className="w-28">기한</Table.Column>
                 <Table.Column className="w-36">라벨</Table.Column>
-                <Table.Column className="w-32">마일스톤</Table.Column>
+                <Table.Column style={{ width: milestoneWidth }}>마일스톤</Table.Column>
               </Table.Header>
               <Table.Body>
                 {visible.map((issue) => {
@@ -102,7 +110,8 @@ export function DeadlineSection({
                           target="_blank"
                           rel="noreferrer"
                           // 글자 링크를 줄 전체로 넓혀, 어느 칸을 눌러도 Linear 이슈로 간다.
-                          className="font-medium after:absolute after:inset-0 hover:underline"
+                          title={issue.title}
+                          className="block truncate font-medium after:absolute after:inset-0 hover:underline"
                         >
                           {issue.title}
                         </a>
@@ -147,14 +156,10 @@ export function DeadlineSection({
                           ))}
                         </div>
                       </Table.Cell>
-                      <Table.Cell>
-                        <Chip size="sm" className={TAG_CHIP}>
-                          <span
-                            title={issue.milestone?.name ?? '마일스톤 없음'}
-                            className="truncate"
-                          >
-                            {issue.milestone?.name ?? '마일스톤 없음'}
-                          </span>
+                      {/* 마일스톤은 자르면 어느 것인지 몰라서, 칸을 가장 긴 이름만큼 잡고 한 줄로 보여 준다. */}
+                      <Table.Cell className="whitespace-nowrap">
+                        <Chip size="sm" className="h-6 px-2.5">
+                          {issue.milestone?.name ?? '마일스톤 없음'}
                         </Chip>
                       </Table.Cell>
                     </Table.Row>

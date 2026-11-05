@@ -122,6 +122,38 @@ describe('완료·취소 목록', () => {
     expect(screen.getByRole('button', { name: '지훈 완료 1 · 취소 0' })).toBeInTheDocument()
   })
 
+  it('긴 마일스톤 이름은 말줄임 없이 줄바꿈하지 않는 칸에 두고, 제목은 잘라도 전체를 마우스 올림 설명으로 남긴다', () => {
+    const long = '메시지 전달 안정화와 아주 긴 마일스톤 이름'
+    render(
+      <DoneList
+        issues={[
+          done(3, '2026-11-04T16:00:00.000Z', { milestone: { id: 'm9', name: long, progress: 0 } }),
+        ]}
+      />,
+    )
+    const row = screen.getByRole('row', { name: /티켓 3/ })
+    const milestone = within(row).getByText(long)
+    expect(milestone.closest('td')).toHaveClass('whitespace-nowrap')
+    expect(milestone).not.toHaveClass('truncate')
+    expect(within(row).getByRole('link', { name: '티켓 3' })).toHaveAttribute('title', '티켓 3')
+    expect(within(row).getByRole('link', { name: '티켓 3' })).toHaveClass('truncate')
+  })
+
+  it('필터를 바꿔도 마일스톤 칸 폭은 받은 목록 전체의 가장 긴 이름에 맞춘 그대로다', () => {
+    const long = '메시지 전달 안정화와 아주 긴 마일스톤 이름'
+    const list = [
+      done(4, '2026-11-04T16:00:00.000Z', { milestone: { id: 'm9', name: long, progress: 0 } }),
+      done(5, '2026-11-04T16:00:00.000Z', { assignee: { id: 'u2', name: '소희' } }),
+    ]
+    const widthNow = () => screen.getAllByRole('columnheader', { name: '마일스톤' })[0]!.style.width
+    const { rerender } = render(<DoneList issues={list} />)
+    const before = widthNow()
+    search = 'assignee=u2'
+    rerender(<DoneList issues={[...list]} />)
+    expect(screen.queryByText('티켓 4')).not.toBeInTheDocument()
+    expect(widthNow()).toBe(before)
+  })
+
   it('주소의 필터를 적용한다', () => {
     search = 'milestone=none'
     render(<DoneList issues={issues} />)

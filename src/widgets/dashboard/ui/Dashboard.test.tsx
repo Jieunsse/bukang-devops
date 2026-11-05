@@ -112,7 +112,9 @@ describe('대시보드', () => {
     const section = screen.getByRole('region', { name: '기한 지남' })
     expect(within(section).queryByRole('button')).not.toBeInTheDocument()
     expect(within(section).getByText('0')).toBeInTheDocument()
-    expect(within(section).getByRole('heading', { level: 3, name: /기한 지남/ })).toBeInTheDocument()
+    expect(
+      within(section).getByRole('heading', { level: 3, name: /기한 지남/ }),
+    ).toBeInTheDocument()
   })
 
   it('키보드 Enter와 Space로 묶음을 접고 펼친다', async () => {
@@ -180,7 +182,7 @@ describe('대시보드', () => {
     expect(screen.getByText('티켓 10')).toBeInTheDocument()
   })
 
-  it('긴 마일스톤과 라벨 이름은 한 줄로 자르고 전체 이름을 마우스 올림 설명으로 남긴다', () => {
+  it('긴 마일스톤 이름은 말줄임 없이 줄바꿈하지 않는 칸에 두고, 라벨과 제목은 잘라도 전체를 마우스 올림 설명으로 남긴다', () => {
     const long = '충전 한도·이상 감지와 아주 긴 마일스톤 이름'
     render(
       <Dashboard
@@ -194,8 +196,49 @@ describe('대시보드', () => {
       />,
     )
     const row = screen.getByRole('row', { name: /티켓 30/ })
-    expect(within(row).getByTitle(long)).toHaveClass('truncate')
+    const milestone = within(row).getByText(long)
+    expect(milestone).not.toHaveClass('truncate')
+    expect(milestone.closest('td')).toHaveClass('whitespace-nowrap')
     expect(within(row).getByTitle('아주 긴 라벨 이름입니다')).toHaveClass('truncate')
+    expect(within(row).getByRole('link', { name: '티켓 30' })).toHaveAttribute('title', '티켓 30')
+    expect(within(row).getByRole('link', { name: '티켓 30' })).toHaveClass('truncate')
+  })
+
+  it('묶음마다 표가 달라도 마일스톤 칸 폭을 가장 긴 이름에 맞춰 똑같이 둔다', () => {
+    const long = '충전 한도·이상 감지와 아주 긴 마일스톤 이름'
+    render(
+      <Dashboard
+        snapshot={snapshot([
+          issue(31, '2026-11-03', { milestone: { id: 'm9', name: long, progress: 0 } }),
+          issue(32, '2026-11-05'),
+        ])}
+        now={NOW}
+      />,
+    )
+    const widthOf = (name: string) =>
+      within(screen.getByRole('region', { name })).getByRole('columnheader', { name: '마일스톤' })
+        .style.width
+    expect(widthOf('기한 지남')).not.toBe('')
+    expect(widthOf('오늘')).toBe(widthOf('기한 지남'))
+  })
+
+  it('마일스톤 칸이 넓어져도 제목 칸에 240px이 남도록 표를 넓힌다', () => {
+    const long = '아주 긴 마일스톤 이름'.repeat(4)
+    render(
+      <Dashboard
+        snapshot={snapshot([
+          issue(33, '2026-11-03', { milestone: { id: 'm9', name: long, progress: 0 } }),
+        ])}
+        now={NOW}
+      />,
+    )
+    const section = screen.getByRole('region', { name: '기한 지남' })
+    const milestone = parseFloat(
+      within(section).getByRole('columnheader', { name: '마일스톤' }).style.width,
+    )
+    // 번호 96 + 담당자 96 + 기한 112 + 라벨 144 = 448
+    const table = within(section).getByRole('grid')
+    expect(parseFloat(table.style.minWidth)).toBeGreaterThanOrEqual(448 + milestone + 240)
   })
 
   it('숫자 칸을 누르면 마감 목록이 그 묶음만 보여 준다', async () => {
