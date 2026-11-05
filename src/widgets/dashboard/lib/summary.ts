@@ -9,9 +9,27 @@ export type AssigneeLoad = {
   overdue: number
   /** 오늘을 포함한다 */
   thisWeek: number
-  /** 기한 없음을 포함한다 */
+  /** 이번 주(사이클 또는 사이클 밖 기간) 다음부터 */
   later: number
+  noDue: number
   total: number
+}
+
+/** 막대 구간 순서와 이름. 색은 화면이 정한다. */
+export const SEGMENT_LABEL = {
+  overdue: '기한 지남',
+  thisWeek: '이번 주',
+  later: '다음 주 이후',
+  noDue: '기한 없음',
+} as const
+export type Segment = keyof typeof SEGMENT_LABEL
+
+/** 0이 아닌 구간만 「이번 주 6 · 다음 주 이후 9」처럼 이어 쓴다. */
+export function segmentText(row: AssigneeLoad): string {
+  return (Object.keys(SEGMENT_LABEL) as Segment[])
+    .filter((key) => row[key] > 0)
+    .map((key) => `${SEGMENT_LABEL[key]} ${row[key]}`)
+    .join(' · ')
 }
 
 /** 담당자마다 남은 티켓을 세고, 많은 사람부터 둔다. 담당 없음은 맨 아래다. */
@@ -19,11 +37,21 @@ export function assigneeLoad(issues: Issue[], range: BucketRange): AssigneeLoad[
   const rows = new Map<string, AssigneeLoad>()
   for (const issue of issues) {
     const { id, name, avatarUrl } = issue.assignee ?? { id: NONE, name: '담당 없음' }
-    const row = rows.get(id) ?? { id, name, avatarUrl, overdue: 0, thisWeek: 0, later: 0, total: 0 }
+    const row = rows.get(id) ?? {
+      id,
+      name,
+      avatarUrl,
+      overdue: 0,
+      thisWeek: 0,
+      later: 0,
+      noDue: 0,
+      total: 0,
+    }
     const bucket = bucketOf(issue.dueDate, range)
     if (bucket === 'overdue') row.overdue++
     else if (bucket === 'today' || bucket === 'thisWeek') row.thisWeek++
-    else row.later++
+    else if (bucket === 'later') row.later++
+    else row.noDue++
     row.total++
     rows.set(id, row)
   }

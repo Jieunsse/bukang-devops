@@ -289,7 +289,8 @@ describe('대시보드', () => {
     const summary = screen.getByRole('region', { name: '한눈에 보기' })
     expect(within(summary).getByText('최종 발표')).toBeInTheDocument()
     expect(within(summary).getByText('D-18')).toBeInTheDocument()
-    expect(within(summary).getByText('다음 사이클까지')).toBeInTheDocument()
+    // 이 예시에는 사이클이 없어서 다음 사이클도 없다.
+    expect(within(summary).getByText('다음 사이클')).toBeInTheDocument()
     expect(within(summary).getByText('없음')).toBeInTheDocument()
     expect(within(summary).getByText('하루에 끝낼 티켓')).toBeInTheDocument()
     // 끝나지 않은 티켓 4건 ÷ 발표까지 18일 = 0.2건
