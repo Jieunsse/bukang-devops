@@ -241,6 +241,18 @@ describe('대시보드', () => {
     expect(parseFloat(table.style.minWidth)).toBeGreaterThanOrEqual(448 + milestone + 240)
   })
 
+  it('고른 숫자 칸을 다시 누르면 모든 묶음을 다시 보여 준다', async () => {
+    render(<Dashboard snapshot={snapshot([...overdue, ...rest])} now={NOW} />)
+    const noDue = within(screen.getByRole('group', { name: '숫자 요약' })).getByRole('button', {
+      name: /기한 없음\s*1/,
+    })
+    await userEvent.click(noDue)
+    expect(screen.queryByRole('region', { name: '기한 지남' })).not.toBeInTheDocument()
+    await userEvent.click(noDue)
+    expect(noDue).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('region', { name: '기한 지남' })).toBeInTheDocument()
+  })
+
   it('숫자 칸을 누르면 마감 목록이 그 묶음만 보여 준다', async () => {
     render(<Dashboard snapshot={snapshot([...overdue, ...rest])} now={NOW} />)
     await userEvent.click(
