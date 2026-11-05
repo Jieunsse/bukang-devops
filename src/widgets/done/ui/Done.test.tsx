@@ -107,7 +107,7 @@ describe('완료·취소 목록', () => {
       />,
     )
     const chip = screen.getByText('백엔드').closest('.chip') as HTMLElement
-    expect(chip.style.backgroundColor).toContain('#bec2c8')
+    expect(chip.style.backgroundColor).toMatch(/#bec2c8|rgb\(190, 194, 200\)/)
   })
 
   it('주소의 필터를 적용한다', () => {

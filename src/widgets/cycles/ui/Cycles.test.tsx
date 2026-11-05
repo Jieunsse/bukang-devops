@@ -267,6 +267,6 @@ describe('사이클 페이지', () => {
       />,
     )
     const chip = screen.getByText('프론트').closest('.chip') as HTMLElement
-    expect(chip.style.backgroundColor).toContain('#4ea7fc')
+    expect(chip.style.backgroundColor).toMatch(/#4ea7fc|rgb\(78, 167, 252\)/)
   })
 })

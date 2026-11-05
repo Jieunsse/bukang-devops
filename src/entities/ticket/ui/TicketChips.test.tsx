@@ -7,8 +7,8 @@ describe('라벨 칩', () => {
   it('Linear 라벨 색을 옅게 깔고 글자도 그 색으로 맞춘다', () => {
     render(<LabelChip label={{ id: 'l1', name: '프론트', color: '#4ea7fc' }} />)
     const chip = screen.getByText('프론트').closest('[data-slot="chip"], .chip') as HTMLElement
-    expect(chip.style.backgroundColor).toContain('#4ea7fc')
-    expect(chip.style.color).toContain('#4ea7fc')
+    expect(chip.style.backgroundColor).toMatch(/#4ea7fc|rgb\(78, 167, 252\)/)
+    expect(chip.style.color).toMatch(/#4ea7fc|rgb\(78, 167, 252\)/)
   })
 
   it('색이 없는 라벨은 기본 회색 칩이다', () => {
