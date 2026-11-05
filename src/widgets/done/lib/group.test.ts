@@ -78,4 +78,16 @@ describe('완료·취소 티켓을 사람별로 묶기', () => {
     ])
     expect(group!.issues.map((i) => i.identifier)).toEqual(['BUK-2', 'BUK-3', 'BUK-1'])
   })
+
+  it('완료·취소가 0건인 팀원도 0건 묶음으로 보여 주고 맨 아래 담당 없음 위에 둔다', () => {
+    const groups = groupDone(
+      [issue(1, '2026-11-04T01:00:00.000Z', sohee), issue(2, '2026-11-04T01:00:00.000Z', null)],
+      [jihoon, sohee],
+    )
+    expect(groups.map((g) => [g.name, g.completed + g.canceled])).toEqual([
+      ['소희', 1],
+      ['지훈', 0],
+      ['담당 없음', 1],
+    ])
+  })
 })

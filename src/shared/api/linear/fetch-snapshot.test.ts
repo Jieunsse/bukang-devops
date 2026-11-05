@@ -46,10 +46,28 @@ const issuesPage = (nodes: unknown[], hasNextPage = false, endCursor: string | n
 const cyclesPage = (nodes: unknown[], hasNextPage = false, endCursor: string | null = null) =>
   json({ data: { cycles: { nodes, pageInfo: { hasNextPage, endCursor } } } })
 
-/** 요청 본문의 query로 이슈 요청과 사이클 요청을 나눠 응답한다. */
-const fakeLinear = (issuePages: Response[], cyclePages: Response[] = [cyclesPage([rawCycle])]) =>
+const rawMembers = [
+  { id: 'f6ad6c3a-2e01-4c69-b3d6-71966925bd01', name: '지은세', avatarUrl: null, active: true },
+  { id: 'u-left', name: '나간 사람', avatarUrl: null, active: false },
+]
+const membersPage = (nodes: unknown[], hasNextPage = false, endCursor: string | null = null) =>
+  json({
+    data: { teams: { nodes: [{ members: { nodes, pageInfo: { hasNextPage, endCursor } } }] } },
+  })
+
+/** 요청 본문의 query로 이슈 요청, 사이클 요청, 팀 멤버 요청을 나눠 응답한다. */
+const fakeLinear = (
+  issuePages: Response[],
+  cyclePages: Response[] = [cyclesPage([rawCycle])],
+  memberPages: Response[] = [membersPage(rawMembers)],
+) =>
   vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body)) as { query: string }
+    if (body.query.includes('members(')) {
+      const page = memberPages.shift()
+      if (!page) throw new Error('팀 멤버를 예상보다 많이 불렀다')
+      return page
+    }
     if (body.query.includes('cycles(')) {
       const page = cyclePages.shift()
       if (!page) throw new Error('사이클을 예상보다 많이 불렀다')
@@ -83,6 +101,20 @@ describe('Linear에서 한 번에 받기', () => {
     expect(query).toContain('parent { identifier title }')
     expect(query).toContain('labels(first: 20) { nodes { id name color } }')
     expect(variables.teamKey).toBe('BUK')
+  })
+
+  it('BUK 팀 멤버를 받아 비활성 멤버는 빼고 실명 규칙으로 이름을 바꾼다', async () => {
+    const snapshot = await fetchSnapshot('k', fakeLinear([issuesPage([rawIssue])]), NOW)
+    expect(snapshot.members).toEqual([
+      { id: 'f6ad6c3a-2e01-4c69-b3d6-71966925bd01', name: '옥지훈', avatarUrl: null },
+    ])
+  })
+
+  it('팀 멤버 응답 형식이 다르면 오류를 낸다', async () => {
+    const broken = membersPage([{ id: 'u1', name: '지훈', active: 'yes' }])
+    await expect(
+      fetchSnapshot('k', fakeLinear([issuesPage([rawIssue])], undefined, [broken]), NOW),
+    ).rejects.toThrow(LinearResponseError)
   })
 
   it('부모 이슈가 없는 티켓은 부모를 비워 둔다', async () => {
@@ -152,6 +184,7 @@ describe('Linear에서 한 번에 받기', () => {
     expect(snapshot).toEqual({
       fetchedAt: '2026-11-05T03:00:00.000Z',
       cycles: [cycle],
+      members: [{ id: 'f6ad6c3a-2e01-4c69-b3d6-71966925bd01', name: '옥지훈', avatarUrl: null }],
       issues: [
         {
           id: 'i1',

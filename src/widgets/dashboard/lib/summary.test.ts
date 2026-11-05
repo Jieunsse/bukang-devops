@@ -59,6 +59,26 @@ describe('사람별 남은 티켓', () => {
   it('티켓이 없으면 빈 목록이다', () => {
     expect(assigneeLoad([], range)).toEqual([])
   })
+
+  it('남은 티켓이 0건인 팀원도 0건 줄로 보여 주고, 0건은 티켓 있는 사람 아래에 둔다', () => {
+    const members = [jihoon, sohee, { id: 'u3', name: '민수' }]
+    const rows = assigneeLoad([{ ...base, assignee: sohee, dueDate: '2026-11-07' }], range, members)
+    expect(rows.map((r) => [r.name, r.total])).toEqual([
+      ['소희', 1],
+      ['민수', 0],
+      ['지훈', 0],
+    ])
+  })
+
+  it('담당 없음은 남은 티켓이 있을 때만 맨 아래에 둔다', () => {
+    const members = [jihoon]
+    expect(assigneeLoad([], range, members).map((r) => r.name)).toEqual(['지훈'])
+    // 담당 없음은 티켓이 있어도 0건 팀원보다 아래, 맨 끝이다.
+    expect(assigneeLoad([{ ...base }], range, members).map((r) => r.name)).toEqual([
+      '지훈',
+      '담당 없음',
+    ])
+  })
 })
 
 describe('막대 구간 글자', () => {
