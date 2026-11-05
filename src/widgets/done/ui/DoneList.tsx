@@ -4,7 +4,7 @@ import { Chip, EmptyState, Table } from '@heroui/react'
 import { useMemo } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
-import { milestoneColumnWidth } from '@/entities/ticket'
+import { milestoneColumnWidth, TITLE_MIN_PX } from '@/entities/ticket'
 import { applyFilters, useFilters } from '@/features/filter'
 import type { DoneIssue } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
@@ -14,8 +14,10 @@ export function DoneList({ issues }: { issues: DoneIssue[] }) {
   const { filters } = useFilters()
   const shown = useMemo(() => applyFilters(issues, filters), [issues, filters])
   const canceled = shown.filter((i) => i.state.type === 'canceled').length
-  const milestoneWidth = milestoneColumnWidth(
-    shown.flatMap((i) => (i.milestone ? [i.milestone.name] : [])),
+  // 필터 전 목록으로 재서 필터를 바꿔도 칸 폭이 흔들리지 않는다.
+  const milestoneWidth = useMemo(
+    () => milestoneColumnWidth(issues.flatMap((i) => (i.milestone ? [i.milestone.name] : []))),
+    [issues],
   )
 
   if (shown.length === 0) {
@@ -34,7 +36,12 @@ export function DoneList({ issues }: { issues: DoneIssue[] }) {
       </p>
       <Table>
         <Table.ScrollContainer>
-          <Table.Content aria-label="완료·취소 티켓" className="min-w-[800px] table-fixed">
+          <Table.Content
+            aria-label="완료·취소 티켓"
+            className="table-fixed"
+            // 고정 칸(번호·담당자·결과·닫은 날·라벨 496px)과 마일스톤 칸을 빼고도 제목 칸이 남게 넓힌다.
+            style={{ minWidth: Math.max(800, 496 + milestoneWidth + TITLE_MIN_PX) }}
+          >
             <Table.Header>
               <Table.Column isRowHeader>제목</Table.Column>
               <Table.Column className="w-24">번호</Table.Column>

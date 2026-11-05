@@ -5,7 +5,7 @@ import { Button, Chip, Table } from '@heroui/react'
 import { useState } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
-import { BUCKET_LABEL, dueLabel, type Bucket, type DueTone } from '@/entities/ticket'
+import { BUCKET_LABEL, dueLabel, TITLE_MIN_PX, type Bucket, type DueTone } from '@/entities/ticket'
 import type { Issue } from '@/shared/api/linear'
 
 const PAGE = 5
@@ -74,7 +74,12 @@ export function DeadlineSection({
       {isOpen && issues.length > 0 && (
         <Table>
           <Table.ScrollContainer>
-            <Table.Content aria-label={`${label} 티켓`} className="min-w-[800px] table-fixed">
+            <Table.Content
+              aria-label={`${label} 티켓`}
+              className="table-fixed"
+              // 고정 칸(번호·담당자·기한·라벨 448px)과 마일스톤 칸을 빼고도 제목 칸이 남게 넓힌다.
+              style={{ minWidth: Math.max(800, 448 + milestoneWidth + TITLE_MIN_PX) }}
+            >
               <Table.Header>
                 <Table.Column isRowHeader>제목</Table.Column>
                 <Table.Column className="w-24">번호</Table.Column>
