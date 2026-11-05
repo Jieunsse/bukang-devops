@@ -67,7 +67,8 @@ export function DeadlineSection({
       ) : collapsible ? (
         // 0건이라 펼칠 게 없다. 버튼 대신 같은 자리·같은 크기의 글자로 두고 화살표만 흐리게 한다.
         <h3 className="-ml-3 flex h-10 items-center gap-2 px-3 text-sm font-semibold md:h-9">
-          <ChevronRight aria-hidden className="size-4 opacity-30" />
+          {/* 버튼 안 아이콘처럼 좌우 여백을 줄여 다른 머리줄과 글자 위치를 맞춘다. */}
+          <ChevronRight aria-hidden className="-mx-0.5 size-4 opacity-30" />
           {label}
           <Chip size="sm">{issues.length}</Chip>
         </h3>
