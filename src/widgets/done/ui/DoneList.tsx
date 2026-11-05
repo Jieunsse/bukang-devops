@@ -1,10 +1,10 @@
 'use client'
 
-import { Chip, EmptyState, Table } from '@heroui/react'
+import { EmptyState, Table } from '@heroui/react'
 import { useMemo } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
-import { milestoneColumnWidth, TITLE_MIN_PX } from '@/entities/ticket'
+import { LabelChip, MilestoneChip, milestoneColumnWidth, TITLE_MIN_PX } from '@/entities/ticket'
 import { applyFilters, useFilters } from '@/features/filter'
 import type { DoneIssue } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
@@ -88,15 +88,13 @@ export function DoneList({ issues }: { issues: DoneIssue[] }) {
                   <Table.Cell>
                     <div className="flex flex-wrap gap-1">
                       {issue.labels.map((l) => (
-                        <Chip key={l.id} size="sm">
-                          {l.name}
-                        </Chip>
+                        <LabelChip key={l.id} label={l} />
                       ))}
                     </div>
                   </Table.Cell>
                   {/* 마일스톤은 자르면 어느 것인지 몰라서, 칸을 가장 긴 이름만큼 잡고 한 줄로 보여 준다. */}
                   <Table.Cell className="whitespace-nowrap">
-                    <Chip size="sm">{issue.milestone?.name ?? '마일스톤 없음'}</Chip>
+                    <MilestoneChip name={issue.milestone?.name ?? null} />
                   </Table.Cell>
                 </Table.Row>
               ))}

@@ -1,4 +1,5 @@
 export { CollapseButton } from './CollapseButton'
+export { CountChip } from './CountChip'
 export { ComingSoon } from './ComingSoon'
 export { ErrorScreen } from './ErrorScreen'
 export { ACCENT, LogoMark } from './LogoMark'
