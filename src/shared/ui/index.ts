@@ -1,3 +1,4 @@
+export { CollapseButton } from './CollapseButton'
 export { ComingSoon } from './ComingSoon'
 export { ErrorScreen } from './ErrorScreen'
-export { CollapseButton } from './CollapseButton'
+export { ACCENT, LogoMark } from './LogoMark'
