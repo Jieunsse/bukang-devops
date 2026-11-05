@@ -1,0 +1,81 @@
+import { describe, expect, it } from 'vitest'
+
+import type { Issue } from '@/shared/api/linear'
+
+import { assigneeLoad, milestoneProgress } from './summary'
+
+const base: Issue = {
+  id: 'x',
+  identifier: 'BUK-1',
+  title: 't',
+  url: 'https://linear.app/x/issue/BUK-1',
+  dueDate: null,
+  startedAt: null,
+  state: { name: '할 일', type: 'unstarted' },
+  assignee: null,
+  labels: [],
+  milestone: null,
+}
+const jihoon = { id: 'u1', name: '지훈' }
+const sohee = { id: 'u2', name: '소희' }
+const range = { today: '2026-11-05', end: '2026-11-08' }
+const semi = { id: 'm1', name: '세미', progress: 0.8 }
+const final = { id: 'm2', name: '최종', progress: 0.3 }
+
+describe('사람별 남은 티켓', () => {
+  it('지남, 이번 주(오늘 포함), 그 뒤(기한 없음 포함)로 나누고 많은 사람부터 둔다', () => {
+    const rows = assigneeLoad(
+      [
+        { ...base, assignee: jihoon, dueDate: '2026-11-01' },
+        { ...base, assignee: sohee, dueDate: '2026-11-05' },
+        { ...base, assignee: sohee, dueDate: '2026-11-07' },
+        { ...base, assignee: sohee, dueDate: null },
+        { ...base, assignee: jihoon, dueDate: '2026-11-20' },
+        { ...base, assignee: sohee, dueDate: '2026-11-03' },
+      ],
+      range,
+    )
+    expect(rows).toEqual([
+      { id: 'u2', name: '소희', overdue: 1, thisWeek: 2, later: 1, total: 4 },
+      { id: 'u1', name: '지훈', overdue: 1, thisWeek: 0, later: 1, total: 2 },
+    ])
+  })
+
+  it('담당자 없는 티켓은 맨 아래 담당 없음 줄로 모은다', () => {
+    const rows = assigneeLoad(
+      [
+        { ...base, dueDate: '2026-11-01' },
+        { ...base, dueDate: '2026-11-01' },
+        { ...base, assignee: jihoon },
+      ],
+      range,
+    )
+    expect(rows.map((r) => [r.id, r.name, r.total])).toEqual([
+      ['u1', '지훈', 1],
+      ['none', '담당 없음', 2],
+    ])
+  })
+
+  it('티켓이 없으면 빈 목록이다', () => {
+    expect(assigneeLoad([], range)).toEqual([])
+  })
+})
+
+describe('마일스톤 진행률', () => {
+  it('진행률이 낮은 순으로 남은 티켓 수와 함께 두고 마일스톤 없음 수를 따로 센다', () => {
+    expect(
+      milestoneProgress([
+        { ...base, milestone: semi },
+        { ...base, milestone: final },
+        { ...base, milestone: final },
+        { ...base },
+      ]),
+    ).toEqual({
+      milestones: [
+        { id: 'm2', name: '최종', progress: 0.3, remaining: 2 },
+        { id: 'm1', name: '세미', progress: 0.8, remaining: 1 },
+      ],
+      noMilestone: 1,
+    })
+  })
+})
