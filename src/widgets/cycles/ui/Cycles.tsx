@@ -26,8 +26,8 @@ const TONE_CLASS: Record<DueTone, string> = {
 export function Cycles({ snapshot, now }: { snapshot: Snapshot; now: number }) {
   const { filters } = useFilters()
   const tabs = useMemo(
-    () => cycleTabs(snapshot.issues, snapshot.cycles, now),
-    [snapshot.issues, snapshot.cycles, now],
+    () => cycleTabs(snapshot.issues, snapshot.cycles),
+    [snapshot.issues, snapshot.cycles],
   )
   const fallback = defaultTabKey(tabs, snapshot.cycles, now)
   const [picked, setPicked] = useState<string | null>(null)
@@ -79,7 +79,6 @@ function CycleSummary({ tab }: { tab: CycleTab }) {
         {tab.range && <p className="text-sm text-muted">{tab.range}</p>}
         {progress ? (
           <ProgressBar
-            aria-label="진행률"
             value={
               progress.total === 0 ? 0 : Math.round((progress.completed / progress.total) * 100)
             }

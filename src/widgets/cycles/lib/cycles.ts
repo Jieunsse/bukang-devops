@@ -9,7 +9,7 @@ export const OUTSIDE = 'outside'
 export type CycleTab = {
   key: string
   title: string
-  /** '11/9~11/15'. 사이클 밖 기간은 지금 사이클 밖일 때만 있다. */
+  /** '11/9~11/15'. 사이클 밖 기간은 기한과 상관없이 모든 티켓을 담으므로 없다. */
   range: string | null
   /** 이 탭의 끝나지 않은 티켓. 필터를 걸기 전이다. */
   issues: Issue[]
@@ -22,12 +22,10 @@ type Instant = string | number | Date
 const rangeOf = (start: string, end: string) => `${formatMonthDay(start)}~${formatMonthDay(end)}`
 
 /** 사이클 밖 기간(사이클 밖 티켓이 있을 때)을 맨 앞에, 사이클은 시작 순으로 둔다. */
-export function cycleTabs(issues: Issue[], cycles: Cycle[], now: Instant): CycleTab[] {
+export function cycleTabs(issues: Issue[], cycles: Cycle[]): CycleTab[] {
   const known = new Set(cycles.map((c) => c.id))
   // 받지 못한 사이클을 가리키는 티켓도 사라지지 않게 사이클 밖으로 본다.
   const outside = issues.filter((i) => !i.cycle || !known.has(i.cycle.id))
-  const period = currentPeriod(now, cycles)
-
   const tabs: CycleTab[] = [...cycles]
     .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
     .map((c) => {
@@ -48,7 +46,7 @@ export function cycleTabs(issues: Issue[], cycles: Cycle[], now: Instant): Cycle
     {
       key: OUTSIDE,
       title: '사이클 밖 기간',
-      range: period.kind === 'outside' ? rangeOf(period.start, period.end) : null,
+      range: null,
       issues: outside,
       progress: null,
     },
