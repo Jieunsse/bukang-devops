@@ -64,6 +64,22 @@ describe('완료·취소 목록', () => {
     expect(within(second).getByText('마일스톤 없음')).toBeInTheDocument()
   })
 
+  it('긴 마일스톤 이름은 자르지 않고 한 줄로 다 보여 주고, 제목은 잘라도 전체를 마우스 올림 설명으로 남긴다', () => {
+    const long = '메시지 전달 안정화와 아주 긴 마일스톤 이름'
+    render(
+      <DoneList
+        issues={[
+          done(3, '2026-11-04T16:00:00.000Z', { milestone: { id: 'm9', name: long, progress: 0 } }),
+        ]}
+      />,
+    )
+    const row = screen.getByRole('row', { name: /티켓 3/ })
+    const milestone = within(row).getByText(long)
+    expect(milestone.closest('td')).toHaveClass('whitespace-nowrap')
+    expect(within(row).getByRole('link', { name: '티켓 3' })).toHaveAttribute('title', '티켓 3')
+    expect(within(row).getByRole('link', { name: '티켓 3' })).toHaveClass('truncate')
+  })
+
   it('주소의 필터를 적용한다', () => {
     search = 'milestone=none'
     render(<DoneList issues={issues} />)

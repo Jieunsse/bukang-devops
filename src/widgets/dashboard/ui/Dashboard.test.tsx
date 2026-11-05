@@ -90,7 +90,7 @@ describe('대시보드', () => {
     expect(screen.queryByText('티켓 12')).not.toBeInTheDocument()
   })
 
-  it('긴 마일스톤과 라벨 이름은 한 줄로 자르고 전체 이름을 마우스 올림 설명으로 남긴다', () => {
+  it('긴 마일스톤 이름은 자르지 않고 한 줄로 다 보여 주고, 라벨과 제목은 잘라도 전체를 마우스 올림 설명으로 남긴다', () => {
     const long = '충전 한도·이상 감지와 아주 긴 마일스톤 이름'
     render(
       <Dashboard
@@ -104,8 +104,12 @@ describe('대시보드', () => {
       />,
     )
     const row = screen.getByRole('row', { name: /티켓 30/ })
-    expect(within(row).getByTitle(long)).toHaveClass('truncate')
+    const milestone = within(row).getByText(long)
+    expect(milestone).not.toHaveClass('truncate')
+    expect(milestone.closest('td')).toHaveClass('whitespace-nowrap')
     expect(within(row).getByTitle('아주 긴 라벨 이름입니다')).toHaveClass('truncate')
+    expect(within(row).getByRole('link', { name: '티켓 30' })).toHaveAttribute('title', '티켓 30')
+    expect(within(row).getByRole('link', { name: '티켓 30' })).toHaveClass('truncate')
   })
 
   it('숫자 칸을 누르면 마감 목록이 그 묶음만 보여 준다', async () => {
