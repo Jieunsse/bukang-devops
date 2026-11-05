@@ -12,7 +12,7 @@ import { refreshSnapshotAction } from '../api/actions'
 
 export function RefreshButton() {
   const queryClient = useQueryClient()
-  const { fetchedAt } = useSnapshot()
+  const { fetchedAt, failure } = useSnapshot()
   const now = useNow()
   const { mutate, isPending } = useMutation({
     mutationFn: () => refreshSnapshotAction(),
@@ -32,9 +32,23 @@ export function RefreshButton() {
 
   return (
     <>
-      <Chip size="sm" variant="soft" aria-label={`마지막으로 받은 시각 ${fetched}`}>
-        {fetchedLabel} 기준
-      </Chip>
+      {failure ? (
+        // 새로 받지 못해 마지막 값을 보여 주는 중이다. 이유는 마우스를 올리면 보인다.
+        <Tooltip delay={300} closeDelay={0}>
+          <Tooltip.Trigger
+            aria-label={`마지막으로 받은 시각 ${fetched}, 새로 받지 못했어요: ${failure}`}
+          >
+            <Chip size="sm" variant="soft" color="warning">
+              {fetchedLabel} 기준 · 새로 받지 못했어요
+            </Chip>
+          </Tooltip.Trigger>
+          <Tooltip.Content className="text-xs">{failure}</Tooltip.Content>
+        </Tooltip>
+      ) : (
+        <Chip size="sm" variant="soft" aria-label={`마지막으로 받은 시각 ${fetched}`}>
+          {fetchedLabel} 기준
+        </Chip>
+      )}
       <Tooltip delay={300}>
         <Button
           isIconOnly

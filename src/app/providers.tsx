@@ -7,6 +7,8 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { ThemeProvider } from 'next-themes'
 import { useState } from 'react'
 
+import { keepValidSnapshot } from '@/shared/api/linear/persist'
+
 const TEN_MINUTES = 10 * 60 * 1000
 const ONE_DAY = 24 * 60 * 60 * 1000
 
@@ -29,14 +31,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }),
   )
   const [persister] = useState(() =>
-    createSyncStoragePersister({ storage: browserStorage(), key: 'bukang-devops' }),
+    createSyncStoragePersister({
+      storage: browserStorage(),
+      key: 'bukang-devops',
+      deserialize: keepValidSnapshot,
+    }),
   )
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <PersistQueryClientProvider
         client={queryClient}
-        // 저장 모양이 바뀌면 buster를 올려 지난 저장분을 버린다.
+        // 형식은 꺼낼 때 검사한다. 값의 뜻이 바뀔 때(예: 단위)만 buster를 올려 지난 저장분을 버린다.
         persistOptions={{ persister, maxAge: ONE_DAY, buster: 'snapshot-v7' }}
       >
         {children}

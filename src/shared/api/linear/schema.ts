@@ -59,6 +59,8 @@ export const memberSchema = z.object({
 
 export const snapshotSchema = z.object({
   fetchedAt: z.iso.datetime(),
+  /** Linear에서 새로 받지 못해 마지막 성공 값을 보여 주는 중이면 그 이유. 새로 받으면 없다. */
+  failure: z.string().optional(),
   issues: z.array(issueSchema),
   cycles: z.array(cycleSchema),
   /** 예전에 저장된 값이나 예시 데이터에는 없을 수 있다. 없으면 빈 목록으로 본다. */
