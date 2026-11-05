@@ -43,6 +43,18 @@ describe('달력 페이지', () => {
     search = ''
   })
 
+  it('달력 위 도구 줄에 넘겨받은 버튼을 둔다', () => {
+    render(
+      <MonthCalendar
+        snapshot={snapshot([issue(1, '2026-11-12')])}
+        now={NOW}
+        actions={<button>필터</button>}
+      />,
+    )
+    const bar = screen.getByRole('group', { name: '기한 달력 도구' })
+    expect(within(bar).getByRole('button', { name: '필터' })).toBeInTheDocument()
+  })
+
   it('오늘이 든 달을 열고, 날짜 칸에 「이슈 번호 + 제목」을 Linear 링크로 보여 준다', () => {
     render(<MonthCalendar snapshot={snapshot([issue(1, '2026-11-12')])} now={NOW} />)
     expect(screen.getByRole('heading', { name: '2026년 11월' })).toBeInTheDocument()

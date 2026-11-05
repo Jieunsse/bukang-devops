@@ -59,6 +59,13 @@ describe('사이클 페이지', () => {
     search = ''
   })
 
+  it('담당자별 보드 위 도구 줄에 개수와 넘겨받은 버튼을 둔다', () => {
+    render(<Cycles snapshot={snapshot([issue(1)])} now={NOW} actions={<button>필터</button>} />)
+    const bar = screen.getByRole('group', { name: '담당자별 티켓 도구' })
+    expect(within(bar).getByText('1건')).toBeInTheDocument()
+    expect(within(bar).getByRole('button', { name: '필터' })).toBeInTheDocument()
+  })
+
   it('탭마다 이름 아래 기간을 작게 적고, 지금 기간 탭을 먼저 연다', () => {
     render(<Cycles snapshot={snapshot([issue(1), issue(2, inC1)])} now={NOW} />)
     const tabs = screen.getAllByRole('tab')

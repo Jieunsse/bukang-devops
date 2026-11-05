@@ -79,7 +79,9 @@ export function CalendarCard({
                         className={[
                           'mx-auto aspect-square size-10 text-sm sm:size-11',
                           // 사이클 바탕은 회색으로 둬서 파란 「오늘」 바탕과 구분한다. 오늘·선택 칸에는 덮어쓰지 않는다.
-                          inCycle(day, cycles) ? 'not-data-selected:not-data-today:bg-default/60' : '',
+                          inCycle(day, cycles)
+                            ? 'not-data-selected:not-data-today:bg-default/60'
+                            : '',
                           isFinal ? 'ring-2 ring-accent ring-inset' : '',
                         ].join(' ')}
                       >
