@@ -1,5 +1,5 @@
-import { ComingSoon } from '@/shared/ui'
+import { DashboardView } from '@/widgets/dashboard'
 
 export default function DashboardPage() {
-  return <ComingSoon title="대시보드" />
+  return <DashboardView />
 }
