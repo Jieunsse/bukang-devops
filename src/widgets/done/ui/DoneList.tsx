@@ -4,6 +4,7 @@ import { Chip, EmptyState, Table } from '@heroui/react'
 import { useMemo } from 'react'
 
 import { MemberAvatar } from '@/entities/member'
+import { milestoneColumnWidth } from '@/entities/ticket'
 import { applyFilters, useFilters } from '@/features/filter'
 import type { DoneIssue } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
@@ -13,6 +14,9 @@ export function DoneList({ issues }: { issues: DoneIssue[] }) {
   const { filters } = useFilters()
   const shown = useMemo(() => applyFilters(issues, filters), [issues, filters])
   const canceled = shown.filter((i) => i.state.type === 'canceled').length
+  const milestoneWidth = milestoneColumnWidth(
+    shown.flatMap((i) => (i.milestone ? [i.milestone.name] : [])),
+  )
 
   if (shown.length === 0) {
     return (
@@ -38,7 +42,7 @@ export function DoneList({ issues }: { issues: DoneIssue[] }) {
               <Table.Column className="w-20">결과</Table.Column>
               <Table.Column className="w-20">닫은 날</Table.Column>
               <Table.Column className="w-36">라벨</Table.Column>
-              <Table.Column className="w-32">마일스톤</Table.Column>
+              <Table.Column style={{ width: milestoneWidth }}>마일스톤</Table.Column>
             </Table.Header>
             <Table.Body>
               {shown.map((issue) => (
@@ -49,7 +53,8 @@ export function DoneList({ issues }: { issues: DoneIssue[] }) {
                       target="_blank"
                       rel="noreferrer"
                       // 글자 링크를 줄 전체로 넓혀, 어느 칸을 눌러도 Linear 이슈로 간다.
-                      className="font-medium after:absolute after:inset-0 hover:underline"
+                      title={issue.title}
+                      className="block truncate font-medium after:absolute after:inset-0 hover:underline"
                     >
                       {issue.title}
                     </a>
@@ -82,7 +87,8 @@ export function DoneList({ issues }: { issues: DoneIssue[] }) {
                       ))}
                     </div>
                   </Table.Cell>
-                  <Table.Cell>
+                  {/* 마일스톤은 자르면 어느 것인지 몰라서, 칸을 가장 긴 이름만큼 잡고 한 줄로 보여 준다. */}
+                  <Table.Cell className="whitespace-nowrap">
                     <Chip size="sm">{issue.milestone?.name ?? '마일스톤 없음'}</Chip>
                   </Table.Cell>
                 </Table.Row>

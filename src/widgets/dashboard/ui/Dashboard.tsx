@@ -9,6 +9,7 @@ import {
   bucketOf,
   currentPeriod,
   groupByBucket,
+  milestoneColumnWidth,
   type Bucket,
 } from '@/entities/ticket'
 import { applyFilters, useFilters, type Filters } from '@/features/filter'
@@ -48,6 +49,12 @@ export function Dashboard({ snapshot, now }: { snapshot: Snapshot; now: number }
   )
   const issues = useMemo(() => applyFilters(snapshot.issues, filters), [snapshot.issues, filters])
   const groups = useMemo(() => groupByBucket(issues, range), [issues, range])
+  // 필터 전 목록으로 재서 필터를 바꿔도 칸 폭이 흔들리지 않는다.
+  const milestoneWidth = useMemo(
+    () =>
+      milestoneColumnWidth(snapshot.issues.flatMap((i) => (i.milestone ? [i.milestone.name] : []))),
+    [snapshot.issues],
+  )
   const counts = Object.fromEntries(BUCKETS.map((b) => [b, groups[b].length])) as Record<
     Bucket,
     number
@@ -125,6 +132,7 @@ export function Dashboard({ snapshot, now }: { snapshot: Snapshot; now: number }
                 today={today}
                 defaultOpen
                 emptyText="이날 기한인 남은 티켓이 없어요"
+                milestoneWidth={milestoneWidth}
               />
             ) : (
               sections.map((b) => (
@@ -134,6 +142,7 @@ export function Dashboard({ snapshot, now }: { snapshot: Snapshot; now: number }
                   bucket={b}
                   issues={groups[b]}
                   today={today}
+                  milestoneWidth={milestoneWidth}
                   defaultOpen={bucket !== 'all' || !COLLAPSED.includes(b)}
                   emptyText={bucket === 'all' ? undefined : '이 묶음에 남은 티켓이 없어요'}
                 />
