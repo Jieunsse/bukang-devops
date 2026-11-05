@@ -78,7 +78,7 @@ describe('대시보드', () => {
       ).toBeInTheDocument()
     }
     // 카드에는 표를 두지 않는다.
-    expect(screen.queryByRole('grid')).not.toBeInTheDocument()
+    expect(within(grid).queryByRole('grid')).not.toBeInTheDocument()
   })
 
   it('카드 한 줄에 번호, 제목, 담당자, 기한을 적고 Linear 이슈로 이어진다', () => {

@@ -21,13 +21,11 @@ import { assigneeLoad, milestoneProgress } from '../lib/summary'
 import { useDashboardStore } from '../model/store'
 import { AssigneeCard } from './AssigneeCard'
 import { CalendarCard } from './CalendarCard'
+import { DeadlineGrid } from './DeadlineGrid'
 import { DeadlineSection } from './DeadlineSection'
 import { MilestoneCard } from './MilestoneCard'
 import { PresentationCard } from './PresentationCard'
 import { SummaryCards } from './SummaryCards'
-
-/** 처음부터 접어 두는 묶음 */
-const COLLAPSED: Bucket[] = ['later', 'noDue']
 
 /** 이미 걸린 값을 다시 누르면 그 필터를 푼다. */
 const toggle = (filters: Filters, key: 'assignee' | 'milestone', id: string): Filters => ({
@@ -59,7 +57,6 @@ export function Dashboard({ snapshot, now }: { snapshot: Snapshot; now: number }
     Bucket,
     number
   >
-  const sections = bucket === 'all' ? BUCKETS : [bucket]
   const dueCounts = useMemo(() => dueCountsByDate(issues), [issues])
   const dateIssues = date ? issues.filter((i) => i.dueDate === date) : []
 
@@ -115,10 +112,16 @@ export function Dashboard({ snapshot, now }: { snapshot: Snapshot; now: number }
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-lg font-semibold">마감 목록</h2>
-              {date && (
+              {date ? (
                 <Button size="sm" variant="tertiary" onPress={() => setDate(null)}>
                   날짜 선택 풀기
                 </Button>
+              ) : (
+                bucket !== 'all' && (
+                  <Button size="sm" variant="tertiary" onPress={() => setBucket('all')}>
+                    묶음 선택 풀기
+                  </Button>
+                )
               )}
             </div>
             {issues.length === 0 ? (
@@ -135,24 +138,19 @@ export function Dashboard({ snapshot, now }: { snapshot: Snapshot; now: number }
                 title={`${formatMonthDay(date)} 기한`}
                 issues={dateIssues}
                 today={today}
-                defaultOpen
                 emptyText="이날 기한인 남은 티켓이 없어요"
                 milestoneWidth={milestoneWidth}
               />
+            ) : bucket === 'all' ? (
+              <DeadlineGrid groups={groups} today={today} onSelect={setBucket} />
             ) : (
-              sections.map((b) => (
-                <DeadlineSection
-                  // 묶음을 바꾸면 접기와 더 보기 상태를 처음으로 돌린다.
-                  key={`${bucket}-${b}`}
-                  bucket={b}
-                  issues={groups[b]}
-                  today={today}
-                  milestoneWidth={milestoneWidth}
-                  defaultOpen={bucket !== 'all' || !COLLAPSED.includes(b)}
-                  collapsible={bucket === 'all'}
-                  emptyText={bucket === 'all' ? undefined : '이 묶음에 남은 티켓이 없어요'}
-                />
-              ))
+              <DeadlineSection
+                bucket={bucket}
+                issues={groups[bucket]}
+                today={today}
+                milestoneWidth={milestoneWidth}
+                emptyText="이 묶음에 남은 티켓이 없어요"
+              />
             )}
           </div>
         </Tabs.Panel>
