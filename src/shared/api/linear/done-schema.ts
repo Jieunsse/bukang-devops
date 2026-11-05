@@ -61,13 +61,16 @@ const rawDoneIssueSchema = z
   .object({ completedAt: instant, canceledAt: instant })
   .and(rawIssueSchema)
   .transform(({ completedAt, canceledAt, ...issue }, ctx) => {
+    // Linear의 「중복」 상태는 취소의 한 갈래라 취소 시각만 있다. 화면에서는 취소로 센다.
+    const state =
+      issue.state.type === 'duplicate' ? { ...issue.state, type: 'canceled' } : issue.state
     // 완료했다가 취소한 티켓은 두 시각이 모두 있을 수 있어 상태 종류로 고른다.
-    const closedAt = issue.state.type === 'canceled' ? canceledAt : completedAt
+    const closedAt = state.type === 'canceled' ? canceledAt : completedAt
     if (closedAt === null) {
       ctx.addIssue({ code: 'custom', message: '상태에 맞는 완료 시각이나 취소 시각이 없어요.' })
       return z.NEVER
     }
-    return { ...issue, closedAt }
+    return { ...issue, state, closedAt }
   })
 
 export const doneIssuesResponseSchema = z.object({
