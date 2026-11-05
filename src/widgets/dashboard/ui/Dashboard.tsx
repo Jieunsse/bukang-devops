@@ -45,11 +45,12 @@ export function Dashboard({ snapshot, now }: { snapshot: Snapshot; now: number }
   return (
     <div className="flex flex-col gap-6">
       <Tabs
-        className="w-fit max-w-full"
+        // 탭 줄만 글자 폭에 맞춘다. 아래 내용 영역은 늘 전체 폭이다.
+        className="w-full"
         selectedKey={bucket}
         onSelectionChange={(key) => setBucket(key as Bucket | 'all')}
       >
-        <Tabs.ListContainer>
+        <Tabs.ListContainer className="w-fit max-w-full">
           <Tabs.List aria-label="마감 목록 묶음">
             <Tabs.Tab id="all" className="whitespace-nowrap">
               전체

@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { displayName } from './display-names'
+
 // 화면에서 쓰는 모양. 서버 캐시와 브라우저 저장소에 이 모양 그대로 들어간다.
 const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 
@@ -11,8 +13,18 @@ export const issueSchema = z.object({
   dueDate: dateString.nullable(),
   startedAt: z.iso.datetime({ offset: true }).nullable(),
   state: z.object({ name: z.string(), type: z.string() }),
-  assignee: z.object({ id: z.string(), name: z.string() }).nullable(),
-  labels: z.array(z.object({ id: z.string(), name: z.string() })),
+  assignee: z.object({ id: z.string(), name: z.string(), avatarUrl: z.url().nullish() }).nullable(),
+  labels: z.array(
+    // 색은 Linear 라벨에 정해 둔 색 코드다. 칩 색을 Linear 화면과 맞춘다.
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      color: z
+        .string()
+        .regex(/^#[0-9a-f]{6}$/i)
+        .optional(),
+    }),
+  ),
   milestone: z.object({ id: z.string(), name: z.string(), progress: z.number() }).nullable(),
 })
 
@@ -41,12 +53,19 @@ const rawIssueSchema = issueSchema
   .omit({ labels: true, milestone: true })
   .extend({
     labels: z.object({ nodes: issueSchema.shape.labels }),
-    projectMilestone: issueSchema.shape.milestone,
+    // Linear는 마일스톤 진행률을 0~100으로 준다. 화면은 0~1로 쓴다.
+    projectMilestone: z
+      .object({ id: z.string(), name: z.string(), progress: z.number().min(0).max(100) })
+      .nullable(),
   })
-  .transform(({ labels, projectMilestone, ...rest }) => ({
+  .transform(({ labels, projectMilestone, assignee, ...rest }) => ({
     ...rest,
+    assignee: assignee && { ...assignee, name: displayName(assignee) },
     labels: labels.nodes,
-    milestone: projectMilestone,
+    milestone: projectMilestone && {
+      ...projectMilestone,
+      progress: projectMilestone.progress / 100,
+    },
   }))
 
 export const issuesResponseSchema = z.object({

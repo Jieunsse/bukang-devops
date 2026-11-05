@@ -11,8 +11,9 @@ const rawIssue = {
   startedAt: '2026-11-03T01:00:00.000Z',
   state: { name: '진행 중', type: 'started' },
   assignee: { id: 'u1', name: '지훈' },
-  labels: { nodes: [{ id: 'l1', name: 'FE' }] },
-  projectMilestone: { id: 'm1', name: '세미 발표', progress: 0.4 },
+  labels: { nodes: [{ id: 'l1', name: 'FE', color: '#4ea7fc' }] },
+  // Linear는 마일스톤 진행률을 0~100으로 준다.
+  projectMilestone: { id: 'm1', name: '세미 발표', progress: 40 },
 }
 const rawCycle = {
   id: 'c1',
@@ -59,6 +60,8 @@ describe('Linear에서 한 번에 받기', () => {
       variables: Record<string, unknown>
     }
     expect(query).toContain('nin: ["completed", "canceled"]')
+    expect(query).toContain('assignee { id name avatarUrl }')
+    expect(query).toContain('labels(first: 20) { nodes { id name color } }')
     expect(variables.teamKey).toBe('BUK')
   })
 
@@ -77,11 +80,72 @@ describe('Linear에서 한 번에 받기', () => {
           startedAt: '2026-11-03T01:00:00.000Z',
           state: { name: '진행 중', type: 'started' },
           assignee: { id: 'u1', name: '지훈' },
-          labels: [{ id: 'l1', name: 'FE' }],
+          labels: [{ id: 'l1', name: 'FE', color: '#4ea7fc' }],
           milestone: { id: 'm1', name: '세미 발표', progress: 0.4 },
         },
       ],
     })
+  })
+
+  it('마일스톤 진행률 0~100을 화면에서 쓰는 0~1로 바꾼다', async () => {
+    const at = (progress: number) => ({
+      ...rawIssue,
+      projectMilestone: { id: 'm', name: 'm', progress },
+    })
+    const snapshot = await fetchSnapshot(
+      'k',
+      fakeLinear([issuesPage([at(4), { ...at(100), id: 'i2' }, { ...at(0), id: 'i3' }])]),
+      NOW,
+    )
+    expect(snapshot.issues.map((i) => i.milestone?.progress)).toEqual([0.04, 1, 0])
+  })
+
+  it('Linear 이름이 실명이 아닌 팀원은 실명으로 바꿔 보여 준다', async () => {
+    const by = (id: string, name: string, n: number) => ({
+      ...rawIssue,
+      id: `i${n}`,
+      assignee: { id, name },
+    })
+    const snapshot = await fetchSnapshot(
+      'k',
+      fakeLinear([
+        issuesPage([
+          by('870b71d5-9aed-4a8c-bf90-1972694b203b', 'Da Wit Lee', 1),
+          by('833c0d35-5772-4e08-875c-dc85ca4fc8cb', 'bari cesco', 2),
+          by('f6ad6c3a-2e01-4c69-b3d6-71966925bd01', '지은세', 3),
+          by('33890f06-d1aa-4505-afcf-e3d1daa0ac1e', '김소희', 4),
+        ]),
+      ]),
+      NOW,
+    )
+    expect(snapshot.issues.map((i) => i.assignee?.name)).toEqual([
+      '이다윗',
+      '김호빈',
+      '옥지훈',
+      '김소희',
+    ])
+  })
+
+  it('담당자의 프로필 이미지 주소를 받고, 없으면 비워 둔다', async () => {
+    const avatar = 'https://public.linear.app/u1/avatar.png'
+    const snapshot = await fetchSnapshot(
+      'k',
+      fakeLinear([
+        issuesPage([
+          { ...rawIssue, assignee: { id: 'u1', name: '지훈', avatarUrl: avatar } },
+          { ...rawIssue, id: 'i2', assignee: { id: 'u2', name: '영호', avatarUrl: null } },
+        ]),
+      ]),
+      NOW,
+    )
+    expect(snapshot.issues.map((i) => i.assignee?.avatarUrl)).toEqual([avatar, null])
+  })
+
+  it('라벨 색이 색 코드가 아니면 응답 형식 오류로 본다', async () => {
+    const broken = { ...rawIssue, labels: { nodes: [{ id: 'l1', name: 'FE', color: 'blue' }] } }
+    await expect(fetchSnapshot('k', fakeLinear([issuesPage([broken])]), NOW)).rejects.toThrow(
+      LinearResponseError,
+    )
   })
 
   it('담당자와 마일스톤이 없는 티켓도 받는다', async () => {

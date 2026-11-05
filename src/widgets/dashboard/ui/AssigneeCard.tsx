@@ -2,6 +2,9 @@
 
 import { Card } from '@heroui/react'
 
+import { MemberAvatar } from '@/entities/member'
+import { NONE } from '@/features/filter'
+
 import type { AssigneeLoad } from '../lib/summary'
 
 const SEGMENTS = [
@@ -39,9 +42,16 @@ export function AssigneeCard({
             type="button"
             onClick={() => onSelect(row.id)}
             aria-label={`${row.name} ${row.total}건: 기한 지남 ${row.overdue}, 이번 주 ${row.thisWeek}, 그 뒤·기한 없음 ${row.later}`}
-            className="grid grid-cols-[5rem_1fr_2rem] items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm outline-none hover:bg-default focus-visible:ring-2 focus-visible:ring-accent"
+            className="grid grid-cols-[7rem_1fr_2rem] items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm outline-none hover:bg-default focus-visible:ring-2 focus-visible:ring-accent"
           >
-            <span className="truncate">{row.name}</span>
+            <span className="flex min-w-0 items-center gap-2">
+              {row.id === NONE ? (
+                <span aria-hidden className="size-6 shrink-0" />
+              ) : (
+                <MemberAvatar name={row.name} avatarUrl={row.avatarUrl} />
+              )}
+              <span className="truncate">{row.name}</span>
+            </span>
             <span
               className="flex h-3 overflow-hidden rounded-full"
               style={{ width: `${(row.total / max) * 100}%` }}

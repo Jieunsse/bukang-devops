@@ -1,2 +1,7 @@
 @import 'tailwindcss';
 @import '@heroui/styles';
+
+/* 내용 길이가 바뀌어 세로 스크롤바가 생기거나 사라져도 화면 폭이 흔들리지 않게 한다. */
+html {
+  scrollbar-gutter: stable;
+}

@@ -5,7 +5,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh bg-background">
       <AppSidebar />
-      <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">
+      {/* 내용 폭을 고정해, 목록이 비어도 카드 폭이 바뀌지 않게 한다. */}
+      <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-1 flex-col gap-6 px-4 py-4 md:px-6 md:py-6">
         <MobileNav />
         <AppHeader />
         <main>{children}</main>
