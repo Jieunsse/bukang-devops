@@ -323,4 +323,15 @@ describe('사이클 페이지', () => {
     const chip = screen.getByText('프론트').closest('.chip') as HTMLElement
     expect(chip.style.backgroundColor).toMatch(/#4ea7fc|rgb\(78, 167, 252\)/)
   })
+
+  it('빈 묶음을 골랐다가 돌아와도 접어 둔 열은 접힌 채로 둔다', async () => {
+    render(<Cycles snapshot={snapshot([issue(1, { dueDate: '2026-11-03' })])} now={NOW} />)
+    await userEvent.click(screen.getByRole('button', { name: /^지훈\s*1건$/ }))
+    await userEvent.click(screen.getByRole('button', { name: /오늘\s*0/ }))
+    await userEvent.click(screen.getByRole('button', { name: /남은 티켓\s*1/ }))
+    expect(screen.getByRole('button', { name: /^지훈\s*1건$/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+  })
 })
