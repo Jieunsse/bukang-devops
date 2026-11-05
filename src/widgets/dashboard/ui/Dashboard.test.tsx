@@ -49,7 +49,7 @@ describe('대시보드', () => {
   beforeEach(() => {
     search = ''
     replace.mockReset()
-    useDashboardStore.setState({ bucket: 'all' })
+    useDashboardStore.setState({ bucket: 'all', date: null })
   })
 
   it('숫자 요약 네 칸에 묶음별 티켓 수를 보여 준다', () => {
@@ -101,6 +101,28 @@ describe('대시보드', () => {
     const row = screen.getByRole('row', { name: /티켓 20/ })
     expect(within(row).getByText('지')).toBeInTheDocument()
     expect(within(row).getByText('지훈')).toBeInTheDocument()
+  })
+
+  it('최종 발표까지 남은 날을 크게 보여 준다', () => {
+    render(<Dashboard snapshot={snapshot(rest)} now={NOW} />)
+    expect(screen.getByText('최종 발표 11/23(월)까지')).toBeInTheDocument()
+    expect(screen.getByText('18일')).toBeInTheDocument()
+  })
+
+  it('달력 날짜에 기한 티켓 수를 적고, 날짜를 누르면 그날 티켓만 보이고 다시 누르면 풀린다', async () => {
+    render(<Dashboard snapshot={snapshot([...overdue, ...rest])} now={NOW} />)
+    const calendar = screen.getByRole('application', { name: '기한 달력' })
+    const day7 = within(calendar).getByRole('button', { name: /11월 7일/ })
+    expect(within(day7).getByText('1')).toBeInTheDocument()
+
+    await userEvent.click(day7)
+    expect(screen.getByRole('region', { name: '11/7 기한' })).toBeInTheDocument()
+    expect(screen.getByText('티켓 11')).toBeInTheDocument()
+    expect(screen.queryByText('티켓 1')).not.toBeInTheDocument()
+
+    await userEvent.click(within(calendar).getByRole('button', { name: /11월 7일/ }))
+    expect(screen.queryByRole('region', { name: '11/7 기한' })).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: '기한 지남' })).toBeInTheDocument()
   })
 
   it('주소의 필터를 적용한다', () => {
