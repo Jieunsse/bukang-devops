@@ -7,7 +7,7 @@ import { useMemo, useState } from 'react'
 import { dayTone, inCycle, type DueTone } from '@/entities/ticket'
 import { applyFilters, useFilters } from '@/features/filter'
 import type { Issue, Snapshot } from '@/shared/api/linear'
-import { formatMonthDay, kstDate, type DateString } from '@/shared/lib/date'
+import { formatMonthDay, kstDate, weekdayOf, type DateString } from '@/shared/lib/date'
 
 import {
   assigneeColors,
@@ -29,7 +29,9 @@ const TONE_TEXT: Record<DueTone, string> = {
   default: 'text-foreground',
 }
 
-const cellLabel = (date: DateString) => `${Number(date.slice(5, 7))}월 ${Number(date.slice(8))}일`
+const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
+const cellLabel = (date: DateString) =>
+  `${Number(date.slice(5, 7))}월 ${Number(date.slice(8))}일 ${DAY_NAMES[weekdayOf(date)]}요일`
 
 export function MonthCalendar({ snapshot, now }: { snapshot: Snapshot; now: number }) {
   const { filters } = useFilters()
@@ -40,7 +42,9 @@ export function MonthCalendar({ snapshot, now }: { snapshot: Snapshot; now: numb
   const byDate = useMemo(() => issuesByDate(issues), [issues])
   // 필터 전 전체 목록으로 색을 정해서 필터를 바꿔도 사람마다 색이 그대로다.
   const colors = useMemo(() => assigneeColors(snapshot.issues), [snapshot.issues])
-  const isEmpty = ![...byDate.keys()].some((date) => date.startsWith(month))
+  const days = monthWeeks(month).flat()
+  // 앞뒤 달 칸에 보이는 티켓도 센다. 칸에 티켓이 보이는데 빈 달이라고 하지 않게 한다.
+  const isEmpty = !days.some((date) => byDate.has(date))
 
   return (
     <Card>
@@ -91,19 +95,17 @@ export function MonthCalendar({ snapshot, now }: { snapshot: Snapshot; now: numb
             aria-label={`${monthLabel(month)} 달력`}
             className="grid grid-cols-7 border-t border-l border-separator"
           >
-            {monthWeeks(month)
-              .flat()
-              .map((date) => (
-                <DayCell
-                  key={date}
-                  date={date}
-                  today={today}
-                  outside={!date.startsWith(month)}
-                  cycle={inCycle(date, snapshot.cycles)}
-                  issues={byDate.get(date) ?? []}
-                  colors={colors}
-                />
-              ))}
+            {days.map((date) => (
+              <DayCell
+                key={date}
+                date={date}
+                today={today}
+                outside={!date.startsWith(month)}
+                cycle={inCycle(date, snapshot.cycles)}
+                issues={byDate.get(date) ?? []}
+                colors={colors}
+              />
+            ))}
           </ol>
         </div>
         <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
@@ -149,10 +151,10 @@ function DayCell({
         cycle ? 'bg-accent-soft/60' : ''
       } ${isFinal ? 'ring-2 ring-accent ring-inset' : ''}`}
     >
-      <div className="flex items-center justify-end gap-1 text-xs">
-        {/* 휴대폰 폭에서는 칸이 좁아 글자 대신 칸 테두리로만 표시한다. */}
+      {/* 휴대폰 폭에서는 칸이 좁아 「최종 발표」를 날짜 아래 줄에 작게 적는다. */}
+      <div className="flex flex-col-reverse items-end gap-1 text-xs md:flex-row md:items-center">
         {isFinal && (
-          <span className="mr-auto hidden truncate font-semibold text-accent md:inline">
+          <span className="text-[10px] font-semibold whitespace-nowrap text-accent md:mr-auto md:truncate md:text-xs">
             최종 발표
           </span>
         )}

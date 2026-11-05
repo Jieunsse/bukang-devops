@@ -1,7 +1,7 @@
 import type { Issue } from '@/shared/api/linear'
 import { addDays, weekdayOf, type DateString } from '@/shared/lib/date'
 
-// 머리 영역(AppHeader)의 값과 같다. 공통 파일을 고치지 않으려고 여기 따로 둔다.
+// 대시보드(presentation.ts)·타임라인과 같은 값이다. 위젯끼리는 서로 가져오지 않아서 여기 따로 둔다.
 export const FINAL_PRESENTATION = '2026-11-23'
 
 /** 'YYYY-MM' */
@@ -52,6 +52,7 @@ const PALETTE = [
 export const NO_ASSIGNEE_COLOR = 'bg-muted'
 
 /** 담당자 id 순서로 색을 준다. 필터 전 전체 목록으로 만들어 필터를 바꿔도 색이 그대로다. */
+// shortcut: 남은 티켓이 있는 담당자가 바뀌면 다른 사람 색도 밀린다. 팀원 명단을 받게 되면 명단 순서로 고정한다.
 export function assigneeColors(issues: Issue[]): Map<string, string> {
   const ids = [...new Set(issues.flatMap((i) => (i.assignee ? [i.assignee.id] : [])))].sort()
   return new Map(ids.map((id, n) => [id, PALETTE[n % PALETTE.length] ?? NO_ASSIGNEE_COLOR]))

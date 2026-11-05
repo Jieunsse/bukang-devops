@@ -35,7 +35,8 @@ const snapshot = (issues: Issue[], cycles: Cycle[] = []): Snapshot => ({
   cycles,
   issues,
 })
-const day = (name: string) => screen.getByRole('listitem', { name })
+// 칸 이름은 「11월 12일 목요일」이다. 요일까지 맞추는 테스트는 따로 둔다.
+const day = (name: string) => screen.getByRole('listitem', { name: new RegExp(`^${name} `) })
 
 describe('달력 페이지', () => {
   beforeEach(() => {
@@ -48,7 +49,19 @@ describe('달력 페이지', () => {
     const link = within(day('11월 12일')).getByRole('link', { name: /BUK-1 티켓 1/ })
     expect(link).toHaveAttribute('href', 'https://linear.app/bukang/issue/BUK-1')
     expect(link).toHaveAttribute('target', '_blank')
-    expect(link.className).toMatch(/truncate|cursor-pointer/)
+    expect(link.className).toMatch(/cursor-pointer/)
+    expect(link.lastElementChild!.className).toMatch(/truncate/)
+  })
+
+  it('날짜 칸 이름에 요일을 넣어 화면 낭독기로도 요일을 알 수 있다', () => {
+    render(<MonthCalendar snapshot={snapshot([])} now={NOW} />)
+    expect(screen.getByRole('listitem', { name: '11월 12일 목요일' })).toBeInTheDocument()
+    expect(screen.getByRole('listitem', { name: '11월 1일 일요일' })).toBeInTheDocument()
+  })
+
+  it('이번 달에 티켓이 없어도 앞뒤 달 칸에 티켓이 보이면 빈 안내를 띄우지 않는다', () => {
+    render(<MonthCalendar snapshot={snapshot([issue(1, '2026-12-05')])} now={NOW} />)
+    expect(screen.queryByText('이 달에 기한인 남은 티켓이 없어요')).not.toBeInTheDocument()
   })
 
   it('앞뒤 달 날짜 칸에도 그날 기한 티켓을 보여 준다', () => {
