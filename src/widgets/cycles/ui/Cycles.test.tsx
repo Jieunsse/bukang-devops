@@ -128,4 +128,14 @@ describe('사이클 페이지', () => {
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
     expect(screen.getByText('보여 줄 사이클이 없어요')).toBeInTheDocument()
   })
+
+  it('보던 탭이 새로 받은 목록에서 사라지면 지금 기간 탭으로 돌아간다', async () => {
+    const { rerender } = render(
+      <Cycles snapshot={snapshot([issue(1), issue(2, inC1)])} now={NOW} />,
+    )
+    await userEvent.click(screen.getByRole('tab', { name: '사이클 2' }))
+    rerender(<Cycles snapshot={snapshot([issue(2, inC1)], [cycle1])} now={NOW} />)
+    expect(screen.getByRole('tab', { name: '사이클 1' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByText('티켓 2')).toBeInTheDocument()
+  })
 })

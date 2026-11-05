@@ -56,9 +56,8 @@ describe('사이클 탭', () => {
     expect(tab).toMatchObject({ title: '사이클 1 데모 준비', range: '11/9~11/15' })
   })
 
-  it('사이클 밖 기간은 지금 사이클 밖일 때만 기간을 적는다', () => {
-    expect(cycleTabs([issue(1)], [cycle1], NOW)[0]?.range).toBe('11/5~11/8')
-    expect(cycleTabs([issue(1)], [cycle1], '2026-11-10T03:00:00.000Z')[0]?.range).toBeNull()
+  it('사이클 밖 기간은 기한과 상관없이 모든 티켓을 담으므로 기간을 적지 않는다', () => {
+    expect(cycleTabs([issue(1)], [cycle1], NOW)[0]?.range).toBeNull()
   })
 
   it('진행률은 완료 수와, 완료 수에 남은 티켓 수를 더한 전체 수다', () => {
