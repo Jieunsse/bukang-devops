@@ -185,4 +185,75 @@ describe('타임라인', () => {
     show([issue(1, '2026-11-10')])
     expect(screen.getByRole('region', { name: '타임라인 차트' }).className).toMatch(/overflow-auto/)
   })
+
+  it('마름모는 기한 칸 가운데에 그린다', () => {
+    show([issue(1, '2026-11-10')])
+    // 11/10은 10/27부터 14번째 칸이다.
+    expect(pct(mark(/i1/).style.left)).toBeCloseTo((14.5 / 28) * 100)
+  })
+
+  it('보기 범위 끝에 닿으면 기한 날짜를 표시의 왼쪽에 적어 마름모를 가리지 않는다', () => {
+    show([issue(1, '2026-11-23')])
+    expect(mark(/i1/)).toBeInTheDocument()
+    const label = screen.getByTestId('due-i1')
+    expect(label.style.left).toBe('')
+    expect(pct(label.style.right)).toBeCloseTo(((28 - 27) / 28) * 100)
+  })
+
+  it('끝에서 두 칸 안에 끝나는 막대도 기한 날짜를 왼쪽에 적는다', () => {
+    show([started(1, '2026-11-22')])
+    expect(screen.getByTestId('due-i1').style.left).toBe('')
+  })
+
+  it('최종 발표일에 세로선과 이름표를 그린다', () => {
+    show([issue(1, '2026-11-10')])
+    expect(screen.getByText('최종 발표')).toBeInTheDocument()
+  })
+
+  it('최종 발표일 당일에는 이름표를 하나로 합친다', () => {
+    show([issue(1, '2026-11-24')], new Date('2026-11-23T03:00:00.000Z').getTime())
+    expect(screen.getByText('오늘·최종 발표')).toBeInTheDocument()
+    expect(screen.queryByText('최종 발표')).not.toBeInTheDocument()
+  })
+
+  it('보기 범위보다 앞에 있는 기한 지남 티켓은 빨강 글자로 알려 준다', () => {
+    show([issue(1, '2026-10-20')])
+    expect(screen.getByText('← 10/20').className).toMatch(/text-danger/)
+  })
+
+  it('끝에서 두 칸 안의 월/일 머리글은 넘치지 않게 적지 않는다', async () => {
+    show([issue(1, '2026-11-10')])
+    await userEvent.click(screen.getByRole('radio', { name: '전체' }))
+    expect(screen.queryByText('11/23')).not.toBeInTheDocument()
+  })
+
+  it('첫 칸 바로 뒤에 월요일이 있으면 첫 칸 월/일은 적지 않는다', async () => {
+    // 2주 보기는 11/1(일)부터라 바로 다음 날이 월요일이다.
+    show([issue(1, '2026-11-10')])
+    await userEvent.click(screen.getByRole('radio', { name: '2주' }))
+    expect(screen.queryByText('11/1')).not.toBeInTheDocument()
+    expect(screen.getByText('11/2')).toBeInTheDocument()
+  })
+
+  it('시작 전 티켓 이름에 「시작 전」을 두 번 적지 않는다', () => {
+    show([issue(1, '2026-11-10')])
+    expect(screen.getByRole('link', { name: /티켓 1/ })).toHaveAccessibleName(
+      'BUK-1 티켓 1, 시작 전, 기한 11/10',
+    )
+  })
+
+  it('접기 버튼 이름은 묶음 이름과 건수다', () => {
+    show([issue(1, '2026-11-10')])
+    expect(screen.getByRole('button', { name: '지훈 1건' })).toBeInTheDocument()
+  })
+
+  it('묶음 방식을 바꾸면 다른 방식의 접힘 상태를 따라가지 않는다', async () => {
+    show([issue(1, '2026-11-10', { assignee: null })])
+    await userEvent.click(screen.getByRole('button', { name: /담당 없음/ }))
+    await userEvent.click(screen.getByRole('radio', { name: '마일스톤별' }))
+    expect(screen.getByRole('button', { name: /마일스톤 없음/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+  })
 })
