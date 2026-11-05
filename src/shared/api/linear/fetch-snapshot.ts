@@ -24,6 +24,7 @@ const ISSUES_QUERY = `
         assignee { id name avatarUrl }
         labels(first: 20) { nodes { id name } }
         projectMilestone { id name progress }
+        cycle { id }
       }
       pageInfo { hasNextPage endCursor }
     }
@@ -33,7 +34,7 @@ const ISSUES_QUERY = `
 const CYCLES_QUERY = `
   query Cycles($teamKey: String!, $after: String) {
     cycles(first: ${PAGE_SIZE}, after: $after, filter: { team: { key: { eq: $teamKey } } }) {
-      nodes { id number name startsAt endsAt }
+      nodes { id number name startsAt endsAt completedIssueCountHistory }
       pageInfo { hasNextPage endCursor }
     }
   }
