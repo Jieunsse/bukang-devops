@@ -7,19 +7,20 @@ import { useMemo, useState } from 'react'
 import { MemberAvatar } from '@/entities/member'
 import { dueLabel, LabelChip, type DueTone } from '@/entities/ticket'
 import { applyFilters, NONE, useFilters } from '@/features/filter'
-import type { Issue, Snapshot } from '@/shared/api/linear'
+import type { Cycle, Issue, Snapshot } from '@/shared/api/linear'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
-import { CollapseButton, CountChip } from '@/shared/ui'
+import { CollapseButton, CountChip, StatCards } from '@/shared/ui'
 
 import {
   cycleTabs,
   defaultTabKey,
   formatDayWithWeekday,
   groupByAssignee,
+  inBucket,
   tabSummary,
   type AssigneeGroup,
   type CycleTab,
-  type TabSummary,
+  type SummaryBucket,
 } from '../lib/cycles'
 
 const TONE_CLASS: Record<DueTone, string> = {
@@ -68,6 +69,7 @@ export function Cycles({ snapshot, now }: { snapshot: Snapshot; now: number }) {
                 {period && (
                   <span className="text-xs text-muted">
                     {formatMonthDay(period.start)}~{formatMonthDay(period.end)}
+                    {period.daysLeft !== null && ' · 진행 중'}
                   </span>
                 )}
                 <Tabs.Indicator />
@@ -77,92 +79,115 @@ export function Cycles({ snapshot, now }: { snapshot: Snapshot; now: number }) {
         </Tabs.List>
       </Tabs.ListContainer>
       <Tabs.Panel id={selected.key} className="flex flex-col gap-6 pt-6">
-        <SummaryCard tab={selected} summary={tabSummary(selected, snapshot.cycles, now)} />
-        <Board
-          // 탭을 바꾸면 열마다 더 보기 상태를 처음으로 돌린다.
+        <TabContent
+          // 탭을 바꾸면 고른 묶음과 열마다 더 보기 상태를 처음으로 돌린다.
           key={selected.key}
           tab={selected}
           issues={applyFilters(selected.issues, filters)}
-          today={kstDate(now)}
+          cycles={snapshot.cycles}
+          now={now}
         />
       </Tabs.Panel>
     </Tabs>
   )
 }
 
-const COUNTS = [
+type Picked = 'all' | SummaryBucket
+
+const STATS: { key: SummaryBucket; label: string; className?: string }[] = [
   { key: 'overdue', label: '기한 지남', className: 'text-danger' },
   { key: 'today', label: '오늘', className: 'text-warning' },
-  { key: 'thisWeek', label: '이번 주', className: '' },
-] as const
+  { key: 'thisWeek', label: '이번 주' },
+]
 
-function SummaryCard({ tab, summary }: { tab: CycleTab; summary: TabSummary }) {
-  const { period, counts } = summary
+function TabContent({
+  tab,
+  issues,
+  cycles,
+  now,
+}: {
+  tab: CycleTab
+  /** 필터를 건 이 탭의 티켓 */
+  issues: Issue[]
+  cycles: Cycle[]
+  now: number
+}) {
+  const [picked, setPicked] = useState<Picked>('all')
+  // 숫자 칸은 보드와 같은 수를 세도록 필터를 건 티켓으로 센다. 진행 막대는 사이클 전체 기준이다.
+  const { period, counts } = tabSummary(tab, cycles, now, issues)
   const { progress } = tab
+  const shown = picked === 'all' ? issues : inBucket(issues, picked, cycles, now)
+
   return (
-    <Card>
-      <section aria-label={`${tab.title} 요약`}>
-        <Card.Content className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-3xl font-semibold">{tab.title}</h2>
-            {period && (
-              <p className="text-muted">
-                {formatDayWithWeekday(period.start)} ~ {formatDayWithWeekday(period.end)}
-                {period.daysLeft !== null &&
-                  ` · ${period.daysLeft > 0 ? `${period.daysLeft}일 남음` : '오늘까지'}`}
-              </p>
-            )}
-          </div>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end lg:gap-8">
-            <div className="flex flex-col gap-3">
-              <p className="text-3xl font-semibold tabular-nums">남은 티켓 {tab.issues.length}건</p>
-              {progress && (
-                <ProgressBar
-                  value={
-                    progress.total === 0
-                      ? 0
-                      : Math.round((progress.completed / progress.total) * 100)
-                  }
-                  className="w-full sm:w-64"
-                >
-                  <Label className="text-sm text-muted">
-                    완료 {progress.completed} / 전체 {progress.total}
-                  </Label>
-                  <ProgressBar.Output />
-                  <ProgressBar.Track>
-                    <ProgressBar.Fill />
-                  </ProgressBar.Track>
-                </ProgressBar>
-              )}
-            </div>
-            <div role="group" aria-label="기한별 개수" className="grid grid-cols-3 gap-2">
-              {COUNTS.map((c) => (
-                <div key={c.key} className="flex flex-col rounded-xl bg-default px-3 py-2">
-                  <span className="text-xs whitespace-nowrap text-muted">{c.label}</span>
-                  <span
-                    // 0건은 알릴 것이 없으니 기한 색을 넣지 않는다.
-                    className={`text-xl font-semibold tabular-nums ${counts[c.key] > 0 ? c.className : ''}`}
-                  >
-                    {counts[c.key]}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card.Content>
-      </section>
-    </Card>
+    <>
+      <StatCards<Picked>
+        items={[
+          { key: 'all', label: '남은 티켓', count: issues.length },
+          ...STATS.map((s) => ({ ...s, count: counts[s.key] })),
+        ]}
+        selected={picked}
+        // 고른 칸을 다시 누르면 모두 보여 준다.
+        onSelect={(key) => setPicked(key === picked ? 'all' : key)}
+      />
+      {(period || progress) && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {period && (
+            <p className="text-muted">
+              {formatDayWithWeekday(period.start)} ~ {formatDayWithWeekday(period.end)}
+              {period.daysLeft !== null &&
+                ` · ${period.daysLeft > 0 ? `${period.daysLeft}일 남음` : '오늘까지'}`}
+            </p>
+          )}
+          {progress && (
+            <ProgressBar
+              value={
+                progress.total === 0 ? 0 : Math.round((progress.completed / progress.total) * 100)
+              }
+              className="w-full sm:max-w-sm"
+            >
+              <Label className="text-sm text-muted">
+                완료 {progress.completed} / 전체 {progress.total}
+              </Label>
+              <ProgressBar.Output />
+              <ProgressBar.Track>
+                <ProgressBar.Fill />
+              </ProgressBar.Track>
+            </ProgressBar>
+          )}
+        </div>
+      )}
+      <Board
+        issues={shown}
+        today={kstDate(now)}
+        emptyText={
+          tab.issues.length === 0
+            ? '이 사이클에 남은 티켓이 없어요'
+            : issues.length === 0
+              ? '필터에 맞는 티켓이 없어요'
+              : '이 묶음에 남은 티켓이 없어요'
+        }
+        showFilterHint={tab.issues.length > 0 && issues.length === 0}
+      />
+    </>
   )
 }
 
-function Board({ tab, issues, today }: { tab: CycleTab; issues: Issue[]; today: string }) {
+function Board({
+  issues,
+  today,
+  emptyText,
+  showFilterHint,
+}: {
+  issues: Issue[]
+  today: string
+  emptyText: string
+  showFilterHint: boolean
+}) {
   if (issues.length === 0) {
     return (
       <EmptyState className="py-12">
-        <p className="font-medium">
-          {tab.issues.length === 0 ? '이 사이클에 남은 티켓이 없어요' : '필터에 맞는 티켓이 없어요'}
-        </p>
-        {tab.issues.length > 0 && <p className="text-sm text-muted">필터를 바꿔 보세요.</p>}
+        <p className="font-medium">{emptyText}</p>
+        {showFilterHint && <p className="text-sm text-muted">필터를 바꿔 보세요.</p>}
       </EmptyState>
     )
   }
