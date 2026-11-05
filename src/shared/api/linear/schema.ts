@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { displayName } from './display-names'
+
 // 화면에서 쓰는 모양. 서버 캐시와 브라우저 저장소에 이 모양 그대로 들어간다.
 const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 
@@ -46,8 +48,9 @@ const rawIssueSchema = issueSchema
       .object({ id: z.string(), name: z.string(), progress: z.number().min(0).max(100) })
       .nullable(),
   })
-  .transform(({ labels, projectMilestone, ...rest }) => ({
+  .transform(({ labels, projectMilestone, assignee, ...rest }) => ({
     ...rest,
+    assignee: assignee && { ...assignee, name: displayName(assignee) },
     labels: labels.nodes,
     milestone: projectMilestone && {
       ...projectMilestone,

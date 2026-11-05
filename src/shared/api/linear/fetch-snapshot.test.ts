@@ -98,6 +98,32 @@ describe('Linear에서 한 번에 받기', () => {
     expect(snapshot.issues.map((i) => i.milestone?.progress)).toEqual([0.04, 1, 0])
   })
 
+  it('Linear 이름이 실명이 아닌 팀원은 실명으로 바꿔 보여 준다', async () => {
+    const by = (id: string, name: string, n: number) => ({
+      ...rawIssue,
+      id: `i${n}`,
+      assignee: { id, name },
+    })
+    const snapshot = await fetchSnapshot(
+      'k',
+      fakeLinear([
+        issuesPage([
+          by('870b71d5-9aed-4a8c-bf90-1972694b203b', 'Da Wit Lee', 1),
+          by('833c0d35-5772-4e08-875c-dc85ca4fc8cb', 'bari cesco', 2),
+          by('f6ad6c3a-2e01-4c69-b3d6-71966925bd01', '지은세', 3),
+          by('33890f06-d1aa-4505-afcf-e3d1daa0ac1e', '김소희', 4),
+        ]),
+      ]),
+      NOW,
+    )
+    expect(snapshot.issues.map((i) => i.assignee?.name)).toEqual([
+      '이다윗',
+      '김호빈',
+      '옥지훈',
+      '김소희',
+    ])
+  })
+
   it('담당자와 마일스톤이 없는 티켓도 받는다', async () => {
     const bare = { ...rawIssue, assignee: null, projectMilestone: null, dueDate: null }
     const snapshot = await fetchSnapshot('k', fakeLinear([issuesPage([bare])]), NOW)
