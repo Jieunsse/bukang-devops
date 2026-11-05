@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Cycle } from '@/shared/api/linear'
 
-import { currentPeriod } from './period'
+import { beforeCycleLabel, currentPeriod, periodBadge } from './period'
 
 // 사이클 7: 한국 시간 11/9(월) 00:00 ~ 11/16(월) 00:00
 const cycle7: Cycle = {
@@ -65,5 +65,32 @@ describe('지금 기간', () => {
       kind: 'cycle',
       end: '2026-11-16',
     })
+  })
+})
+
+describe('기간 배지', () => {
+  it('사이클 안이면 사이클 이름, 요일을 붙인 기간, 며칠째인지를 준다', () => {
+    // 한국 시간 11/11(수) → 사이클 7의 3일째
+    expect(periodBadge('2026-11-11T03:00:00.000Z', [cycle7])).toEqual({
+      chip: '사이클 7',
+      inCycle: true,
+      range: '11/9(월) ~ 11/15(일)',
+      dayOf: '3일째 / 7일',
+    })
+  })
+
+  it('사이클 밖이면 「사이클 n 시작 전」 칩과 이번 주 끝까지의 기간을 준다', () => {
+    // 한국 시간 11/5(목) → 다음 사이클 7은 11/9(월) 시작
+    expect(periodBadge('2026-11-05T03:00:00.000Z', [cycle7])).toEqual({
+      chip: '사이클 7 시작 전',
+      inCycle: false,
+      range: '11/5(목) ~ 11/8(일)',
+      dayOf: null,
+    })
+  })
+
+  it('다음 사이클이 없으면 「사이클 없음」이다', () => {
+    expect(periodBadge('2026-11-20T03:00:00.000Z', [cycle7]).chip).toBe('사이클 없음')
+    expect(beforeCycleLabel('2026-11-05T03:00:00.000Z', [])).toBe('사이클 없음')
   })
 })
