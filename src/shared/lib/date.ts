@@ -37,3 +37,9 @@ export function formatKstDateTime(instant: string | number | Date): string {
   const iso = new Date(new Date(instant).getTime() + KST_OFFSET_MS).toISOString()
   return `${formatMonthDay(iso.slice(0, 10))} ${iso.slice(11, 16)}`
 }
+
+const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토']
+
+/** '2026-11-09' → '11/9(월)' */
+export const formatDayWithWeekday = (date: DateString) =>
+  `${formatMonthDay(date)}(${WEEKDAY[weekdayOf(date)]})`

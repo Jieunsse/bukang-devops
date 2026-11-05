@@ -53,31 +53,54 @@ const snapshot = (issues: Issue[], cycles: Cycle[] = [cycle1, cycle2]): Snapshot
 })
 
 const inC1 = { cycle: { id: 'c1' } }
+const byAssignee = () => userEvent.click(screen.getByRole('radio', { name: '담당자별' }))
+const state = {
+  backlog: { id: 's-backlog', name: 'Backlog', type: 'backlog', position: 0 },
+  todo: { id: 's-todo', name: 'Todo', type: 'unstarted', position: 1 },
+  progress: { id: 's-progress', name: 'In Progress', type: 'started', position: 2 },
+  review: { id: 's-review', name: 'In Review', type: 'started', position: 3 },
+}
 
 describe('사이클 페이지', () => {
   beforeEach(() => {
     search = ''
   })
 
-  it('담당자별 보드 위 도구 줄에 개수와 넘겨받은 버튼을 둔다', () => {
+  it('보드 위 도구 줄에 묶음 방식 이름, 개수, 넘겨받은 버튼을 둔다', () => {
     render(<Cycles snapshot={snapshot([issue(1)])} now={NOW} actions={<button>필터</button>} />)
-    const bar = screen.getByRole('group', { name: '담당자별 티켓 도구' })
+    const bar = screen.getByRole('group', { name: '상태별 티켓 도구' })
     expect(within(bar).getByText('1건')).toBeInTheDocument()
     expect(within(bar).getByRole('button', { name: '필터' })).toBeInTheDocument()
   })
 
-  it('탭마다 이름 아래 기간을 작게 적고, 지금 기간 탭에 진행 중을 붙여 먼저 연다', () => {
+  it('탭에는 이름만 두고 사이클 밖은 「사이클 N 시작 전」으로 부르며, 지금 기간 탭은 이름 앞 표시와 화면 낭독용 「진행 중」으로 구분해 먼저 연다', () => {
     render(<Cycles snapshot={snapshot([issue(1), issue(2, inC1)])} now={NOW} />)
     const tabs = screen.getAllByRole('tab')
+    // 날짜는 탭에 적지 않는다. 아래 숫자 칸 줄에 이미 있다.
     expect(tabs.map((t) => t.textContent)).toEqual([
-      '사이클 1 시작 전11/5~11/8 · 진행 중',
-      '사이클 111/9~11/15',
-      '사이클 211/16~11/22',
+      '사이클 1 시작 전, 진행 중',
+      '사이클 1',
+      '사이클 2',
     ])
-    expect(screen.getByRole('tab', { name: /사이클 1 시작 전/ })).toHaveAttribute(
-      'aria-selected',
-      'true',
+    const current = screen.getByRole('tab', { name: /사이클 1 시작 전/ })
+    expect(current).toHaveAttribute('aria-selected', 'true')
+    expect(current.querySelector('[data-current]')).toHaveAttribute('aria-hidden', 'true')
+    expect(within(current).getByText(', 진행 중')).toHaveClass('sr-only')
+    expect(screen.getByRole('tab', { name: '사이클 1' }).querySelector('[data-current]')).toBeNull()
+  })
+
+  it('지금 사이클 중이면 사이클에 들지 않은 티켓 탭은 「사이클 밖 기간」이라고 부른다', () => {
+    render(
+      <Cycles
+        snapshot={snapshot([issue(1), issue(2, inC1)])}
+        now={Date.parse('2026-11-10T03:00:00.000Z')}
+      />,
     )
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
+      '사이클 밖 기간',
+      '사이클 1, 진행 중',
+      '사이클 2',
+    ])
   })
 
   it('숫자 칸 네 개에 남은 티켓, 기한 지남, 오늘, 이번 주 개수를 나란히 보여 준다', () => {
@@ -109,7 +132,7 @@ describe('사이클 페이지', () => {
 
   it('사이클 탭은 기간 옆에 완료 수 / 전체 수 진행 막대를 둔다', async () => {
     render(<Cycles snapshot={snapshot([issue(1), issue(2, inC1)])} now={NOW} />)
-    await userEvent.click(screen.getByRole('tab', { name: /^사이클 1(?! 시작 전)/ }))
+    await userEvent.click(screen.getByRole('tab', { name: '사이클 1' }))
     expect(screen.getByText('11/9(월) ~ 11/15(일)')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /남은 티켓\s*1/ })).toBeInTheDocument()
     expect(screen.getByRole('progressbar', { name: '완료 1 / 전체 2' })).toBeInTheDocument()
@@ -160,7 +183,7 @@ describe('사이클 페이지', () => {
       />,
     )
     await userEvent.click(screen.getByRole('button', { name: /기한 지남\s*1/ }))
-    await userEvent.click(screen.getByRole('tab', { name: /^사이클 1(?! 시작 전)/ }))
+    await userEvent.click(screen.getByRole('tab', { name: '사이클 1' }))
     expect(screen.getByText('티켓 2')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /남은 티켓\s*1/ })).toHaveAttribute(
       'aria-pressed',
@@ -168,7 +191,7 @@ describe('사이클 페이지', () => {
     )
   })
 
-  it('담당자별 열을 나란히 두고 담당 없음 열은 맨 끝에 둔다', () => {
+  it('담당자별 열을 나란히 두고 담당 없음 열은 맨 끝에 둔다', async () => {
     render(
       <Cycles
         snapshot={snapshot([
@@ -180,6 +203,7 @@ describe('사이클 페이지', () => {
         now={NOW}
       />,
     )
+    await byAssignee()
     const board = screen.getByRole('region', { name: '담당자별 티켓' })
     const columns = within(board).getAllByRole('region')
     expect(columns.map((c) => c.getAttribute('aria-label'))).toEqual(['지훈', '소희', '담당 없음'])
@@ -187,36 +211,118 @@ describe('사이클 페이지', () => {
     expect(within(columns[2]!).getByText('1건')).toBeInTheDocument()
   })
 
-  it('열 안 카드는 기한 순이고 번호, 제목, 기한, 라벨을 담아 Linear 이슈를 새 탭으로 연다', () => {
+  it('열 안 카드는 기한 순이고, 기한 칩은 짧은 날짜에 기한 세 단계 색을 쓴다', async () => {
     render(
       <Cycles
         snapshot={snapshot([
-          issue(1, { dueDate: '2026-11-12', labels: [{ id: 'l1', name: '프론트' }] }),
+          issue(1, { dueDate: '2026-11-12' }),
           issue(2, { dueDate: '2026-11-03' }),
-          issue(3),
+          issue(3, { dueDate: '2026-11-05' }),
+          issue(4),
         ])}
         now={NOW}
       />,
     )
-    const column = screen.getByRole('region', { name: '지훈' })
-    const cards = within(column).getAllByRole('link')
+    await byAssignee()
+    const cards = within(screen.getByRole('region', { name: '지훈' })).getAllByRole('link')
     expect(cards.map((c) => within(c).getByText(/^티켓/).textContent)).toEqual([
       '티켓 2',
-      '티켓 1',
       '티켓 3',
+      '티켓 1',
+      '티켓 4',
     ])
-    expect(within(cards[0]!).getByText('2일 지남')).toHaveClass('text-danger')
-    expect(within(cards[1]!).getByText('11/12 (D-7)')).toBeInTheDocument()
-    expect(within(cards[1]!).getByText('BUK-1')).toBeInTheDocument()
-    expect(within(cards[1]!).getByText('프론트')).toBeInTheDocument()
-    expect(within(cards[2]!).getByText('기한 없음')).toBeInTheDocument()
-    expect(cards[1]).toHaveAttribute('href', 'https://linear.app/bukang/issue/BUK-1')
-    expect(cards[1]).toHaveAttribute('target', '_blank')
+    expect(within(cards[0]!).getByText('11/3').closest('.chip')).toHaveClass('text-danger')
+    expect(within(cards[1]!).getByText('오늘').closest('.chip')).toHaveClass('text-warning')
+    expect(within(cards[2]!).getByText('11/12').closest('.chip')).toHaveClass('text-muted')
+    // 기한이 없으면 기한 칩을 두지 않는다.
+    expect(within(cards[3]!).queryByText(/^\d+\/\d+$|^오늘$/)).not.toBeInTheDocument()
+  })
+
+  it('카드는 부모 이슈, 번호와 담당자, 상태 아이콘과 제목, 우선순위, 라벨, 만든 날을 담아 Linear 이슈를 새 탭으로 연다', () => {
+    render(
+      <Cycles
+        snapshot={snapshot([
+          issue(1, {
+            state: state.progress,
+            parent: { identifier: 'BUK-16', title: '충전 한도와 이상 패턴 감지' },
+            priority: 2,
+            createdAt: '2026-10-29T16:00:00.000Z',
+            labels: [{ id: 'l1', name: '프론트' }],
+          }),
+        ])}
+        now={NOW}
+      />,
+    )
+    const card = screen.getByRole('link', { name: /티켓 1/ })
+    expect(within(card).getByText('BUK-16 › 충전 한도와 이상 패턴 감지')).toBeInTheDocument()
+    expect(within(card).getByText('BUK-1')).toBeInTheDocument()
+    expect(within(card).getByRole('img', { name: '진행 중' })).toBeInTheDocument()
+    expect(within(card).getByRole('img', { name: '우선순위 높음' })).toBeInTheDocument()
+    expect(within(card).getByText('프론트')).toBeInTheDocument()
+    // UTC 10/29 16:00은 한국 시간 10/30이다.
+    expect(within(card).getByText('만든 날 10/30')).toBeInTheDocument()
+    // 화면 낭독기는 제목을 먼저 읽고, 번호·상태·담당자·기한·우선순위를 이어 읽는다.
+    expect(card).toHaveAccessibleName('티켓 1, BUK-1, 진행 중, 담당 지훈, 기한 없음, 우선순위 높음')
+    expect(card).toHaveAttribute('href', 'https://linear.app/bukang/issue/BUK-1')
+    expect(card).toHaveAttribute('target', '_blank')
+  })
+
+  it('부모 이슈, 우선순위, 만든 날을 모르는 카드도 그린다', () => {
+    render(<Cycles snapshot={snapshot([issue(1)])} now={NOW} />)
+    const card = screen.getByRole('link', { name: /티켓 1/ })
+    expect(within(card).queryByText(/›/)).not.toBeInTheDocument()
+    expect(within(card).queryByText(/만든 날/)).not.toBeInTheDocument()
+    expect(within(card).getByRole('img', { name: '우선순위 없음' })).toBeInTheDocument()
+  })
+
+  it('처음에는 상태별로 묶어 대기, 할 일, 진행 중, 리뷰 중 순으로 열을 둔다', () => {
+    render(
+      <Cycles
+        snapshot={snapshot([
+          issue(1, { state: state.review }),
+          issue(2, { state: state.backlog }),
+          issue(3, { state: state.progress }),
+          issue(4, { state: state.todo }),
+          issue(5, { state: state.progress }),
+        ])}
+        now={NOW}
+      />,
+    )
+    expect(screen.getByRole('radio', { name: '상태별' })).toBeChecked()
+    const board = screen.getByRole('region', { name: '상태별 티켓' })
+    const columns = within(board).getAllByRole('region')
+    expect(columns.map((c) => c.getAttribute('aria-label'))).toEqual([
+      '대기',
+      '할 일',
+      '진행 중',
+      '리뷰 중',
+    ])
+    expect(within(columns[2]!).getByRole('button', { name: /^진행 중\s*2건$/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+  })
+
+  it('담당자별로 바꿨다가 상태별로 돌아올 수 있다', async () => {
+    render(<Cycles snapshot={snapshot([issue(1, { state: state.todo })])} now={NOW} />)
+    await byAssignee()
+    expect(screen.getByRole('region', { name: '지훈' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('radio', { name: '상태별' }))
+    expect(screen.getByRole('region', { name: '할 일' })).toBeInTheDocument()
+  })
+
+  it('상태 열 머리를 눌러 접고 펼친다', async () => {
+    render(<Cycles snapshot={snapshot([issue(1, { state: state.todo })])} now={NOW} />)
+    const toggle = screen.getByRole('button', { name: /^할 일\s*1건$/ })
+    await userEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 
   it('한 열에 카드가 많으면 5개까지 보여 주고 나머지는 더 보기로 연다', async () => {
     const many = Array.from({ length: 7 }, (_, n) => issue(n + 1))
     render(<Cycles snapshot={snapshot(many)} now={NOW} />)
+    await byAssignee()
     const column = screen.getByRole('region', { name: '지훈' })
     expect(within(column).getAllByRole('link')).toHaveLength(5)
     await userEvent.click(within(column).getByRole('button', { name: '2건 더 보기' }))
@@ -231,7 +337,7 @@ describe('사이클 페이지', () => {
         now={NOW}
       />,
     )
-    await userEvent.click(screen.getByRole('tab', { name: /^사이클 1(?! 시작 전)/ }))
+    await userEvent.click(screen.getByRole('tab', { name: '사이클 1' }))
     expect(screen.getByRole('progressbar', { name: '완료 1 / 전체 3' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /남은 티켓\s*1/ })).toBeInTheDocument()
     expect(screen.getByText('티켓 2')).toBeInTheDocument()
@@ -263,16 +369,14 @@ describe('사이클 페이지', () => {
     )
     await userEvent.click(screen.getByRole('tab', { name: /사이클 2/ }))
     rerender(<Cycles snapshot={snapshot([issue(2, inC1)], [cycle1])} now={NOW} />)
-    expect(screen.getByRole('tab', { name: /^사이클 1(?! 시작 전)/ })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    )
+    expect(screen.getByRole('tab', { name: '사이클 1' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByText('티켓 2')).toBeInTheDocument()
   })
 
   it('더 보기로 펼친 열은 새로 받은 목록에서 티켓이 늘어도 펼친 채로 둔다', async () => {
     const many = (n: number) => Array.from({ length: n }, (_, i) => issue(i + 1))
     const { rerender } = render(<Cycles snapshot={snapshot(many(7))} now={NOW} />)
+    await byAssignee()
     await userEvent.click(screen.getByRole('button', { name: '2건 더 보기' }))
     rerender(<Cycles snapshot={snapshot(many(9))} now={NOW} />)
     expect(within(screen.getByRole('region', { name: '지훈' })).getAllByRole('link')).toHaveLength(
@@ -295,6 +399,7 @@ describe('사이클 페이지', () => {
 
   it('열 머리를 누르면 그 사람 카드를 접고, 다시 누르면 펼친다', async () => {
     render(<Cycles snapshot={snapshot([issue(1), issue(2, { assignee: null })])} now={NOW} />)
+    await byAssignee()
     const column = screen.getByRole('region', { name: '지훈' })
     const toggle = within(column).getByRole('button', { name: /^지훈\s*1건$/ })
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
@@ -317,6 +422,7 @@ describe('사이클 페이지', () => {
 
   it('한 열만 펼쳐 있어도 모두 접기를 보여 준다', async () => {
     render(<Cycles snapshot={snapshot([issue(1), issue(2, { assignee: null })])} now={NOW} />)
+    await byAssignee()
     await userEvent.click(screen.getByRole('button', { name: /^지훈\s*1건$/ }))
     expect(screen.getByRole('button', { name: '모두 접기' })).toBeInTheDocument()
   })
@@ -334,11 +440,13 @@ describe('사이클 페이지', () => {
     expect(chip.style.backgroundColor).toMatch(/#4ea7fc|rgb\(78, 167, 252\)/)
   })
 
-  it('빈 묶음을 골랐다가 돌아와도 접어 둔 열은 접힌 채로 둔다', async () => {
+  it('빈 묶음을 골랐다가 돌아와도 묶음 방식과 접어 둔 열을 그대로 둔다', async () => {
     render(<Cycles snapshot={snapshot([issue(1, { dueDate: '2026-11-03' })])} now={NOW} />)
+    await byAssignee()
     await userEvent.click(screen.getByRole('button', { name: /^지훈\s*1건$/ }))
     await userEvent.click(screen.getByRole('button', { name: /오늘\s*0/ }))
     await userEvent.click(screen.getByRole('button', { name: /남은 티켓\s*1/ }))
+    expect(screen.getByRole('radio', { name: '담당자별' })).toBeChecked()
     expect(screen.getByRole('button', { name: /^지훈\s*1건$/ })).toHaveAttribute(
       'aria-expanded',
       'false',

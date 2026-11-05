@@ -2,7 +2,7 @@ import type { Cycle } from '@/shared/api/linear'
 import {
   addDays,
   daysBetween,
-  formatMonthDay,
+  formatDayWithWeekday,
   kstDate,
   weekdayOf,
   type DateString,
@@ -37,8 +37,6 @@ export function currentPeriod(now: string | number | Date, cycles: Cycle[]): Per
   return { kind: 'outside', start: today, end: end < today ? today : end }
 }
 
-const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토']
-const withWeekday = (date: DateString) => `${formatMonthDay(date)}(${WEEKDAY[weekdayOf(date)]})`
 const cycleName = (c: Cycle) => `사이클 ${c.number}${c.name ? ` ${c.name}` : ''}`
 
 /** 지금 사이클 밖일 때 쓰는 이름. 「사이클 밖」 대신 다음 사이클을 기준으로 말한다. */
@@ -63,7 +61,7 @@ export type PeriodBadge = {
 /** 머리 영역에 보여 줄 지금 기간. */
 export function periodBadge(now: string | number | Date, cycles: Cycle[]): PeriodBadge {
   const period = currentPeriod(now, cycles)
-  const range = `${withWeekday(period.start)} ~ ${withWeekday(period.end)}`
+  const range = `${formatDayWithWeekday(period.start)} ~ ${formatDayWithWeekday(period.end)}`
   if (period.kind === 'outside') {
     return { chip: beforeCycleLabel(now, cycles), inCycle: false, range, dayOf: null }
   }

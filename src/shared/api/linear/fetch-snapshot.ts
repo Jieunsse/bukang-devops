@@ -2,7 +2,7 @@ import 'server-only'
 
 import { z } from 'zod'
 
-import { cyclesResponseSchema, issuesResponseSchema, type Snapshot } from './schema'
+import { cyclesResponseSchema, ISSUE_FIELDS, issuesResponseSchema, type Snapshot } from './schema'
 
 const ENDPOINT = 'https://api.linear.app/graphql'
 const TEAM_KEY = 'BUK'
@@ -18,14 +18,7 @@ const ISSUES_QUERY = `
       after: $after
       filter: { team: { key: { eq: $teamKey } }, state: { type: { nin: ["completed", "canceled"] } } }
     ) {
-      nodes {
-        id identifier title url dueDate startedAt
-        state { name type }
-        assignee { id name avatarUrl }
-        labels(first: 20) { nodes { id name color } }
-        projectMilestone { id name progress }
-        cycle { id }
-      }
+      nodes { ${ISSUE_FIELDS} }
       pageInfo { hasNextPage endCursor }
     }
   }
