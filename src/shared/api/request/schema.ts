@@ -26,3 +26,11 @@ export type WorkRequestInput = z.infer<typeof workRequestInputSchema>
 export type WorkRequestResult =
   | { ok: true; identifier: string; url: string }
   | { ok: false; reason: 'password' | 'invalid' | 'failed' }
+
+/** 작업 요청 창에서 고르는 Linear 값. 서버가 받아 오고, 받은 값 밖의 id는 거절한다. */
+export type RequestOptions = {
+  teamId: string
+  labels: { id: string; name: string; color?: string }[]
+  projects: { id: string; name: string; milestones: { id: string; name: string }[] }[]
+  cycles: { id: string; number: number; name: string | null; startsAt: string; endsAt: string }[]
+}
