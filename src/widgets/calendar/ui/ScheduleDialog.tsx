@@ -70,7 +70,9 @@ export function ScheduleDialog({
   )
 
   return (
-    <Modal.Backdrop isOpen onOpenChange={(open) => !open && onClose()}>
+    // 창 바깥을 눌러도 닫지 않는다. 일정을 두 번 누르면 두 번째 누름이 바깥에 떨어져 창이 바로 닫혀서다.
+    // 닫기는 「닫기」 버튼과 Esc 키로 한다. 적던 내용을 실수로 잃지 않는 효과도 있다.
+    <Modal.Backdrop isOpen isDismissable={false} onOpenChange={(open) => !open && onClose()}>
       <Modal.Container placement="center">
         <Modal.Dialog aria-label={schedule ? '일정 고치기' : '일정 추가'}>
           <form onSubmit={save} noValidate>

@@ -76,6 +76,22 @@ describe('일정 달력', () => {
     expect(screen.queryByText('비밀번호가 맞지 않아요.')).not.toBeInTheDocument()
   })
 
+  it('날짜 칸 빈 곳을 두 번 누르면 그 날짜로 추가 창이 열리고, 일정을 두 번 누르면 고치기 창이 열린다', async () => {
+    const user = userEvent.setup()
+    renderCalendar()
+
+    const cell = await screen.findByRole('listitem', { name: /^11월 20일/ })
+    await user.dblClick(cell)
+    const dialog = screen.getByRole('dialog', { name: '일정 추가' })
+    expect(within(dialog).getByLabelText('시작일')).toHaveValue('2026-11-20')
+    expect(within(dialog).getByLabelText('종료일')).toHaveValue('2026-11-20')
+    await user.click(within(dialog).getByRole('button', { name: '닫기' }))
+
+    await user.dblClick((await screen.findAllByRole('button', { name: /^개발 마감 주간/ }))[0]!)
+    expect(screen.getByRole('dialog', { name: '일정 고치기' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: '일정 추가' })).not.toBeInTheDocument()
+  })
+
   it('비밀번호가 맞으면 저장하고 목록을 새로 받는다', async () => {
     actions.writeScheduleAction.mockResolvedValue({ ok: true })
     const user = userEvent.setup()
