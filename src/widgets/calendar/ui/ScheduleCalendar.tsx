@@ -23,7 +23,8 @@ import { ScheduleDialog } from './ScheduleDialog'
 export function ScheduleCalendar({ now, actions }: { now: number; actions?: ReactNode }) {
   const today = kstDate(now)
   const [month, setMonth] = useState<Month>(today.slice(0, 7))
-  const [editing, setEditing] = useState<Schedule | 'new' | null>(null)
+  // 고칠 일정, 또는 새 일정을 넣을 날짜. null이면 창이 닫혀 있다.
+  const [editing, setEditing] = useState<Schedule | DateString | null>(null)
   const [password, setPassword] = useState('')
   const { data: schedules = [], isPending, isError } = useSchedules()
 
@@ -41,7 +42,7 @@ export function ScheduleCalendar({ now, actions }: { now: number; actions?: Reac
         actions={
           <>
             {actions}
-            <Button size="sm" className="cursor-pointer" onPress={() => setEditing('new')}>
+            <Button size="sm" className="cursor-pointer" onPress={() => setEditing(today)}>
               일정 추가
             </Button>
           </>
@@ -77,6 +78,7 @@ export function ScheduleCalendar({ now, actions }: { now: number; actions?: Reac
                   outside={!date.startsWith(month)}
                   schedules={byDate.get(date) ?? []}
                   onOpen={setEditing}
+                  onAdd={setEditing}
                 />
               ))}
             </ol>
@@ -87,10 +89,14 @@ export function ScheduleCalendar({ now, actions }: { now: number; actions?: Reac
       {editing && (
         <ScheduleDialog
           // 열 때마다 새로 그려 지난번 입력과 오류가 남지 않게 한다.
-          key={editing === 'new' ? 'new' : editing.id}
+          key={typeof editing === 'string' ? `new-${editing}` : editing.id}
           onClose={() => setEditing(null)}
-          schedule={editing === 'new' ? null : editing}
-          defaults={{ title: '', start: today, end: today }}
+          schedule={typeof editing === 'string' ? null : editing}
+          defaults={{
+            title: '',
+            start: typeof editing === 'string' ? editing : today,
+            end: typeof editing === 'string' ? editing : today,
+          }}
           password={password}
           onPasswordChange={setPassword}
         />
@@ -105,12 +111,15 @@ function DayCell({
   outside,
   schedules,
   onOpen,
+  onAdd,
 }: {
   date: DateString
   today: DateString
   outside: boolean
   schedules: Schedule[]
   onOpen: (schedule: Schedule) => void
+  /** 칸의 빈 곳을 두 번 누르면 그 날짜로 추가 창을 연다. 키보드는 「일정 추가」 버튼을 쓴다. */
+  onAdd: (date: DateString) => void
 }) {
   const isToday = date === today
   const isFinal = date === FINAL_PRESENTATION
@@ -118,7 +127,11 @@ function DayCell({
     <li
       aria-label={cellLabel(date)}
       aria-current={isToday ? 'date' : undefined}
-      className={`flex min-h-16 min-w-0 flex-col gap-1 border-r border-b border-separator p-1 md:min-h-32 ${
+      // 일정 버튼 위에서 두 번 누른 것은 고치기로 두고, 빈 곳만 추가로 이어지게 한다.
+      onDoubleClick={(e) => {
+        if (!(e.target as HTMLElement).closest('button')) onAdd(date)
+      }}
+      className={`flex min-h-16 min-w-0 cursor-pointer flex-col gap-1 border-r border-b border-separator p-1 select-none md:min-h-32 ${
         isFinal ? 'ring-2 ring-accent ring-inset' : ''
       }`}
     >
