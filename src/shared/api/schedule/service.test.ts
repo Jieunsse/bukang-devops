@@ -11,7 +11,7 @@ const fakeStore = () =>
   ({
     list: vi.fn(async () => []),
     create: vi.fn(async () => undefined),
-    update: vi.fn(async () => undefined),
+    update: vi.fn(async () => true),
     remove: vi.fn(async () => undefined),
   }) satisfies ScheduleStore
 
@@ -98,6 +98,13 @@ describe('일정 저장', () => {
       reason: 'invalid',
     })
     expect(wrote()).toBe(0)
+  })
+
+  it('고칠 일정이 이미 지워졌으면 없다고 알려 준다', async () => {
+    store.update.mockResolvedValueOnce(false)
+    expect(
+      await writeSchedule(store, PASSWORD, PASSWORD, { kind: 'update', id: 'gone', input }),
+    ).toEqual({ ok: false, reason: 'missing' })
   })
 
   it('모르는 요청은 거절한다', async () => {

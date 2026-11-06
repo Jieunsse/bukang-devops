@@ -1,6 +1,5 @@
 'use client'
 
-import { ChevronLeft, ChevronRight } from '@gravity-ui/icons'
 import { Button, Card, Popover, Tooltip } from '@heroui/react'
 import { buttonVariants } from '@heroui/styles'
 import { useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
@@ -19,26 +18,20 @@ import type { Issue, Snapshot } from '@/shared/api/linear'
 import { PageToolbar } from '@/shared/ui'
 import { formatMonthDay, kstDate, weekdayOf, type DateString } from '@/shared/lib/date'
 
-import {
-  FINAL_PRESENTATION,
-  issuesByDate,
-  monthLabel,
-  monthWeeks,
-  shiftMonth,
-  type Month,
-} from '../lib/month'
+import { FINAL_PRESENTATION, issuesByDate, monthLabel, monthWeeks, type Month } from '../lib/month'
+import { MonthNav } from './MonthNav'
 
 /** 날짜 칸에 바로 보여 줄 티켓 줄 수. 넘치면 「n건 더」로 모은다. */
 const MAX_ROWS = 3
-const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
+export const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
 const TONE_TEXT: Record<DueTone, string> = {
   danger: 'text-danger',
   warning: 'text-warning',
   default: 'text-foreground',
 }
 
-const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
-const cellLabel = (date: DateString) =>
+export const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
+export const cellLabel = (date: DateString) =>
   `${Number(date.slice(5, 7))}월 ${Number(date.slice(8))}일 ${DAY_NAMES[weekdayOf(date)]}요일`
 /** '2026-11-12' → '2026년 11월 12일 (목)' */
 const fullDate = (date: DateString) =>
@@ -88,39 +81,7 @@ export function MonthCalendar({
         <FilterChips issues={snapshot.issues} />
       </PageToolbar>
       <Card>
-        <Card.Header className="flex-row flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">{monthLabel(month)}</h2>
-          <div className="flex items-center gap-1">
-            <Button
-              isIconOnly
-              size="sm"
-              variant="ghost"
-              aria-label="이전 달"
-              className="cursor-pointer"
-              onPress={() => setMonth((m) => shiftMonth(m, -1))}
-            >
-              <ChevronLeft aria-hidden className="size-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="cursor-pointer"
-              onPress={() => setMonth(today.slice(0, 7))}
-            >
-              오늘
-            </Button>
-            <Button
-              isIconOnly
-              size="sm"
-              variant="ghost"
-              aria-label="다음 달"
-              className="cursor-pointer"
-              onPress={() => setMonth((m) => shiftMonth(m, 1))}
-            >
-              <ChevronRight aria-hidden className="size-4" />
-            </Button>
-          </div>
-        </Card.Header>
+        <MonthNav month={month} today={today} onChange={setMonth} />
         <Card.Content className="flex flex-col gap-3">
           {isEmpty && <p className="text-sm text-muted">이 달에 기한인 남은 티켓이 없어요</p>}
           <div>

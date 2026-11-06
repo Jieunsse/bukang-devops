@@ -15,7 +15,7 @@ export const MAX_RANGE_DAYS = 90
 const DEFAULT_RANGE_DAYS = 14
 
 /** 'YYYY-MM-DD' 모양이고 달력에 있는 날짜. 2000~2099년만 받아 쓸데없는 Linear 호출을 막는다. */
-const calendarDate = z
+export const calendarDate = z
   .string()
   .regex(/^20\d{2}-\d{2}-\d{2}$/, '날짜를 골라 주세요.')
   .refine((s) => {
