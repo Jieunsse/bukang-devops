@@ -13,7 +13,7 @@ import {
   ToggleButtonGroup,
 } from '@heroui/react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 
 import {
@@ -31,6 +31,8 @@ import { SCHEDULES_QUERY_KEY } from '@/shared/api/schedule/query'
 
 import { SCHEDULE_COLOR_STYLE } from '../lib/colors'
 import { ScheduleRangeField } from './ScheduleRangeField'
+
+const DISMISS_GUARD_MS = 500
 
 /** 일정 추가·수정 창. 고칠 일정이 있으면 수정과 삭제를, 없으면 추가를 한다. 열 때마다 새로 그린다. */
 export function ScheduleDialog({
@@ -80,10 +82,15 @@ export function ScheduleDialog({
     mutate(schedule ? { kind: 'update', id: schedule.id, input } : { kind: 'create', input }),
   )
 
+  // 열린 직후 잠깐은 바깥 누름을 무시한다. 일정을 두 번 누르면 두 번째 누름이 바깥에 떨어져 창이 바로 닫혀서다.
+  const [dismissable, setDismissable] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => setDismissable(true), DISMISS_GUARD_MS)
+    return () => clearTimeout(timer)
+  }, [])
+
   return (
-    // 창 바깥을 눌러도 닫지 않는다. 일정을 두 번 누르면 두 번째 누름이 바깥에 떨어져 창이 바로 닫혀서다.
-    // 닫기는 「닫기」 버튼과 Esc 키로 한다. 적던 내용을 실수로 잃지 않는 효과도 있다.
-    <Modal.Backdrop isOpen isDismissable={false} onOpenChange={(open) => !open && onClose()}>
+    <Modal.Backdrop isOpen isDismissable={dismissable} onOpenChange={(open) => !open && onClose()}>
       <Modal.Container placement="center">
         <Modal.Dialog aria-label={schedule ? '일정 고치기' : '일정 추가'}>
           <form

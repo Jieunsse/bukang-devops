@@ -127,6 +127,20 @@ describe('일정 달력', () => {
     expect(screen.queryByRole('dialog', { name: '일정 추가' })).not.toBeInTheDocument()
   })
 
+  it('창이 열리고 잠시 뒤 바깥을 누르면 창이 닫힌다', async () => {
+    const user = userEvent.setup()
+    renderCalendar()
+
+    await user.click(screen.getByRole('button', { name: '일정 추가' }))
+    expect(screen.getByRole('dialog', { name: '일정 추가' })).toBeInTheDocument()
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    await user.click(document.body)
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: '일정 추가' })).not.toBeInTheDocument(),
+    )
+  })
+
   it('비밀번호가 맞으면 저장하고 목록을 새로 받는다', async () => {
     actions.writeScheduleAction.mockResolvedValue({ ok: true })
     const user = userEvent.setup()
