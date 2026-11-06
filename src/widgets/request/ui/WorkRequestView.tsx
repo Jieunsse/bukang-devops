@@ -77,7 +77,8 @@ export function WorkRequestView() {
     queryFn: () => loadRequestOptionsAction(),
   })
   return (
-    <div className="flex flex-col gap-6">
+    // data-narrow: AppShell이 머리 영역과 이 카드를 같은 폭으로 묶어 가운데에 둔다.
+    <div data-narrow className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold">작업 요청</h2>
         <p className="text-sm text-muted">
@@ -141,7 +142,7 @@ function WorkRequestForm({ options }: { options: RequestOptions }) {
   const project = options.projects.find((p) => p.id === projectId)
 
   return (
-    <Card className="max-w-5xl">
+    <Card>
       <form onSubmit={handleSubmit((input) => mutate(input))} noValidate>
         <Card.Content className="flex flex-col gap-6">
           {error && !error.password && (
@@ -204,7 +205,8 @@ function WorkRequestForm({ options }: { options: RequestOptions }) {
                       <TextArea
                         rows={4}
                         placeholder="무엇을, 왜 해야 하는지 적어 주세요."
-                        className="flex-1"
+                        // 설명칸 높이는 두 단 높이에 맞춰 정해지므로 손으로 늘이지 못하게 막는다.
+                        className="flex-1 resize-none"
                       />
                       <FieldError>{fieldState.error?.message}</FieldError>
                     </TextField>
