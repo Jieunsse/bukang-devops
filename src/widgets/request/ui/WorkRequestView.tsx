@@ -11,6 +11,9 @@ import {
   I18nProvider,
   Input,
   Label,
+  ListBox,
+  Select,
+  Separator,
   Spinner,
   TextArea,
   TextField,
@@ -135,182 +138,261 @@ function WorkRequestForm({ options }: { options: RequestOptions }) {
     ),
   }))
 
+  const project = options.projects.find((p) => p.id === projectId)
+
   return (
-    <Card className="max-w-2xl">
+    <Card className="max-w-3xl">
       <form onSubmit={handleSubmit((input) => mutate(input))} noValidate>
-        <Card.Content className="flex flex-col gap-5">
+        <Card.Content className="flex flex-col gap-6">
           {error && !error.password && (
             <p role="alert" className="text-sm text-danger">
               {error.message}
             </p>
           )}
-          <ChoiceController
-            control={control}
-            name="assigneeId"
-            label="누구에게"
-            choices={memberChoices}
-          />
-          <ChoiceController
-            control={control}
-            name="requesterId"
-            label="요청하는 사람"
-            choices={memberChoices}
-          />
-          <Controller
-            control={control}
-            name="title"
-            render={({ field, fieldState }) => (
-              <TextField
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                isInvalid={fieldState.invalid}
-                validationBehavior="aria"
-                maxLength={REQUEST_TITLE_MAX}
-              >
-                <Label>제목</Label>
-                <Input placeholder="예: 로그인 화면 문구 고치기" />
-                <FieldError>{fieldState.error?.message}</FieldError>
-              </TextField>
-            )}
-          />
-          <Controller
-            control={control}
-            name="description"
-            render={({ field, fieldState }) => (
-              <TextField
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                isInvalid={fieldState.invalid}
-                validationBehavior="aria"
-                maxLength={REQUEST_DESCRIPTION_MAX}
-              >
-                <Label>설명 (선택)</Label>
-                <TextArea rows={5} placeholder="무엇을, 왜 해야 하는지 적어 주세요." />
-                <FieldError>{fieldState.error?.message}</FieldError>
-              </TextField>
-            )}
-          />
-          <Controller
-            control={control}
-            name="projectId"
-            render={({ field, fieldState }) => (
-              <ChoiceField
-                label="프로젝트"
-                choices={options.projects.map((p) => ({ id: p.id, content: p.name }))}
-                selected={field.value ? [field.value] : []}
-                onChange={([id = '']) => {
-                  field.onChange(id)
-                  // 다른 프로젝트의 마일스톤은 붙일 수 없어서 비운다.
-                  setValue('milestoneId', '')
-                }}
-                error={fieldState.error?.message}
-              />
-            )}
-          />
-          {milestones.length > 0 && (
+          <FormSection title="사람">
+            <ChoiceController
+              control={control}
+              name="assigneeId"
+              label="누구에게"
+              choices={memberChoices}
+            />
+            <ChoiceController
+              control={control}
+              name="requesterId"
+              label="요청하는 사람"
+              choices={memberChoices}
+            />
+          </FormSection>
+          <Separator />
+          <FormSection title="내용">
             <Controller
               control={control}
-              name="milestoneId"
-              render={({ field }) => (
-                <ChoiceField
-                  label="마일스톤"
-                  choices={[
-                    { id: NO_MILESTONE_KEY, content: '마일스톤 없음' },
-                    ...milestones.map((m) => ({ id: m.id, content: m.name })),
-                  ]}
-                  selected={[field.value || NO_MILESTONE_KEY]}
-                  onChange={([id]) => field.onChange(!id || id === NO_MILESTONE_KEY ? '' : id)}
-                />
+              name="title"
+              render={({ field, fieldState }) => (
+                <TextField
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  isInvalid={fieldState.invalid}
+                  validationBehavior="aria"
+                  maxLength={REQUEST_TITLE_MAX}
+                >
+                  <Label>제목</Label>
+                  <Input placeholder="예: 로그인 화면 문구 고치기" />
+                  <FieldError>{fieldState.error?.message}</FieldError>
+                </TextField>
               )}
             />
-          )}
-          <Controller
-            control={control}
-            name="labelIds"
-            render={({ field, fieldState }) => (
-              <ChoiceField
-                label="라벨 (여러 개 고를 수 있어요)"
-                multiple
-                choices={options.labels.map((l) => ({
-                  id: l.id,
-                  // 일정 색 고르기처럼 Linear 라벨 색 견본과 이름을 함께 쓴다.
-                  content: (
-                    <>
-                      <span
-                        aria-hidden
-                        className="size-3 rounded-sm"
-                        style={{ backgroundColor: l.color }}
-                      />
-                      {l.name}
-                    </>
-                  ),
-                }))}
-                selected={field.value}
-                onChange={field.onChange}
-                error={fieldState.error?.message}
+            <Controller
+              control={control}
+              name="description"
+              render={({ field, fieldState }) => (
+                <TextField
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  isInvalid={fieldState.invalid}
+                  validationBehavior="aria"
+                  maxLength={REQUEST_DESCRIPTION_MAX}
+                >
+                  <Label>설명 (선택)</Label>
+                  <TextArea rows={4} placeholder="무엇을, 왜 해야 하는지 적어 주세요." />
+                  <FieldError>{fieldState.error?.message}</FieldError>
+                </TextField>
+              )}
+            />
+          </FormSection>
+          <Separator />
+          <FormSection title="분류">
+            {/* 넓은 화면에서는 짧은 칸을 두 칸씩 나란히 둔다. 칸 폭은 모두 그 칸을 채운다. */}
+            <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+              <Controller
+                control={control}
+                name="projectId"
+                render={({ field, fieldState }) =>
+                  // 고를 프로젝트가 하나뿐이면 미리 골라 둔 값을 글자로만 보여 준다.
+                  options.projects.length === 1 ? (
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-sm font-medium">프로젝트</span>
+                      <span className="flex h-9 items-center text-sm">{project?.name}</span>
+                    </div>
+                  ) : (
+                    <SelectField
+                      label="프로젝트"
+                      placeholder="프로젝트 고르기"
+                      items={options.projects}
+                      value={field.value}
+                      onChange={(id) => {
+                        field.onChange(id)
+                        // 다른 프로젝트의 마일스톤은 붙일 수 없어서 비운다.
+                        setValue('milestoneId', '')
+                      }}
+                      error={fieldState.error?.message}
+                    />
+                  )
+                }
               />
-            )}
-          />
-          <Controller
-            control={control}
-            name="priority"
-            render={({ field, fieldState }) => (
-              <ChoiceField
-                label="우선순위"
-                choices={([1, 2, 3, 4] as const).map((p) => ({
-                  id: String(p),
-                  content: (
-                    <>
-                      <PriorityIcon priority={p} />
-                      {PRIORITY_LABEL[p]}
-                    </>
-                  ),
-                }))}
-                selected={field.value ? [String(field.value)] : []}
-                onChange={([id]) => field.onChange(Number(id ?? 0))}
-                error={fieldState.error?.message}
+              <Controller
+                control={control}
+                name="milestoneId"
+                render={({ field }) => (
+                  <SelectField
+                    label="마일스톤"
+                    items={[{ id: NO_MILESTONE_KEY, name: '마일스톤 없음' }, ...milestones]}
+                    value={field.value || NO_MILESTONE_KEY}
+                    onChange={(id) => field.onChange(id === NO_MILESTONE_KEY ? '' : id)}
+                    isDisabled={!project}
+                  />
+                )}
               />
-            )}
-          />
-          <Controller
-            control={control}
-            name="cycleId"
-            render={({ field, fieldState }) => (
-              <ChoiceField
-                label="사이클"
-                choices={[
-                  ...options.cycles.map((c) => ({ id: c.id, content: cycleText(c) })),
-                  { id: NO_CYCLE, content: '사이클 없음' },
-                ]}
-                selected={field.value ? [field.value] : []}
-                onChange={([id = '']) => field.onChange(id)}
-                error={fieldState.error?.message}
+              <Controller
+                control={control}
+                name="priority"
+                render={({ field, fieldState }) => (
+                  <ChoiceField
+                    label="우선순위"
+                    choices={([1, 2, 3, 4] as const).map((p) => ({
+                      id: String(p),
+                      content: (
+                        <>
+                          <PriorityIcon priority={p} />
+                          {PRIORITY_LABEL[p]}
+                        </>
+                      ),
+                    }))}
+                    selected={field.value ? [String(field.value)] : []}
+                    onChange={([id]) => field.onChange(Number(id ?? 0))}
+                    error={fieldState.error?.message}
+                  />
+                )}
               />
-            )}
-          />
-          <DueDateField control={control} />
+              <Controller
+                control={control}
+                name="cycleId"
+                render={({ field, fieldState }) => (
+                  <ChoiceField
+                    label="사이클"
+                    choices={[
+                      ...options.cycles.map((c) => ({ id: c.id, content: cycleText(c) })),
+                      { id: NO_CYCLE, content: '사이클 없음' },
+                    ]}
+                    selected={field.value ? [field.value] : []}
+                    onChange={([id = '']) => field.onChange(id)}
+                    error={fieldState.error?.message}
+                  />
+                )}
+              />
+              <Controller
+                control={control}
+                name="labelIds"
+                render={({ field, fieldState }) => (
+                  <ChoiceField
+                    label="라벨 (여러 개 고를 수 있어요)"
+                    multiple
+                    choices={options.labels.map((l) => ({
+                      id: l.id,
+                      // 일정 색 고르기처럼 Linear 라벨 색 견본과 이름을 함께 쓴다.
+                      content: (
+                        <>
+                          <span
+                            aria-hidden
+                            className="size-3 rounded-sm"
+                            style={{ backgroundColor: l.color }}
+                          />
+                          {l.name}
+                        </>
+                      ),
+                    }))}
+                    selected={field.value}
+                    onChange={field.onChange}
+                    error={fieldState.error?.message}
+                  />
+                )}
+              />
+              <DueDateField control={control} />
+            </div>
+          </FormSection>
+        </Card.Content>
+        {/* 비밀번호는 보내기 직전에 넣는 값이라 보내기 버튼과 한 줄로 묶는다. */}
+        <Card.Footer className="mt-2 flex flex-col items-stretch gap-3 border-t border-separator pt-4 sm:flex-row sm:items-start">
           <TextField
             type="password"
             value={password}
             onChange={setPassword}
             isInvalid={!!error?.password}
             validationBehavior="aria"
-            className="max-w-xs"
+            aria-label="팀 비밀번호"
+            className="sm:flex-1"
           >
-            <Label>팀 비밀번호</Label>
-            <Input autoComplete="current-password" />
+            <Input autoComplete="current-password" placeholder="팀 비밀번호" />
             <FieldError>{error?.password && error.message}</FieldError>
           </TextField>
-        </Card.Content>
-        <Card.Footer className="justify-end">
-          <Button type="submit" isPending={isPending}>
+          <Button type="submit" isPending={isPending} className="w-full sm:w-auto">
             요청 보내기
           </Button>
         </Card.Footer>
       </form>
     </Card>
+  )
+}
+
+/** 관련 있는 칸끼리 묶는 작은 제목 영역 */
+function FormSection({ title, children }: { title: string; children: ReactNode }) {
+  const titleId = useId()
+  return (
+    <section aria-labelledby={titleId} className="flex flex-col gap-5">
+      <h3 id={titleId} className="text-sm font-semibold text-muted">
+        {title}
+      </h3>
+      {children}
+    </section>
+  )
+}
+
+/** 보기가 많아 버튼으로 늘어놓으면 줄이 넘치는 칸. 펼쳐 보는 선택 상자로 고른다. */
+function SelectField({
+  label,
+  placeholder,
+  items,
+  value,
+  onChange,
+  isDisabled,
+  error,
+}: {
+  label: string
+  placeholder?: string
+  items: { id: string; name: string }[]
+  value: string
+  onChange: (id: string) => void
+  isDisabled?: boolean
+  error?: string
+}) {
+  return (
+    <Select
+      value={value || null}
+      onChange={(v) => onChange(String(v ?? ''))}
+      isDisabled={isDisabled}
+      isInvalid={!!error}
+      placeholder={placeholder}
+      className="w-full"
+    >
+      <Label>{label}</Label>
+      <Select.Trigger>
+        <Select.Value />
+        <Select.Indicator />
+      </Select.Trigger>
+      <FieldError>{error}</FieldError>
+      <Select.Popover>
+        <ListBox>
+          {items.map((o) => (
+            <ListBox.Item key={o.id} id={o.id} textValue={o.name}>
+              {o.name}
+              <ListBox.ItemIndicator />
+            </ListBox.Item>
+          ))}
+        </ListBox>
+      </Select.Popover>
+    </Select>
   )
 }
 
@@ -373,7 +455,9 @@ function ChoiceField({
         selectionMode={multiple ? 'multiple' : 'single'}
         selectedKeys={selected}
         onSelectionChange={(keys) => onChange([...keys].map(String))}
-        className="flex-wrap justify-start"
+        // 붙은 모양은 줄이 넘어가면 바탕이 계단처럼 깨져서 버튼을 떨어뜨려 놓는다.
+        isDetached
+        className="flex-wrap justify-start gap-1.5"
       >
         {choices.map((c) => (
           <ToggleButton key={c.id} id={c.id} className="gap-1.5">
@@ -412,7 +496,7 @@ function DueDateField({ control }: { control: Control<WorkRequestInput> }) {
             onBlur={field.onBlur}
             isInvalid={fieldState.invalid}
             validationBehavior="aria"
-            className="max-w-xs"
+            className="w-full"
           >
             <Label>기한 (선택)</Label>
             <DateField.Group>
