@@ -260,4 +260,36 @@ describe('달력 페이지', () => {
     )
     expect(screen.getByText('이 달에 기한인 남은 티켓이 없어요')).toBeInTheDocument()
   })
+
+  describe('요일 순서와 주말', () => {
+    const number = (name: string) =>
+      within(screen.getByRole('listitem', { name })).getByText(/^\d+$|\//)
+
+    it('일요일부터 토요일까지 보여 준다', () => {
+      const { container } = render(<MonthCalendar snapshot={snapshot([])} now={NOW} />)
+      const header = container.querySelector('[aria-hidden="true"].grid-cols-7')!
+      expect([...header.children].map((c) => c.textContent)).toEqual([
+        '일',
+        '월',
+        '화',
+        '수',
+        '목',
+        '금',
+        '토',
+      ])
+      expect(header.children[0]).toHaveClass('text-red-700')
+      expect(header.children[6]).toHaveClass('text-red-700')
+      expect(header.children[3]).not.toHaveClass('text-red-700')
+    })
+
+    it('주말 날짜 숫자는 빨강, 앞뒤 달 주말은 흐린 빨강으로 쓰고 바탕은 칠하지 않는다', () => {
+      render(<MonthCalendar snapshot={snapshot([])} now={NOW} />)
+      expect(number('11월 7일 토요일')).toHaveClass('text-red-700')
+      expect(number('11월 8일 일요일')).toHaveClass('text-red-700')
+      expect(number('11월 12일 목요일')).not.toHaveClass('text-red-700')
+      // 11월 달력의 마지막 줄에 보이는 12월 5일(토)
+      expect(number('12월 5일 토요일')).toHaveClass('text-red-600')
+      expect(number('11월 7일 토요일').className).not.toMatch(/\bbg-/)
+    })
+  })
 })

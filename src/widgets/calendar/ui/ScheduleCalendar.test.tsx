@@ -148,6 +148,14 @@ describe('일정 달력', () => {
     await waitFor(() => expect(actions.listSchedulesAction).toHaveBeenCalledTimes(2))
   })
 
+  it('티켓 보기와 같이 일요일부터 시작하고 주말 날짜는 빨강으로 쓴다', async () => {
+    renderCalendar()
+    const cells = await screen.findAllByRole('listitem', { name: /요일$/ })
+    expect(cells[0]).toHaveAccessibleName('11월 1일 일요일')
+    const sat = screen.getByRole('listitem', { name: '11월 7일 토요일' })
+    expect(within(sat).getByText('7')).toHaveClass('text-red-700')
+  })
+
   describe('끌어서 옮기기', () => {
     const cell = (day: number) =>
       screen.getByRole('listitem', { name: new RegExp(`^11월 ${day}일`) })
