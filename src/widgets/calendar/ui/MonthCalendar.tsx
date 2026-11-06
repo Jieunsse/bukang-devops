@@ -146,7 +146,7 @@ function DayCell({
     <li
       aria-label={cellLabel(date)}
       aria-current={isToday ? 'date' : undefined}
-      className={`flex min-h-16 min-w-0 flex-col gap-1 border-r border-b border-separator p-1 md:min-h-32 ${
+      className={`flex min-h-16 min-w-0 flex-col gap-1 border-r border-b border-separator p-1 md:min-h-[max(8rem,calc((100dvh-18rem)/6))] ${
         cycle ? 'bg-accent-soft/60' : ''
       } ${isFinal ? 'ring-2 ring-accent ring-inset' : ''}`}
     >
