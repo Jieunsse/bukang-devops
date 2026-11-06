@@ -1,5 +1,6 @@
 'use client'
 
+import { Xmark } from '@gravity-ui/icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Button,
@@ -39,7 +40,7 @@ import {
   type WorkRequestInput,
 } from '@/shared/api/request'
 import { createWorkRequestAction, loadRequestOptionsAction } from '@/shared/api/request/actions'
-import { addDays, formatMonthDay, kstDate } from '@/shared/lib/date'
+import { addDays, formatDayWithWeekday, formatMonthDay, kstDate } from '@/shared/lib/date'
 
 const FAIL_MESSAGE = {
   password: '비밀번호가 맞지 않아요.',
@@ -77,7 +78,8 @@ export function WorkRequestView() {
     queryFn: () => loadRequestOptionsAction(),
   })
   return (
-    <div className="flex flex-col gap-6">
+    // data-narrow: AppShell이 머리 영역과 이 카드를 같은 폭으로 묶어 가운데에 둔다.
+    <div data-narrow className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold">작업 요청</h2>
         <p className="text-sm text-muted">
@@ -141,7 +143,7 @@ function WorkRequestForm({ options }: { options: RequestOptions }) {
   const project = options.projects.find((p) => p.id === projectId)
 
   return (
-    <Card className="max-w-5xl">
+    <Card>
       <form onSubmit={handleSubmit((input) => mutate(input))} noValidate>
         <Card.Content className="flex flex-col gap-6">
           {error && !error.password && (
@@ -204,7 +206,8 @@ function WorkRequestForm({ options }: { options: RequestOptions }) {
                       <TextArea
                         rows={4}
                         placeholder="무엇을, 왜 해야 하는지 적어 주세요."
-                        className="flex-1"
+                        // 설명칸 높이는 두 단 높이에 맞춰 정해지므로 손으로 늘이지 못하게 막는다.
+                        className="flex-1 resize-none"
                       />
                       <FieldError>{fieldState.error?.message}</FieldError>
                     </TextField>
@@ -503,6 +506,9 @@ const toDate = (s: string) => {
   }
 }
 
+/** '2026-11-09' → '2026년 11/9(월)' */
+const dueText = (date: string) => `${date.slice(0, 4)}년 ${formatDayWithWeekday(date)}`
+
 /** 기한은 고르지 않아도 된다. 날짜는 시간대 없는 'YYYY-MM-DD'라서 한국 시간 그대로다. */
 function DueDateField({ control }: { control: Control<WorkRequestInput> }) {
   return (
@@ -520,15 +526,26 @@ function DueDateField({ control }: { control: Control<WorkRequestInput> }) {
             className="w-full"
           >
             <Label>기한 (선택)</Label>
+            {/* 날짜는 달력에서만 고른다. 칸 전체가 달력을 여는 버튼이고, 고른 날짜는 글자로만 보여 준다. */}
             <DateField.Group>
-              <DateField.Input>
-                {(segment) => <DateField.Segment segment={segment} />}
-              </DateField.Input>
-              <DateField.Suffix>
-                <DatePicker.Trigger aria-label="달력에서 고르기">
-                  <DatePicker.TriggerIndicator />
-                </DatePicker.Trigger>
-              </DateField.Suffix>
+              <DatePicker.Trigger className="h-full w-full flex-1 justify-start rounded-none bg-transparent px-3 text-left text-sm font-normal">
+                {field.value ? (
+                  dueText(field.value)
+                ) : (
+                  <span className="text-field-placeholder">달력에서 날짜 고르기</span>
+                )}
+              </DatePicker.Trigger>
+              {field.value && (
+                // DatePicker 안의 버튼은 모두 달력 열기로 묶여서, 지우기는 HeroUI Button 대신 기본 버튼으로 둔다.
+                <button
+                  type="button"
+                  aria-label="기한 지우기"
+                  onClick={() => field.onChange('')}
+                  className="mr-2 flex size-6 shrink-0 items-center justify-center rounded-full text-muted hover:bg-default"
+                >
+                  <Xmark aria-hidden />
+                </button>
+              )}
             </DateField.Group>
             <FieldError>{fieldState.error?.message}</FieldError>
             <DatePicker.Popover>
