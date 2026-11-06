@@ -55,7 +55,13 @@ describe('날짜별 티켓', () => {
 })
 
 describe('일정 칸', () => {
-  const schedule = (id: string, start: string, end: string) => ({ id, title: id, start, end })
+  const schedule = (id: string, start: string, end: string) => ({
+    id,
+    title: id,
+    start,
+    end,
+    color: 'blue' as const,
+  })
 
   it('기간 일정은 시작일부터 종료일까지 모든 날에 들어간다', () => {
     const byDate = schedulesByDate(
