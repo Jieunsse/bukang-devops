@@ -5,6 +5,7 @@ import { updateTag } from 'next/cache'
 import { getLinearSource } from '../../config/env'
 import { getSnapshot, SNAPSHOT_TAG } from '../linear/server'
 import { linearIssueCreator } from './linear'
+import { getRequestOptions } from './server'
 import { createWorkRequest, type IssueCreator } from './service'
 
 // 키가 없는 로컬 개발 서버에서는 Linear에 보내지 않고 만든 척만 한다.
@@ -13,13 +14,21 @@ const fixtureCreator: IssueCreator = async () => ({
   url: 'https://linear.app',
 })
 
+/** 작업 요청 창에서 고를 라벨·프로젝트·사이클 */
+export async function loadRequestOptionsAction() {
+  return getRequestOptions()
+}
+
 // 브라우저가 부르는 서버 함수. 비밀번호 확인과 Linear 호출은 서버에서만 한다.
 export async function createWorkRequestAction(password: unknown, request: unknown) {
   const source = getLinearSource()
+  const options = await getRequestOptions()
   const result = await createWorkRequest(
     {
-      create: source.kind === 'live' ? linearIssueCreator(source.apiKey) : fixtureCreator,
+      create:
+        source.kind === 'live' ? linearIssueCreator(source.apiKey, options.teamId) : fixtureCreator,
       members: (await getSnapshot()).members ?? [],
+      options,
       expectedPassword: process.env.SCHEDULE_PASSWORD,
     },
     password,
