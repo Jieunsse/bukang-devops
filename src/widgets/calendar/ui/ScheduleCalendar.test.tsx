@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -146,5 +146,95 @@ describe('일정 달력', () => {
       }),
     )
     await waitFor(() => expect(actions.listSchedulesAction).toHaveBeenCalledTimes(2))
+  })
+
+  it('티켓 보기와 같이 일요일부터 시작하고 주말 날짜는 빨강으로 쓴다', async () => {
+    renderCalendar()
+    const cells = await screen.findAllByRole('listitem', { name: /요일$/ })
+    expect(cells[0]).toHaveAccessibleName('11월 1일 일요일')
+    const sat = screen.getByRole('listitem', { name: '11월 7일 토요일' })
+    expect(within(sat).getByText('7')).toHaveClass('text-red-700')
+  })
+
+  describe('끌어서 옮기기', () => {
+    const cell = (day: number) =>
+      screen.getByRole('listitem', { name: new RegExp(`^11월 ${day}일`) })
+    const bar = (day: number) =>
+      within(cell(day)).queryByRole('button', { name: /^개발 마감 주간/ })
+    const drag = (from: number, to: number) => {
+      fireEvent.dragStart(bar(from)!)
+      fireEvent.dragOver(cell(to))
+      fireEvent.drop(cell(to))
+    }
+    /** 「일정 추가」 창에서 비밀번호만 넣고 닫는다. 페이지에 머무는 동안 기억한다. */
+    const rememberPassword = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: '일정 추가' }))
+      await user.type(screen.getByLabelText('팀 비밀번호'), 'team-secret')
+      await user.click(screen.getByRole('button', { name: '닫기' }))
+    }
+
+    it('비밀번호를 아직 안 넣었으면 옮긴 날짜로 고치기 창을 연다', async () => {
+      renderCalendar()
+      await screen.findAllByText('개발 마감 주간')
+      drag(16, 20)
+
+      const dialog = screen.getByRole('dialog', { name: '일정 고치기' })
+      expect(dialog.querySelector('input[name="start"]')).toHaveValue('2026-11-20')
+      expect(dialog.querySelector('input[name="end"]')).toHaveValue('2026-11-22')
+      expect(actions.writeScheduleAction).not.toHaveBeenCalled()
+    })
+
+    it('비밀번호가 있으면 저장 응답을 기다리지 않고 바로 옮겨 보여 준다', async () => {
+      let answer!: (r: { ok: true }) => void
+      actions.writeScheduleAction.mockReturnValue(new Promise((resolve) => (answer = resolve)))
+      const user = userEvent.setup()
+      renderCalendar()
+      await screen.findAllByText('개발 마감 주간')
+      await rememberPassword(user)
+
+      drag(16, 20)
+
+      // 서버가 아직 답하지 않았는데 새 자리에 보인다.
+      await waitFor(() => expect(bar(16)).toBeNull())
+      expect(bar(20)).not.toBeNull()
+      expect(bar(22)).not.toBeNull()
+      expect(actions.writeScheduleAction).toHaveBeenCalledWith('team-secret', {
+        kind: 'update',
+        id: 'a1',
+        input: { title: '개발 마감 주간', start: '2026-11-20', end: '2026-11-22', color: 'violet' },
+      })
+      answer({ ok: true })
+    })
+
+    it('저장이 거절되면 원래 자리로 되돌린다', async () => {
+      actions.writeScheduleAction.mockResolvedValue({ ok: false, reason: 'password' })
+      const user = userEvent.setup()
+      renderCalendar()
+      await screen.findAllByText('개발 마감 주간')
+      await rememberPassword(user)
+
+      drag(16, 20)
+
+      await waitFor(() => expect(bar(16)).not.toBeNull())
+      expect(bar(20)).toBeNull()
+    })
+
+    it('칸 밖에 놓아 끌기를 그만두면 놓을 칸 강조가 남지 않는다', async () => {
+      renderCalendar()
+      await screen.findAllByText('개발 마감 주간')
+      fireEvent.dragStart(bar(16)!)
+      fireEvent.dragEnter(cell(20))
+      expect(cell(20)).toHaveClass('bg-accent/10')
+      fireEvent.dragEnd(bar(16)!)
+      expect(cell(20)).not.toHaveClass('bg-accent/10')
+    })
+
+    it('같은 날짜에 놓으면 아무것도 하지 않는다', async () => {
+      renderCalendar()
+      await screen.findAllByText('개발 마감 주간')
+      drag(16, 16)
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(actions.writeScheduleAction).not.toHaveBeenCalled()
+    })
   })
 })

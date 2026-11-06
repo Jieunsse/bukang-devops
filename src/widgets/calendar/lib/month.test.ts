@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest'
 
 import type { Issue } from '@/shared/api/linear'
 
-import { issuesByDate, monthLabel, monthWeeks, schedulesByDate, shiftMonth } from './month'
+import {
+  issuesByDate,
+  monthLabel,
+  monthWeeks,
+  moveRange,
+  schedulesByDate,
+  shiftMonth,
+} from './month'
 
 const issue = (n: number, dueDate: string | null, assigneeId: string | null = 'u1'): Issue => ({
   id: `i${n}`,
@@ -18,21 +25,22 @@ const issue = (n: number, dueDate: string | null, assigneeId: string | null = 'u
 })
 
 describe('월 달력 칸', () => {
-  it('월요일에 시작하는 주로 나누고 앞뒤 달 날짜로 첫 주와 마지막 주를 채운다', () => {
-    const weeks = monthWeeks('2026-11')
-    expect(weeks).toHaveLength(6)
+  it('일요일에 시작하는 주로 나누고 앞뒤 달 날짜로 첫 주와 마지막 주를 채운다', () => {
+    // 2026년 12월은 화요일에 시작해 목요일에 끝난다.
+    const weeks = monthWeeks('2026-12')
+    expect(weeks).toHaveLength(5)
     expect(weeks.every((w) => w.length === 7)).toBe(true)
-    expect(weeks[0]?.[0]).toBe('2026-10-26')
-    expect(weeks[0]?.[6]).toBe('2026-11-01')
-    expect(weeks[5]?.[6]).toBe('2026-12-06')
+    expect(weeks[0]?.[0]).toBe('2026-11-29')
+    expect(weeks[0]?.[2]).toBe('2026-12-01')
+    expect(weeks[4]?.[6]).toBe('2027-01-02')
   })
 
-  it('1일이 월요일이고 말일이 일요일이면 앞뒤 달 날짜를 넣지 않는다', () => {
-    // 2027년 2월은 월요일에 시작해 일요일에 끝난다.
-    const weeks = monthWeeks('2027-02')
+  it('1일이 일요일이고 말일이 토요일이면 앞뒤 달 날짜를 넣지 않는다', () => {
+    // 2026년 2월은 일요일에 시작해 토요일에 끝난다.
+    const weeks = monthWeeks('2026-02')
     expect(weeks).toHaveLength(4)
-    expect(weeks[0]?.[0]).toBe('2027-02-01')
-    expect(weeks[3]?.[6]).toBe('2027-02-28')
+    expect(weeks[0]?.[0]).toBe('2026-02-01')
+    expect(weeks[3]?.[6]).toBe('2026-02-28')
   })
 
   it('달을 옮기면 해가 바뀌는 곳도 넘어간다', () => {
@@ -73,5 +81,21 @@ describe('일정 칸', () => {
     expect(byDate.get('2026-12-01')?.map((s) => s.id)).toEqual(['a', 'b'])
     expect(byDate.get('2026-12-02')?.map((s) => s.id)).toEqual(['a'])
     expect(byDate.get('2026-12-03')).toBeUndefined()
+  })
+})
+
+describe('일정 옮기기', () => {
+  it('끌어 온 날짜에서 놓은 날짜까지 떨어진 만큼 시작일과 종료일을 함께 옮긴다', () => {
+    const s = { start: '2026-11-14', end: '2026-11-16' }
+    // 기간 일정의 가운데(15일)를 잡아 20일에 놓으면 5일 뒤로 옮겨진다.
+    expect(moveRange(s, '2026-11-15', '2026-11-20')).toEqual({
+      start: '2026-11-19',
+      end: '2026-11-21',
+    })
+    // 달을 넘어 앞으로 옮길 수도 있다.
+    expect(moveRange(s, '2026-11-14', '2026-10-31')).toEqual({
+      start: '2026-10-31',
+      end: '2026-11-02',
+    })
   })
 })
