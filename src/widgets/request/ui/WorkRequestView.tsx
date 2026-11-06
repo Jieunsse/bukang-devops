@@ -1,5 +1,6 @@
 'use client'
 
+import { Xmark } from '@gravity-ui/icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Button,
@@ -39,7 +40,7 @@ import {
   type WorkRequestInput,
 } from '@/shared/api/request'
 import { createWorkRequestAction, loadRequestOptionsAction } from '@/shared/api/request/actions'
-import { addDays, formatMonthDay, kstDate } from '@/shared/lib/date'
+import { addDays, formatDayWithWeekday, formatMonthDay, kstDate } from '@/shared/lib/date'
 
 const FAIL_MESSAGE = {
   password: '비밀번호가 맞지 않아요.',
@@ -505,6 +506,9 @@ const toDate = (s: string) => {
   }
 }
 
+/** '2026-11-09' → '2026년 11/9(월)' */
+const dueText = (date: string) => `${date.slice(0, 4)}년 ${formatDayWithWeekday(date)}`
+
 /** 기한은 고르지 않아도 된다. 날짜는 시간대 없는 'YYYY-MM-DD'라서 한국 시간 그대로다. */
 function DueDateField({ control }: { control: Control<WorkRequestInput> }) {
   return (
@@ -522,15 +526,26 @@ function DueDateField({ control }: { control: Control<WorkRequestInput> }) {
             className="w-full"
           >
             <Label>기한 (선택)</Label>
+            {/* 날짜는 달력에서만 고른다. 칸 전체가 달력을 여는 버튼이고, 고른 날짜는 글자로만 보여 준다. */}
             <DateField.Group>
-              <DateField.Input>
-                {(segment) => <DateField.Segment segment={segment} />}
-              </DateField.Input>
-              <DateField.Suffix>
-                <DatePicker.Trigger aria-label="달력에서 고르기">
-                  <DatePicker.TriggerIndicator />
-                </DatePicker.Trigger>
-              </DateField.Suffix>
+              <DatePicker.Trigger className="h-full w-full flex-1 justify-start rounded-none bg-transparent px-3 text-left text-sm font-normal">
+                {field.value ? (
+                  dueText(field.value)
+                ) : (
+                  <span className="text-field-placeholder">달력에서 날짜 고르기</span>
+                )}
+              </DatePicker.Trigger>
+              {field.value && (
+                // DatePicker 안의 버튼은 모두 달력 열기로 묶여서, 지우기는 HeroUI Button 대신 기본 버튼으로 둔다.
+                <button
+                  type="button"
+                  aria-label="기한 지우기"
+                  onClick={() => field.onChange('')}
+                  className="mr-2 flex size-6 shrink-0 items-center justify-center rounded-full text-muted hover:bg-default"
+                >
+                  <Xmark aria-hidden />
+                </button>
+              )}
             </DateField.Group>
             <FieldError>{fieldState.error?.message}</FieldError>
             <DatePicker.Popover>
