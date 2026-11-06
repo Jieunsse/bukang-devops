@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest'
 
 import type { Issue } from '@/shared/api/linear'
 
-import { issuesByDate, monthLabel, monthWeeks, schedulesByDate, shiftMonth } from './month'
+import {
+  issuesByDate,
+  monthLabel,
+  monthWeeks,
+  moveRange,
+  schedulesByDate,
+  shiftMonth,
+} from './month'
 
 const issue = (n: number, dueDate: string | null, assigneeId: string | null = 'u1'): Issue => ({
   id: `i${n}`,
@@ -73,5 +80,21 @@ describe('일정 칸', () => {
     expect(byDate.get('2026-12-01')?.map((s) => s.id)).toEqual(['a', 'b'])
     expect(byDate.get('2026-12-02')?.map((s) => s.id)).toEqual(['a'])
     expect(byDate.get('2026-12-03')).toBeUndefined()
+  })
+})
+
+describe('일정 옮기기', () => {
+  it('끌어 온 날짜에서 놓은 날짜까지 떨어진 만큼 시작일과 종료일을 함께 옮긴다', () => {
+    const s = { start: '2026-11-14', end: '2026-11-16' }
+    // 기간 일정의 가운데(15일)를 잡아 20일에 놓으면 5일 뒤로 옮겨진다.
+    expect(moveRange(s, '2026-11-15', '2026-11-20')).toEqual({
+      start: '2026-11-19',
+      end: '2026-11-21',
+    })
+    // 달을 넘어 앞으로 옮길 수도 있다.
+    expect(moveRange(s, '2026-11-14', '2026-10-31')).toEqual({
+      start: '2026-10-31',
+      end: '2026-11-02',
+    })
   })
 })
