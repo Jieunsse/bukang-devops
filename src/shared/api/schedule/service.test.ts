@@ -5,7 +5,7 @@ import type { ScheduleStore } from './service'
 import { writeSchedule } from './service'
 
 const PASSWORD = 'team-secret'
-const input = { title: '개발 마감', start: '2026-11-18', end: '2026-11-18' }
+const input = { title: '개발 마감', start: '2026-11-18', end: '2026-11-18', color: 'blue' }
 
 const fakeStore = () =>
   ({
@@ -64,6 +64,14 @@ describe('일정 저장', () => {
     expect(store.create).toHaveBeenCalledWith(input)
   })
 
+  it('정해진 색이면 그 색으로 저장한다', async () => {
+    await writeSchedule(store, PASSWORD, PASSWORD, {
+      kind: 'create',
+      input: { ...input, color: 'violet' },
+    })
+    expect(store.create).toHaveBeenCalledWith({ ...input, color: 'violet' })
+  })
+
   it('비밀번호가 맞으면 고치고 지운다', async () => {
     await writeSchedule(store, PASSWORD, PASSWORD, { kind: 'update', id: 'a1', input })
     await writeSchedule(store, PASSWORD, PASSWORD, { kind: 'delete', id: 'a1' })
@@ -78,6 +86,8 @@ describe('일정 저장', () => {
     ['달력에 없는 날짜', { ...input, start: '2026-02-30', end: '2026-03-01' }],
     ['종료일이 시작일보다 빠름', { ...input, start: '2026-11-18', end: '2026-11-17' }],
     ['빠진 칸', { title: '개발 마감' }],
+    ['정해지지 않은 색', { ...input, color: 'red' }],
+    ['색이 빠짐', { title: '개발 마감', start: '2026-11-18', end: '2026-11-18' }],
   ])('%s이면 거절하고 저장하지 않는다', async (_, bad) => {
     const result = await writeSchedule(store, PASSWORD, PASSWORD, { kind: 'create', input: bad })
     expect(result).toEqual({ ok: false, reason: 'invalid' })
