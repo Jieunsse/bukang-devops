@@ -86,7 +86,17 @@ export function ScheduleDialog({
     <Modal.Backdrop isOpen isDismissable={false} onOpenChange={(open) => !open && onClose()}>
       <Modal.Container placement="center">
         <Modal.Dialog aria-label={schedule ? '일정 고치기' : '일정 추가'}>
-          <form onSubmit={save} noValidate>
+          <form
+            onSubmit={save}
+            noValidate
+            // Cmd+Enter(맥)·Ctrl+Enter(윈도우)는 포커스가 색 버튼 등 어디에 있어도 저장한다.
+            // 색 버튼이 Enter를 먼저 받아 전파를 막으므로 캡처 단계에서 받는다.
+            onKeyDownCapture={(e) => {
+              if (e.key !== 'Enter' || !(e.metaKey || e.ctrlKey)) return
+              e.preventDefault()
+              if (!isPending) void save()
+            }}
+          >
             <Modal.Header>
               <Modal.Heading>{schedule ? '일정 고치기' : '일정 추가'}</Modal.Heading>
             </Modal.Header>
