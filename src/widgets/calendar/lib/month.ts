@@ -1,4 +1,5 @@
 import type { Issue } from '@/shared/api/linear'
+import type { Schedule } from '@/shared/api/schedule'
 import { addDays, weekdayOf, type DateString } from '@/shared/lib/date'
 
 // 대시보드(presentation.ts)·타임라인과 같은 값이다. 위젯끼리는 서로 가져오지 않아서 여기 따로 둔다.
@@ -34,6 +35,19 @@ export function issuesByDate(issues: Issue[]): Map<DateString, Issue[]> {
   const byDate = new Map<DateString, Issue[]>()
   for (const issue of issues) {
     if (issue.dueDate) byDate.set(issue.dueDate, [...(byDate.get(issue.dueDate) ?? []), issue])
+  }
+  return byDate
+}
+
+/** 보이는 날짜마다 그날 걸친 일정. 기간 일정은 시작일부터 종료일까지 모든 날에 넣는다. */
+export function schedulesByDate(
+  schedules: Schedule[],
+  days: DateString[],
+): Map<DateString, Schedule[]> {
+  const byDate = new Map<DateString, Schedule[]>()
+  for (const date of days) {
+    const on = schedules.filter((s) => s.start <= date && date <= s.end)
+    if (on.length > 0) byDate.set(date, on)
   }
   return byDate
 }

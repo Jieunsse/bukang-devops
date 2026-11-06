@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Issue } from '@/shared/api/linear'
 
-import { issuesByDate, monthLabel, monthWeeks, shiftMonth } from './month'
+import { issuesByDate, monthLabel, monthWeeks, schedulesByDate, shiftMonth } from './month'
 
 const issue = (n: number, dueDate: string | null, assigneeId: string | null = 'u1'): Issue => ({
   id: `i${n}`,
@@ -51,5 +51,21 @@ describe('날짜별 티켓', () => {
     const byDate = issuesByDate([issue(1, '2026-11-05'), issue(2, '2026-11-05'), issue(3, null)])
     expect(byDate.get('2026-11-05')?.map((i) => i.identifier)).toEqual(['BUK-1', 'BUK-2'])
     expect(byDate.size).toBe(1)
+  })
+})
+
+describe('일정 칸', () => {
+  const schedule = (id: string, start: string, end: string) => ({ id, title: id, start, end })
+
+  it('기간 일정은 시작일부터 종료일까지 모든 날에 들어간다', () => {
+    const byDate = schedulesByDate(
+      [schedule('a', '2026-11-30', '2026-12-02'), schedule('b', '2026-12-01', '2026-12-01')],
+      ['2026-11-29', '2026-11-30', '2026-12-01', '2026-12-02', '2026-12-03'],
+    )
+    expect(byDate.get('2026-11-29')).toBeUndefined()
+    expect(byDate.get('2026-11-30')?.map((s) => s.id)).toEqual(['a'])
+    expect(byDate.get('2026-12-01')?.map((s) => s.id)).toEqual(['a', 'b'])
+    expect(byDate.get('2026-12-02')?.map((s) => s.id)).toEqual(['a'])
+    expect(byDate.get('2026-12-03')).toBeUndefined()
   })
 })
