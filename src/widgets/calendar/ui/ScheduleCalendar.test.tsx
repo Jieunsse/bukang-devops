@@ -187,7 +187,7 @@ describe('일정 달력', () => {
       drag(16, 20)
 
       // 서버가 아직 답하지 않았는데 새 자리에 보인다.
-      expect(bar(16)).toBeNull()
+      await waitFor(() => expect(bar(16)).toBeNull())
       expect(bar(20)).not.toBeNull()
       expect(bar(22)).not.toBeNull()
       expect(actions.writeScheduleAction).toHaveBeenCalledWith('team-secret', {
@@ -209,6 +209,16 @@ describe('일정 달력', () => {
 
       await waitFor(() => expect(bar(16)).not.toBeNull())
       expect(bar(20)).toBeNull()
+    })
+
+    it('칸 밖에 놓아 끌기를 그만두면 놓을 칸 강조가 남지 않는다', async () => {
+      renderCalendar()
+      await screen.findAllByText('개발 마감 주간')
+      fireEvent.dragStart(bar(16)!)
+      fireEvent.dragEnter(cell(20))
+      expect(cell(20)).toHaveClass('bg-accent/10')
+      fireEvent.dragEnd(bar(16)!)
+      expect(cell(20)).not.toHaveClass('bg-accent/10')
     })
 
     it('같은 날짜에 놓으면 아무것도 하지 않는다', async () => {

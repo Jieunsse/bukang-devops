@@ -1,6 +1,6 @@
 import type { Issue } from '@/shared/api/linear'
 import type { Schedule } from '@/shared/api/schedule'
-import { addDays, weekdayOf, type DateString } from '@/shared/lib/date'
+import { addDays, daysBetween, weekdayOf, type DateString } from '@/shared/lib/date'
 
 // 대시보드(presentation.ts)·타임라인과 같은 값이다. 위젯끼리는 서로 가져오지 않아서 여기 따로 둔다.
 export const FINAL_PRESENTATION = '2026-11-23'
@@ -50,4 +50,14 @@ export function schedulesByDate(
     if (on.length > 0) byDate.set(date, on)
   }
   return byDate
+}
+
+/** 일정을 끌어 온 날짜(from)에서 놓은 날짜(to)까지 떨어진 날 수만큼 시작일·종료일을 함께 옮긴다. */
+export function moveRange(
+  range: { start: DateString; end: DateString },
+  from: DateString,
+  to: DateString,
+): { start: DateString; end: DateString } {
+  const days = daysBetween(from, to)
+  return { start: addDays(range.start, days), end: addDays(range.end, days) }
 }
