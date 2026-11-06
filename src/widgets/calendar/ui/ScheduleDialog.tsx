@@ -1,12 +1,25 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, FieldError, Input, Label, Modal, TextField, toast } from '@heroui/react'
+import {
+  Button,
+  FieldError,
+  Input,
+  Label,
+  Modal,
+  TextField,
+  toast,
+  ToggleButton,
+  ToggleButtonGroup,
+} from '@heroui/react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 
 import {
+  DEFAULT_SCHEDULE_COLOR,
+  SCHEDULE_COLOR_LABEL,
+  SCHEDULE_COLORS,
   scheduleInputSchema,
   TITLE_MAX,
   type Schedule,
@@ -16,10 +29,8 @@ import {
 import { writeScheduleAction } from '@/shared/api/schedule/actions'
 import { SCHEDULES_QUERY_KEY } from '@/shared/api/schedule/query'
 
-const DATE_FIELDS = [
-  { name: 'start', label: '시작일' },
-  { name: 'end', label: '종료일' },
-] as const
+import { SCHEDULE_COLOR_STYLE } from '../lib/colors'
+import { ScheduleRangeField } from './ScheduleRangeField'
 
 /** 일정 추가·수정 창. 고칠 일정이 있으면 수정과 삭제를, 없으면 추가를 한다. 열 때마다 새로 그린다. */
 export function ScheduleDialog({
@@ -31,7 +42,7 @@ export function ScheduleDialog({
 }: {
   onClose: () => void
   schedule: Schedule | null
-  defaults: ScheduleInput
+  defaults: Omit<ScheduleInput, 'color'>
   /** 한 번 넣은 팀 비밀번호는 페이지를 떠날 때까지 다시 묻지 않는다. 브라우저 저장소에는 남기지 않는다. */
   password: string
   onPasswordChange: (password: string) => void
@@ -39,8 +50,8 @@ export function ScheduleDialog({
   const queryClient = useQueryClient()
   const { control, handleSubmit } = useForm<ScheduleInput>({
     defaultValues: schedule
-      ? { title: schedule.title, start: schedule.start, end: schedule.end }
-      : defaults,
+      ? { title: schedule.title, start: schedule.start, end: schedule.end, color: schedule.color }
+      : { ...defaults, color: DEFAULT_SCHEDULE_COLOR },
     resolver: zodResolver(scheduleInputSchema),
   })
   // 비밀번호 오류만 비밀번호 칸에 붙이고, 나머지 오류는 창 위쪽에 따로 알린다.
@@ -104,30 +115,37 @@ export function ScheduleDialog({
                   </TextField>
                 )}
               />
-              <div className="flex flex-wrap gap-3">
-                {DATE_FIELDS.map(({ name, label }) => (
-                  <Controller
-                    key={name}
-                    control={control}
-                    name={name}
-                    render={({ field, fieldState }) => (
-                      <TextField
-                        type="date"
-                        value={field.value}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        isInvalid={fieldState.invalid}
-                        validationBehavior="aria"
-                        className="w-44"
-                      >
-                        <Label>{label}</Label>
-                        <Input />
-                        <FieldError>{fieldState.error?.message}</FieldError>
-                      </TextField>
-                    )}
-                  />
-                ))}
-              </div>
+              <ScheduleRangeField control={control} />
+              <Controller
+                control={control}
+                name="color"
+                render={({ field }) => (
+                  <div className="flex flex-col gap-1">
+                    <span id="schedule-color-label" className="text-sm font-medium">
+                      색
+                    </span>
+                    <ToggleButtonGroup
+                      aria-labelledby="schedule-color-label"
+                      size="sm"
+                      selectionMode="single"
+                      disallowEmptySelection
+                      selectedKeys={[field.value]}
+                      onSelectionChange={(keys) => field.onChange([...keys][0])}
+                      className="flex-wrap"
+                    >
+                      {SCHEDULE_COLORS.map((color) => (
+                        <ToggleButton key={color} id={color} className="gap-1.5">
+                          <span
+                            aria-hidden
+                            className={`size-3 rounded-sm ${SCHEDULE_COLOR_STYLE[color].swatch}`}
+                          />
+                          {SCHEDULE_COLOR_LABEL[color]}
+                        </ToggleButton>
+                      ))}
+                    </ToggleButtonGroup>
+                  </div>
+                )}
+              />
               <TextField
                 type="password"
                 value={password}

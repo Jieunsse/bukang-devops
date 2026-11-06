@@ -15,6 +15,7 @@ import {
   schedulesByDate,
   type Month,
 } from '../lib/month'
+import { SCHEDULE_COLOR_STYLE } from '../lib/colors'
 import { cellLabel, WEEKDAYS } from './MonthCalendar'
 import { MonthNav } from './MonthNav'
 import { ScheduleDialog } from './ScheduleDialog'
@@ -151,9 +152,9 @@ function DayCell({
           <li key={s.id} className="min-w-0">
             <Button
               size="sm"
-              variant="tertiary"
+              variant="ghost"
               aria-label={`${s.title}, ${formatMonthDay(s.start)}~${formatMonthDay(s.end)}`}
-              className="h-auto w-full min-w-0 cursor-pointer justify-start rounded px-1 text-xs leading-5 font-normal"
+              className={`h-auto w-full min-w-0 cursor-pointer justify-start rounded border-l-4 px-1 text-xs leading-5 font-medium text-foreground ${SCHEDULE_COLOR_STYLE[s.color].bar}`}
               onPress={() => onOpen(s)}
             >
               <span className="truncate">{s.title}</span>
