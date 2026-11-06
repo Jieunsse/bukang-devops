@@ -160,11 +160,12 @@ describe('달력 페이지', () => {
   it('앞뒤 달 날짜 칸에도 그날 기한 티켓을 보여 준다', () => {
     render(
       <MonthCalendar
-        snapshot={snapshot([issue(1, '2026-10-31'), issue(2, '2026-12-05')])}
+        // 2026년 11월은 일요일에 시작해서 앞 달 칸이 없고, 마지막 줄에 12월 1~5일이 보인다.
+        snapshot={snapshot([issue(1, '2026-12-01'), issue(2, '2026-12-05')])}
         now={NOW}
       />,
     )
-    expect(within(day('10월 31일')).getByText('BUK-1')).toBeInTheDocument()
+    expect(within(day('12월 1일')).getByText('BUK-1')).toBeInTheDocument()
     expect(within(day('12월 5일')).getByText('BUK-2')).toBeInTheDocument()
   })
 

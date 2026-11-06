@@ -18,11 +18,11 @@ export function monthLabel(month: Month): string {
   return `${Number(month.slice(0, 4))}년 ${Number(month.slice(5, 7))}월`
 }
 
-/** 월요일에 시작하는 주(7칸)들. 첫 주와 마지막 주는 앞뒤 달 날짜로 채운다. */
+/** 일요일에 시작하는 주(7칸)들. 첫 주와 마지막 주는 앞뒤 달 날짜로 채운다. */
 export function monthWeeks(month: Month): DateString[][] {
   const first = `${month}-01`
   const last = addDays(`${shiftMonth(month, 1)}-01`, -1)
-  let day = addDays(first, -((weekdayOf(first) + 6) % 7))
+  let day = addDays(first, -weekdayOf(first))
   const weeks: DateString[][] = []
   while (day <= last) {
     weeks.push(Array.from({ length: 7 }, (_, d) => addDays(day, d)))
@@ -61,3 +61,6 @@ export function moveRange(
   const days = daysBetween(from, to)
   return { start: addDays(range.start, days), end: addDays(range.end, days) }
 }
+
+/** 토요일·일요일 */
+export const isWeekend = (date: DateString) => weekdayOf(date) % 6 === 0

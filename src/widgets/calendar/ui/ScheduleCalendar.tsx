@@ -18,7 +18,7 @@ import {
   schedulesByDate,
   type Month,
 } from '../lib/month'
-import { SCHEDULE_COLOR_STYLE } from '../lib/colors'
+import { dayNumberColor, SCHEDULE_COLOR_STYLE, WEEKEND_TEXT } from '../lib/colors'
 import { cellLabel, WEEKDAYS } from './MonthCalendar'
 import { MonthNav } from './MonthNav'
 import { ScheduleDialog } from './ScheduleDialog'
@@ -110,8 +110,8 @@ export function ScheduleCalendar({ now, actions }: { now: number; actions?: Reac
           )}
           <div>
             <div aria-hidden className="grid grid-cols-7 text-center text-xs text-muted">
-              {WEEKDAYS.map((w) => (
-                <span key={w} className="pb-1">
+              {WEEKDAYS.map((w, i) => (
+                <span key={w} className={`pb-1 ${i % 6 === 0 ? WEEKEND_TEXT : ''}`}>
                   {w}
                 </span>
               ))}
@@ -217,7 +217,7 @@ function DayCell({
           className={
             isToday
               ? 'grid size-6 place-items-center rounded-full bg-warning font-semibold text-warning-foreground'
-              : `px-1 leading-6 ${outside ? 'text-muted' : ''}`
+              : `px-1 leading-6 ${dayNumberColor(date, outside)}`
           }
         >
           {date.endsWith('-01') ? formatMonthDay(date) : Number(date.slice(8))}

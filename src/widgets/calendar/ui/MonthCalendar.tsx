@@ -19,11 +19,12 @@ import { PageToolbar } from '@/shared/ui'
 import { formatMonthDay, kstDate, weekdayOf, type DateString } from '@/shared/lib/date'
 
 import { FINAL_PRESENTATION, issuesByDate, monthLabel, monthWeeks, type Month } from '../lib/month'
+import { dayNumberColor, WEEKEND_TEXT } from '../lib/colors'
 import { MonthNav } from './MonthNav'
 
 /** 날짜 칸에 바로 보여 줄 티켓 줄 수. 넘치면 「n건 더」로 모은다. */
 const MAX_ROWS = 3
-export const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
+export const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 const TONE_TEXT: Record<DueTone, string> = {
   danger: 'text-danger',
   warning: 'text-warning',
@@ -86,8 +87,8 @@ export function MonthCalendar({
           {isEmpty && <p className="text-sm text-muted">이 달에 기한인 남은 티켓이 없어요</p>}
           <div>
             <div aria-hidden className="grid grid-cols-7 text-center text-xs text-muted">
-              {WEEKDAYS.map((w) => (
-                <span key={w} className="pb-1">
+              {WEEKDAYS.map((w, i) => (
+                <span key={w} className={`pb-1 ${i % 6 === 0 ? WEEKEND_TEXT : ''}`}>
                   {w}
                 </span>
               ))}
@@ -160,7 +161,7 @@ function DayCell({
           className={
             isToday
               ? 'grid size-6 place-items-center rounded-full bg-warning font-semibold text-warning-foreground'
-              : `px-1 leading-6 ${outside ? 'text-muted' : ''}`
+              : `px-1 leading-6 ${dayNumberColor(date, outside)}`
           }
         >
           {date.endsWith('-01') ? formatMonthDay(date) : Number(date.slice(8))}
