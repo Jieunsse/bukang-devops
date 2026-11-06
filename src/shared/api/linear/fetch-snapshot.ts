@@ -11,7 +11,7 @@ import {
 } from './schema'
 
 const ENDPOINT = 'https://api.linear.app/graphql'
-const TEAM_KEY = 'BUK'
+export const TEAM_KEY = 'BUK'
 const PAGE_SIZE = 100
 /** 100건 × 10쪽 = 1000건. 넘으면 잘린 목록 대신 오류를 낸다. */
 export const MAX_PAGES = 10
@@ -69,9 +69,9 @@ const envelopeSchema = z.object({
   errors: z.array(z.object({ message: z.string() })).optional(),
 })
 
-type FetchImpl = (url: string, init: RequestInit) => Promise<Response>
+export type FetchImpl = (url: string, init: RequestInit) => Promise<Response>
 
-async function request<T>(
+export async function request<T>(
   fetchImpl: FetchImpl,
   apiKey: string,
   query: string,

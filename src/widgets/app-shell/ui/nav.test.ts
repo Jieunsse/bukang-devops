@@ -6,4 +6,8 @@ describe('메뉴', () => {
   it('달력 페이지로 가는 메뉴가 있다', () => {
     expect(NAV_ITEMS.some((i) => i.href === '/calendar' && i.label === '달력')).toBe(true)
   })
+
+  it('작업 요청 페이지로 가는 메뉴가 있다', () => {
+    expect(NAV_ITEMS.some((i) => i.href === '/request' && i.label === '작업 요청')).toBe(true)
+  })
 })
