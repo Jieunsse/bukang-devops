@@ -7,6 +7,7 @@ import {
   ISSUE_FIELDS,
   issuesResponseSchema,
   membersResponseSchema,
+  projectResponseSchema,
   type Snapshot,
 } from './schema'
 
@@ -48,6 +49,19 @@ const MEMBERS_QUERY = `
         members(first: ${PAGE_SIZE}, after: $after) {
           nodes { id name avatarUrl active }
           pageInfo { hasNextPage endCursor }
+        }
+      }
+    }
+  }
+`
+
+// Linear의 progress는 (완료 포인트 + 진행 중 포인트 × 0.25) / 전체 포인트다.
+const PROJECT_QUERY = `
+  query Project($teamKey: String!) {
+    teams(first: 1, filter: { key: { eq: $teamKey } }) {
+      nodes {
+        projects(first: 1, filter: { status: { type: { eq: "started" } } }) {
+          nodes { name progress }
         }
       }
     }
@@ -122,7 +136,7 @@ export async function paginate<T, N>(
   throw new LinearRequestError(`목록이 ${MAX_PAGES * PAGE_SIZE}건을 넘어 다 받지 못했어요.`)
 }
 
-/** BUK 팀의 끝나지 않은 티켓 전부와 사이클을 받는다. */
+/** BUK 팀의 끝나지 않은 티켓 전부와 사이클, 멤버, 진행 중인 프로젝트를 받는다. */
 export async function fetchSnapshot(
   apiKey: string,
   fetchImpl: FetchImpl = fetch,
@@ -149,5 +163,12 @@ export async function fetchSnapshot(
     membersResponseSchema,
     (d) => d.members,
   )
-  return { fetchedAt: now.toISOString(), issues, cycles, members }
+  const project = await request(
+    fetchImpl,
+    apiKey,
+    PROJECT_QUERY,
+    { teamKey: TEAM_KEY },
+    projectResponseSchema,
+  )
+  return { fetchedAt: now.toISOString(), issues, cycles, members, project }
 }

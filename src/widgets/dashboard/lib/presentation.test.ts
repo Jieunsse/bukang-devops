@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Cycle, Issue } from '@/shared/api/linear'
 
-import { cycleProgress, dailyPace, presentationCountdown } from './presentation'
+import { cycleProgress, presentationCountdown } from './presentation'
 
 // 최종 발표는 11/23(월)이다.
 describe('최종 발표까지 남은 날짜', () => {
@@ -20,21 +20,6 @@ describe('최종 발표까지 남은 날짜', () => {
 
   it('발표가 지나면 D+n이고 남은 날은 음수가 아니라 0이다', () => {
     expect(presentationCountdown('2026-11-25')).toMatchObject({ dDay: 'D+2', daysLeft: 0 })
-  })
-})
-
-describe('하루 평균 끝내야 하는 티켓 수', () => {
-  it('남은 티켓 수를 남은 날 수로 나누고 소수 한 자리로 반올림한다', () => {
-    expect(dailyPace(21, 18)).toBe(1.2)
-    expect(dailyPace(10, 4)).toBe(2.5)
-  })
-
-  it('남은 티켓이 없으면 0이다', () => {
-    expect(dailyPace(0, 18)).toBe(0)
-  })
-
-  it('남은 날이 없으면(발표 당일이나 지난 뒤) 셀 수 없다', () => {
-    expect(dailyPace(5, 0)).toBeNull()
   })
 })
 

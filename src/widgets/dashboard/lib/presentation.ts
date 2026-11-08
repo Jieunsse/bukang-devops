@@ -16,11 +16,6 @@ export function presentationCountdown(today: DateString) {
   }
 }
 
-/** 하루 평균 끝내야 하는 티켓 수(소수 한 자리). 남은 날이 없으면 셀 수 없다. */
-export function dailyPace(remaining: number, daysLeft: number): number | null {
-  return daysLeft > 0 ? Math.round((remaining / daysLeft) * 10) / 10 : null
-}
-
 /** 맨 위 「지금 사이클」 카드. 이름 한 줄과 큰 값 하나, 마우스를 올리면 보이는 설명(hint)을 준다. */
 export type CycleCard = { name: string; value: string; ratio: number | null; hint: string | null }
 
