@@ -35,7 +35,7 @@ export function AppSidebar() {
         className="flex items-center gap-2 rounded-lg px-3 pt-2 text-lg font-semibold"
       >
         <Image src="/bukangi.png" alt="" width={57} height={36} priority />
-        부캉이
+        부캉이 데브옵스
       </Link>
       <nav aria-label="페이지" className="flex flex-col gap-1">
         {links.map((l) => (
