@@ -92,7 +92,11 @@ export function ScheduleDialog({
   return (
     <Modal.Backdrop isOpen isDismissable={dismissable} onOpenChange={(open) => !open && onClose()}>
       <Modal.Container placement="center">
-        <Modal.Dialog aria-label={schedule ? '일정 고치기' : '일정 추가'}>
+        {/* 다크 테마에서 입력칸 바탕이 창 바탕과 같은 색이라 칸이 안 보여서, 창 안 입력칸만 한 단계 밝게 칠한다. */}
+        <Modal.Dialog
+          aria-label={schedule ? '일정 고치기' : '일정 추가'}
+          className="[--field-background:var(--default)]"
+        >
           <form
             onSubmit={save}
             noValidate
@@ -171,7 +175,7 @@ export function ScheduleDialog({
                 validationBehavior="aria"
               >
                 <Label>팀 비밀번호</Label>
-                <Input autoComplete="current-password" />
+                <Input autoComplete="current-password" placeholder="팀 비밀번호를 넣어 주세요" />
                 <FieldError>{error?.password && error.message}</FieldError>
               </TextField>
             </Modal.Body>
