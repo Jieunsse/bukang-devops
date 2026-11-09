@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const { fetchRequestOptions, linearIssueCreator } = await import('./linear')
+const { fetchRequestLog, fetchRequestOptions, linearIssueCreator } = await import('./linear')
 
 const issue = {
   title: '문구 고치기',
@@ -108,5 +108,53 @@ describe('작업 요청 선택지 받기', () => {
   it('팀을 찾지 못하면 오류를 낸다', async () => {
     const fetchImpl = vi.fn().mockResolvedValueOnce(json({ teams: { nodes: [] } }))
     await expect(fetchRequestOptions('key', fetchImpl)).rejects.toThrow('팀을 찾지 못했어요')
+  })
+})
+
+describe('작업 요청 내역 받기', () => {
+  const state = { id: 's-1', name: 'Todo', type: 'unstarted', position: 1 }
+  const node = (identifier: string, createdAt: string, description: string | null) => ({
+    identifier,
+    title: `${identifier} 제목`,
+    url: `https://linear.app/b/issue/${identifier}`,
+    createdAt,
+    description,
+    state,
+    assignee: { name: '영호', avatarUrl: null },
+  })
+
+  it('작업 요청 표시가 있는 BUK 티켓만 찾고, 요청한 사람을 설명 끝에서 읽어 최근 것부터 준다', async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      json({
+        issues: {
+          nodes: [
+            node('BUK-1', '2026-11-06T01:00:00.000Z', '요청한 사람: 옥지훈 (부캉이 작업 요청)'),
+            node(
+              'BUK-2',
+              '2026-11-07T01:00:00.000Z',
+              '버튼 고쳐 주세요.\n\n---\n요청한 사람: 김호빈 (부캉이 작업 요청)',
+            ),
+          ],
+        },
+      }),
+    )
+    const log = await fetchRequestLog('key', fetchImpl)
+    expect(log.map((e) => [e.identifier, e.requester])).toEqual([
+      ['BUK-2', '김호빈'],
+      ['BUK-1', '옥지훈'],
+    ])
+    expect(log[0]).not.toHaveProperty('description')
+    const body = JSON.parse(fetchImpl.mock.calls[0]![1].body)
+    expect(body.variables).toEqual({ teamKey: 'BUK', marker: '(부캉이 작업 요청)' })
+  })
+
+  it('누군가 설명에서 요청한 사람 줄을 지웠으면 요청한 사람을 비워 둔다', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        json({ issues: { nodes: [node('BUK-3', '2026-11-08T01:00:00.000Z', null)] } }),
+      )
+    const [entry] = await fetchRequestLog('key', fetchImpl)
+    expect(entry!.requester).toBeNull()
   })
 })
