@@ -51,3 +51,15 @@ export type RequestOptions = {
   projects: { id: string; name: string; milestones: { id: string; name: string }[] }[]
   cycles: { id: string; number: number; name: string | null; startsAt: string; endsAt: string }[]
 }
+
+/** 작업 요청으로 만든 티켓 하나. 누구나 볼 수 있게 설명 본문은 빼고 보낸다. */
+export type RequestLogEntry = {
+  identifier: string
+  title: string
+  url: string
+  createdAt: string
+  /** 설명 끝 「요청한 사람」 줄이 지워졌으면 null */
+  requester: string | null
+  assignee: { name: string; avatarUrl: string | null } | null
+  state: { id: string; name: string; type: string; position: number }
+}

@@ -3,8 +3,8 @@ import 'server-only'
 import { z } from 'zod'
 
 import { LinearRequestError, request, TEAM_KEY, type FetchImpl } from '../linear/fetch-snapshot'
-import type { RequestOptions } from './schema'
-import type { IssueCreator } from './service'
+import type { RequestLogEntry, RequestOptions } from './schema'
+import { REQUEST_MARKER, type IssueCreator } from './service'
 
 // 지난 사이클은 고를 일이 없어서 받지 않는다. 안쪽 목록 크기는 쿼리 복잡도 한도 때문에 정한다.
 const OPTIONS_QUERY = `
@@ -27,6 +27,23 @@ const OPTIONS_QUERY = `
 const CREATE_MUTATION = `
   mutation Create($input: IssueCreateInput!) {
     issueCreate(input: $input) { success issue { identifier url } }
+  }
+`
+
+// shortcut: 최근 100건만 받는다. 요청이 100건을 넘어 옛 요청을 찾아야 하면 쪽 넘김을 붙인다.
+const LOG_QUERY = `
+  query RequestLog($teamKey: String!, $marker: String!) {
+    issues(
+      first: 100
+      orderBy: createdAt
+      filter: { team: { key: { eq: $teamKey } }, description: { contains: $marker } }
+    ) {
+      nodes {
+        identifier title url createdAt description
+        state { id name type position }
+        assignee { name avatarUrl }
+      }
+    }
   }
 `
 
@@ -59,6 +76,23 @@ const optionsSchema = z.object({
     }),
   ),
 })
+
+const logSchema = z.object({
+  issues: nodes(
+    z.object({
+      identifier: z.string(),
+      title: z.string(),
+      url: z.url(),
+      createdAt: z.iso.datetime({ offset: true }),
+      description: z.string().nullable(),
+      state: z.object({ id: z.string(), name: z.string(), type: z.string(), position: z.number() }),
+      assignee: z.object({ name: z.string(), avatarUrl: z.string().nullable() }).nullable(),
+    }),
+  ),
+})
+
+// service.ts가 설명 맨 끝에 붙이는 줄. 본문에 같은 글을 적어 이름을 바꿔 치지 못하게 끝에 고정한다.
+const REQUESTER_LINE = /요청한 사람: (.+) \(부캉이 작업 요청\)\s*$/
 
 const createSchema = z.object({
   issueCreate: z.object({
@@ -115,4 +149,24 @@ export function linearIssueCreator(
     }
     return issueCreate.issue
   }
+}
+
+/** 작업 요청으로 만든 BUK 티켓을 최근 것부터. 설명 끝 표시로 찾고, 설명 본문은 버린다. */
+export async function fetchRequestLog(
+  apiKey: string,
+  fetchImpl: FetchImpl = fetch,
+): Promise<RequestLogEntry[]> {
+  const { issues } = await request(
+    fetchImpl,
+    apiKey,
+    LOG_QUERY,
+    { teamKey: TEAM_KEY, marker: REQUEST_MARKER },
+    logSchema,
+  )
+  return issues.nodes
+    .map(({ description, ...issue }) => ({
+      ...issue,
+      requester: description?.match(REQUESTER_LINE)?.[1] ?? null,
+    }))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }

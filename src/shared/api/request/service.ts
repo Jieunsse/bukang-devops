@@ -8,6 +8,9 @@ import {
   type WorkRequestResult,
 } from './schema'
 
+/** 설명 끝에 붙여 작업 요청으로 만든 티켓을 나중에 찾는다. 바꾸면 예전 요청이 내역에서 빠진다. */
+export const REQUEST_MARKER = '(부캉이 작업 요청)'
+
 export type NewIssue = {
   title: string
   description: string
@@ -57,7 +60,7 @@ export async function createWorkRequest(
   // 브라우저에서 온 id라서 BUK 팀 멤버인지 서버에서 다시 본다.
   if (!nameOf(assigneeId) || !requester) return { ok: false, reason: 'invalid' }
 
-  const footer = `요청한 사람: ${requester} (부캉이 작업 요청)`
+  const footer = `요청한 사람: ${requester} ${REQUEST_MARKER}`
   try {
     const issue = await deps.create({
       title,
