@@ -3,35 +3,30 @@
 import { Card, ProgressBar, Tooltip } from '@heroui/react'
 import type { ReactNode } from 'react'
 
-import type { Cycle, Issue } from '@/shared/api/linear'
+import type { Cycle, Issue, Project } from '@/shared/api/linear'
 import { kstDate } from '@/shared/lib/date'
 
-import { cycleProgress, dailyPace, presentationCountdown } from '../lib/presentation'
+import { cycleProgress, presentationCountdown } from '../lib/presentation'
 
 /**
  * 대시보드 맨 위의 작은 카드 세 개.
  * cycleIssues는 필터를 걸기 전 티켓이다. 사이클 진행은 사이클 전체 기준이기 때문이다.
- * openIssues는 필터를 건 티켓이라, 담당자를 고르면 그 사람의 속도가 나온다.
+ * 프로젝트 진행률은 Linear가 계산한 값이라 필터와 상관없다.
  */
 export function PresentationCard({
   now,
   cycles,
   cycleIssues,
-  openIssues,
+  project,
 }: {
   now: number
   cycles: Cycle[]
   cycleIssues: Issue[]
-  openIssues: Issue[]
+  project: Project | null | undefined
 }) {
-  const { dateLabel, dDay, daysLeft } = presentationCountdown(kstDate(now))
+  const { dateLabel, dDay } = presentationCountdown(kstDate(now))
   const cycle = cycleProgress(now, cycles, cycleIssues)
-  const pace = dailyPace(openIssues.length, daysLeft)
-
-  const paceHint =
-    pace === null
-      ? `끝나지 않은 티켓 ${openIssues.length}건 · ${dDay === 'D-day' ? '오늘이 발표일이에요' : '발표일이 지났어요'}`
-      : `끝나지 않은 티켓 ${openIssues.length}건 ÷ 발표까지 ${daysLeft}일`
+  const percent = project ? Math.round(project.progress * 100) : null
 
   return (
     <section aria-label="한눈에 보기" className="grid gap-4 md:grid-cols-3">
@@ -50,7 +45,19 @@ export function PresentationCard({
           </ProgressBar>
         )}
       </StatCard>
-      <StatCard name="하루에 끝낼 티켓" value={pace === null ? '-' : `${pace}건`} hint={paceHint} />
+      <StatCard
+        name="프로젝트 진행률"
+        value={percent === null ? '-' : `${percent}%`}
+        hint={project ? `${project.name} · 진행 중인 티켓은 4분의 1만큼 셈` : null}
+      >
+        {percent !== null && (
+          <ProgressBar aria-label="프로젝트 진행률" value={percent} size="sm" className="mt-1">
+            <ProgressBar.Track>
+              <ProgressBar.Fill />
+            </ProgressBar.Track>
+          </ProgressBar>
+        )}
+      </StatCard>
     </section>
   )
 }

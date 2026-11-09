@@ -55,6 +55,15 @@ const membersPage = (nodes: unknown[], hasNextPage = false, endCursor: string | 
     data: { teams: { nodes: [{ members: { nodes, pageInfo: { hasNextPage, endCursor } } }] } },
   })
 
+const projectPage = () =>
+  Response.json({
+    data: {
+      teams: {
+        nodes: [{ projects: { nodes: [{ name: '크루런 최종프로젝트', progress: 0.65 }] } }],
+      },
+    },
+  })
+
 /** 요청 본문의 query로 이슈 요청, 사이클 요청, 팀 멤버 요청을 나눠 응답한다. */
 const fakeLinear = (
   issuePages: Response[],
@@ -63,6 +72,7 @@ const fakeLinear = (
 ) =>
   vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body)) as { query: string }
+    if (body.query.includes('projects(')) return projectPage()
     if (body.query.includes('members(')) {
       const page = memberPages.shift()
       if (!page) throw new Error('팀 멤버를 예상보다 많이 불렀다')
@@ -197,6 +207,7 @@ describe('Linear에서 한 번에 받기', () => {
       fetchedAt: '2026-11-05T03:00:00.000Z',
       cycles: [cycle],
       members: [{ id: 'f6ad6c3a-2e01-4c69-b3d6-71966925bd01', name: '옥지훈', avatarUrl: null }],
+      project: { name: '크루런 최종프로젝트', progress: 0.65 },
       issues: [
         {
           id: 'i1',

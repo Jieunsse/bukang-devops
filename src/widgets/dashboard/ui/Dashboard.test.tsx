@@ -269,10 +269,20 @@ describe('대시보드', () => {
     // 이 예시에는 사이클이 없어서 다음 사이클도 없다.
     expect(within(summary).getByText('다음 사이클')).toBeInTheDocument()
     expect(within(summary).getByText('없음')).toBeInTheDocument()
-    expect(within(summary).getByText('하루에 끝낼 티켓')).toBeInTheDocument()
-    // 끝나지 않은 티켓 4건 ÷ 발표까지 18일 = 0.2건
-    expect(within(summary).getByText('0.2건')).toBeInTheDocument()
-    expect(within(summary).queryByText(/발표까지 18일/)).not.toBeInTheDocument()
+    // 이 예시에는 프로젝트가 없어서 진행률을 셀 수 없다.
+    expect(within(summary).getByText('프로젝트 진행률')).toBeInTheDocument()
+    expect(within(summary).getByText('-')).toBeInTheDocument()
+  })
+
+  it('프로젝트 진행률은 Linear가 준 값을 반올림한 퍼센트와 막대로 보여 준다', () => {
+    const project = { name: '크루런 최종프로젝트', progress: 0.6454 }
+    render(<Dashboard snapshot={{ ...snapshot(rest), project }} now={NOW} />)
+    const summary = screen.getByRole('region', { name: '한눈에 보기' })
+    expect(within(summary).getByText('65%')).toBeInTheDocument()
+    expect(within(summary).getByRole('progressbar', { name: '프로젝트 진행률' })).toHaveAttribute(
+      'aria-valuenow',
+      '65',
+    )
   })
 
   it('사람별 막대는 네 구간 범례와 단위가 붙은 합계를 보여 준다', () => {

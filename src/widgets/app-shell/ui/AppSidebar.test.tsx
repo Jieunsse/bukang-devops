@@ -21,6 +21,6 @@ describe('왼쪽 메뉴', () => {
 
   it('맨 위 로고를 누르면 필터를 그대로 둔 채 대시보드로 간다', () => {
     render(<AppSidebar />)
-    expect(screen.getByRole('link', { name: '부캉이' })).toHaveAttribute('href', '/?assignee=jihun')
+    expect(screen.getByRole('link', { name: '부캉이 데브옵스' })).toHaveAttribute('href', '/?assignee=jihun')
   })
 })

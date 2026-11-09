@@ -57,6 +57,9 @@ export const memberSchema = z.object({
   avatarUrl: z.url().nullish(),
 })
 
+/** 팀이 진행 중인 Linear 프로젝트. 진행률은 Linear가 계산한 0~1 값이다. */
+export const projectSchema = z.object({ name: z.string(), progress: z.number().min(0).max(1) })
+
 export const snapshotSchema = z.object({
   fetchedAt: z.iso.datetime(),
   /** Linear에서 새로 받지 못해 마지막 성공 값을 보여 주는 중이면 그 이유. 새로 받으면 없다. */
@@ -65,11 +68,14 @@ export const snapshotSchema = z.object({
   cycles: z.array(cycleSchema),
   /** 예전에 저장된 값이나 예시 데이터에는 없을 수 있다. 없으면 빈 목록으로 본다. */
   members: z.array(memberSchema).optional(),
+  /** 예전에 저장된 값에는 없다. 진행 중인 프로젝트가 없으면 null이다. */
+  project: projectSchema.nullish(),
 })
 
 export type Issue = z.infer<typeof issueSchema>
 export type Member = z.infer<typeof memberSchema>
 export type Cycle = z.infer<typeof cycleSchema>
+export type Project = z.infer<typeof projectSchema>
 export type Snapshot = z.infer<typeof snapshotSchema>
 
 // Linear GraphQL이 돌려주는 모양
@@ -152,3 +158,12 @@ export const membersResponseSchema = z
       },
     }
   })
+
+/** 진행 중인 프로젝트 중 첫 번째. 없으면 null. */
+export const projectResponseSchema = z
+  .object({
+    teams: z.object({
+      nodes: z.array(z.object({ projects: z.object({ nodes: z.array(projectSchema) }) })),
+    }),
+  })
+  .transform(({ teams }) => teams.nodes[0]?.projects.nodes[0] ?? null)

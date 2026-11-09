@@ -111,5 +111,6 @@ export function createFixtureSnapshot(now: Date = new Date()): Snapshot {
 
   // 남은 티켓이 0건인 팀원도 화면에 보이는지 확인하려고 티켓 없는 멤버를 하나 더 둔다.
   const members = [...people, { id: 'u-harin', name: '하린' }].map((p) => ({ ...p }))
-  return { fetchedAt: now.toISOString(), issues, cycles, members }
+  const project = { name: '크루런 최종프로젝트', progress: 0.65 }
+  return { fetchedAt: now.toISOString(), issues, cycles, members, project }
 }
