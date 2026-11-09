@@ -5,7 +5,7 @@ import { updateTag } from 'next/cache'
 import { getLinearSource } from '../../config/env'
 import { getSnapshot, SNAPSHOT_TAG } from '../linear/server'
 import { linearIssueCreator } from './linear'
-import { getRequestOptions } from './server'
+import { getRequestLog, getRequestOptions } from './server'
 import { createWorkRequest, type IssueCreator } from './service'
 
 // 키가 없는 로컬 개발 서버에서는 Linear에 보내지 않고 만든 척만 한다.
@@ -17,6 +17,11 @@ const fixtureCreator: IssueCreator = async () => ({
 /** 작업 요청 창에서 고를 라벨·프로젝트·사이클 */
 export async function loadRequestOptionsAction() {
   return getRequestOptions()
+}
+
+/** 작업 요청 내역. 비밀번호 없이 누구나 본다. */
+export async function loadRequestLogAction() {
+  return getRequestLog()
 }
 
 // 브라우저가 부르는 서버 함수. 비밀번호 확인과 Linear 호출은 서버에서만 한다.

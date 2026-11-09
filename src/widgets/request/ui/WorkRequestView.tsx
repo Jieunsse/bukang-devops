@@ -23,7 +23,7 @@ import {
   ToggleButtonGroup,
 } from '@heroui/react'
 import { parseDate } from '@internationalized/date'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useState, type ReactNode } from 'react'
 import { Controller, useForm, useWatch, type Control } from 'react-hook-form'
 
@@ -41,6 +41,8 @@ import {
 } from '@/shared/api/request'
 import { createWorkRequestAction, loadRequestOptionsAction } from '@/shared/api/request/actions'
 import { addDays, formatDayWithWeekday, formatMonthDay, kstDate } from '@/shared/lib/date'
+
+import { RequestLog, REQUEST_LOG_KEY } from './RequestLog'
 
 const FAIL_MESSAGE = {
   password: '비밀번호가 맞지 않아요.',
@@ -98,12 +100,14 @@ export function WorkRequestView() {
       ) : (
         <WorkRequestForm options={options.data} />
       )}
+      <RequestLog />
     </div>
   )
 }
 
 function WorkRequestForm({ options }: { options: RequestOptions }) {
   const members = useSnapshot().members ?? []
+  const queryClient = useQueryClient()
   // 한 번 넣은 팀 비밀번호는 페이지를 떠날 때까지 다시 묻지 않는다. 브라우저 저장소에는 남기지 않는다.
   const [password, setPassword] = useState('')
   const [error, setError] = useState<{ password: boolean; message: string } | null>(null)
@@ -121,6 +125,7 @@ function WorkRequestForm({ options }: { options: RequestOptions }) {
         return
       }
       setError(null)
+      void queryClient.invalidateQueries({ queryKey: REQUEST_LOG_KEY })
       toast.success(`${result.identifier} 티켓을 만들었어요`, {
         actionProps: { children: 'Linear에서 보기', onPress: () => window.open(result.url) },
       })

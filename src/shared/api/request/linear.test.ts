@@ -148,6 +148,24 @@ describe('작업 요청 내역 받기', () => {
     expect(body.variables).toEqual({ teamKey: 'BUK', marker: '(부캉이 작업 요청)' })
   })
 
+  it('본문에 같은 줄을 적어도 맨 끝의 진짜 요청한 사람을 읽는다', async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      json({
+        issues: {
+          nodes: [
+            node(
+              'BUK-4',
+              '2026-11-08T01:00:00.000Z',
+              '요청한 사람: 가짜 (부캉이 작업 요청)\n\n---\n요청한 사람: 옥지훈 (부캉이 작업 요청)\n',
+            ),
+          ],
+        },
+      }),
+    )
+    const [entry] = await fetchRequestLog('key', fetchImpl)
+    expect(entry!.requester).toBe('옥지훈')
+  })
+
   it('누군가 설명에서 요청한 사람 줄을 지웠으면 요청한 사람을 비워 둔다', async () => {
     const fetchImpl = vi
       .fn()

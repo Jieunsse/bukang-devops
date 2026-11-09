@@ -3,8 +3,9 @@ import 'server-only'
 import { unstable_cache } from 'next/cache'
 
 import { getLinearSource } from '../../config/env'
-import { fetchRequestOptions } from './linear'
-import type { RequestOptions } from './schema'
+import { SNAPSHOT_TAG } from '../linear/server'
+import { fetchRequestLog, fetchRequestOptions } from './linear'
+import type { RequestLogEntry, RequestOptions } from './schema'
 
 const TEN_MINUTES = 600
 
@@ -45,4 +46,27 @@ export const getRequestOptions: () => Promise<RequestOptions> = unstable_cache(
   },
   ['request-options-v1'],
   { revalidate: TEN_MINUTES },
+)
+
+// 키가 없는 로컬 개발 서버에서 쓰는 예시 내역
+const FIXTURE_LOG: RequestLogEntry[] = [
+  {
+    identifier: 'BUK-예시',
+    title: '배포 서버 메모리 늘리기',
+    url: 'https://linear.app',
+    createdAt: '2026-11-07T01:00:00.000Z',
+    requester: '옥지훈',
+    assignee: { name: '김호빈', avatarUrl: null },
+    state: { id: 's-todo', name: 'Todo', type: 'unstarted', position: 1 },
+  },
+]
+
+/** 작업 요청 내역. 새 요청을 만들면 대시보드와 같은 태그로 비워 바로 보인다. */
+export const getRequestLog: () => Promise<RequestLogEntry[]> = unstable_cache(
+  async () => {
+    const source = getLinearSource()
+    return source.kind === 'live' ? fetchRequestLog(source.apiKey) : FIXTURE_LOG
+  },
+  ['request-log-v1'],
+  { revalidate: TEN_MINUTES, tags: [SNAPSHOT_TAG] },
 )
