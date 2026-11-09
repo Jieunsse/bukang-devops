@@ -2,6 +2,7 @@ import 'server-only'
 
 import { z } from 'zod'
 
+import { displayName } from '../linear/display-names'
 import { LinearRequestError, request, TEAM_KEY, type FetchImpl } from '../linear/fetch-snapshot'
 import type { RequestLogEntry, RequestOptions } from './schema'
 import { REQUEST_MARKER, type IssueCreator } from './service'
@@ -41,7 +42,7 @@ const LOG_QUERY = `
       nodes {
         identifier title url createdAt description
         state { id name type position }
-        assignee { name avatarUrl }
+        assignee { id name avatarUrl }
       }
     }
   }
@@ -86,7 +87,9 @@ const logSchema = z.object({
       createdAt: z.iso.datetime({ offset: true }),
       description: z.string().nullable(),
       state: z.object({ id: z.string(), name: z.string(), type: z.string(), position: z.number() }),
-      assignee: z.object({ name: z.string(), avatarUrl: z.string().nullable() }).nullable(),
+      assignee: z
+        .object({ id: z.string(), name: z.string(), avatarUrl: z.string().nullable() })
+        .nullable(),
     }),
   ),
 })
@@ -164,8 +167,10 @@ export async function fetchRequestLog(
     logSchema,
   )
   return issues.nodes
-    .map(({ description, ...issue }) => ({
+    .map(({ description, assignee, ...issue }) => ({
       ...issue,
+      // 대시보드처럼 Linear 닉네임 대신 실명으로 보여 준다.
+      assignee: assignee && { name: displayName(assignee), avatarUrl: assignee.avatarUrl },
       requester: description?.match(REQUESTER_LINE)?.[1] ?? null,
     }))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))

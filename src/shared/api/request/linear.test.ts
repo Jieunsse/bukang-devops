@@ -120,7 +120,7 @@ describe('작업 요청 내역 받기', () => {
     createdAt,
     description,
     state,
-    assignee: { name: '영호', avatarUrl: null },
+    assignee: { id: 'u-yeongho', name: '영호', avatarUrl: null },
   })
 
   it('작업 요청 표시가 있는 BUK 티켓만 찾고, 요청한 사람을 설명 끝에서 읽어 최근 것부터 준다', async () => {
@@ -164,6 +164,27 @@ describe('작업 요청 내역 받기', () => {
     )
     const [entry] = await fetchRequestLog('key', fetchImpl)
     expect(entry!.requester).toBe('옥지훈')
+  })
+
+  it('받는 사람은 Linear 닉네임 대신 실명으로 바꿔 준다', async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      json({
+        issues: {
+          nodes: [
+            {
+              ...node('BUK-5', '2026-11-08T01:00:00.000Z', null),
+              assignee: {
+                id: '833c0d35-5772-4e08-875c-dc85ca4fc8cb',
+                name: 'bari cesco',
+                avatarUrl: null,
+              },
+            },
+          ],
+        },
+      }),
+    )
+    const [entry] = await fetchRequestLog('key', fetchImpl)
+    expect(entry!.assignee).toEqual({ name: '김호빈', avatarUrl: null })
   })
 
   it('누군가 설명에서 요청한 사람 줄을 지웠으면 요청한 사람을 비워 둔다', async () => {
