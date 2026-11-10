@@ -60,6 +60,8 @@ export type RequestLogEntry = {
   createdAt: string
   /** 설명 끝 「요청한 사람」 줄이 지워졌으면 null */
   requester: string | null
+  /** 팀 멤버 목록에서 요청한 사람 이름으로 찾은 프로필 이미지 */
+  requesterAvatarUrl?: string | null
   assignee: { name: string; avatarUrl: string | null } | null
   state: { id: string; name: string; type: string; position: number }
 }

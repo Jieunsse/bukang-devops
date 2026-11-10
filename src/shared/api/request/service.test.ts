@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Member } from '../linear'
 import type { RequestOptions } from './schema'
-import { createWorkRequest, type IssueCreator } from './service'
+import { createWorkRequest, type IssueCreator, withRequesterAvatars } from './service'
 
 const PASSWORD = 'team-secret'
 const members: Member[] = [
@@ -140,5 +140,29 @@ describe('작업 요청 만들기', () => {
     create.mockRejectedValueOnce(new Error('Linear 요청 실패(400)'))
     vi.spyOn(console, 'error').mockImplementationOnce(() => {})
     expect(await run(PASSWORD, input)).toEqual({ ok: false, reason: 'failed' })
+  })
+})
+
+describe('요청 내역의 요청한 사람 프로필 이미지', () => {
+  const entry = {
+    identifier: 'BUK-1',
+    title: '문구 고치기',
+    url: 'https://linear.app',
+    createdAt: '2026-11-09T00:00:00.000Z',
+    assignee: null,
+    state: { id: 's', name: 'Todo', type: 'unstarted', position: 1 },
+  }
+  const team: Member[] = [{ id: 'u-1', name: '옥지훈', avatarUrl: 'https://a.example/1.png' }]
+
+  it('같은 이름의 팀원 프로필 이미지를 붙이고, 못 찾거나 이름이 없으면 비워 둔다', () => {
+    const log = withRequesterAvatars(
+      [
+        { ...entry, requester: '옥지훈' },
+        { ...entry, requester: '나간 팀원' },
+        { ...entry, requester: null },
+      ],
+      team,
+    )
+    expect(log.map((e) => e.requesterAvatarUrl)).toEqual(['https://a.example/1.png', null, null])
   })
 })

@@ -3,6 +3,7 @@ import { passwordMatches } from '../schedule/password'
 import {
   NO_CYCLE,
   workRequestInputSchema,
+  type RequestLogEntry,
   type RequestOptions,
   type WorkRequestInput,
   type WorkRequestResult,
@@ -78,4 +79,12 @@ export async function createWorkRequest(
     console.error('작업 요청 티켓을 만들지 못했어요', error)
     return { ok: false, reason: 'failed' }
   }
+}
+
+/** 요청한 사람은 설명 끝 이름만 남아 있어서, 실명으로 바꾼 팀 멤버 목록에서 같은 이름의 프로필 이미지를 찾는다. */
+export function withRequesterAvatars(log: RequestLogEntry[], members: Member[]): RequestLogEntry[] {
+  return log.map((entry) => ({
+    ...entry,
+    requesterAvatarUrl: members.find((m) => m.name === entry.requester)?.avatarUrl ?? null,
+  }))
 }
