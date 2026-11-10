@@ -64,7 +64,17 @@ export function RequestLog() {
                           {entry.identifier}
                         </Table.Cell>
                         <Table.Cell className="whitespace-nowrap">
-                          {entry.requester ?? '알 수 없음'}
+                          {entry.requester ? (
+                            <span className="flex items-center gap-2">
+                              <MemberAvatar
+                                name={entry.requester}
+                                avatarUrl={entry.requesterAvatarUrl}
+                              />
+                              {entry.requester}
+                            </span>
+                          ) : (
+                            <span className="text-muted">알 수 없음</span>
+                          )}
                         </Table.Cell>
                         <Table.Cell className="whitespace-nowrap">
                           {entry.assignee ? (

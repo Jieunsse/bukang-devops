@@ -3,9 +3,10 @@ import 'server-only'
 import { unstable_cache } from 'next/cache'
 
 import { getLinearSource } from '../../config/env'
-import { SNAPSHOT_TAG } from '../linear/server'
+import { getSnapshot, SNAPSHOT_TAG } from '../linear/server'
 import { fetchRequestLog, fetchRequestOptions } from './linear'
 import type { RequestLogEntry, RequestOptions } from './schema'
+import { withRequesterAvatars } from './service'
 
 const TEN_MINUTES = 600
 
@@ -65,8 +66,12 @@ const FIXTURE_LOG: RequestLogEntry[] = [
 export const getRequestLog: () => Promise<RequestLogEntry[]> = unstable_cache(
   async () => {
     const source = getLinearSource()
-    return source.kind === 'live' ? fetchRequestLog(source.apiKey) : FIXTURE_LOG
+    const [log, snapshot] = await Promise.all([
+      source.kind === 'live' ? fetchRequestLog(source.apiKey) : FIXTURE_LOG,
+      getSnapshot(),
+    ])
+    return withRequesterAvatars(log, snapshot.members ?? [])
   },
-  ['request-log-v1'],
+  ['request-log-v2'],
   { revalidate: TEN_MINUTES, tags: [SNAPSHOT_TAG] },
 )
