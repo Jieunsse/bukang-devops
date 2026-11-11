@@ -18,7 +18,8 @@ const PRODUCT_EXTRA = new Set(['race', 'race_course', 'participation_hold'])
 const SYSTEM = '시스템 기록'
 const OTHER = '기타'
 
-export type DbTableGroup = { label: string; tables: DbTable[] }
+/** prefix는 목록에서 흐리게 보여 줄 공통 앞부분이다. 없으면 빈 문자열. */
+export type DbTableGroup = { label: string; prefix: string; tables: DbTable[] }
 
 export function serviceOf(name: string): string {
   if (PRODUCT_EXTRA.has(name)) return '상품'
@@ -30,6 +31,10 @@ export function serviceOf(name: string): string {
 export function groupByService(tables: DbTable[]): DbTableGroup[] {
   const order = [...SERVICES.map((s) => s.label), OTHER, SYSTEM]
   return order
-    .map((label) => ({ label, tables: tables.filter((t) => serviceOf(t.name) === label) }))
+    .map((label) => ({
+      label,
+      prefix: SERVICES.find((s) => s.label === label)?.prefix ?? '',
+      tables: tables.filter((t) => serviceOf(t.name) === label),
+    }))
     .filter((g) => g.tables.length > 0)
 }
