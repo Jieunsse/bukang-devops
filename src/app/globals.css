@@ -30,7 +30,8 @@ html {
 }
 
 :root:not(.dark) .card {
-  box-shadow: none;
+  /* box-shadow를 통째로 끄면 고른 칸의 ring 테두리까지 사라지므로 그림자 값만 비운다. */
+  --tw-shadow: 0 0 #0000;
   border: var(--border-width) solid var(--border);
 }
 
@@ -44,4 +45,42 @@ html {
 :root:not(.dark) .tabs__indicator {
   background-color: var(--accent-soft);
   color: var(--foreground);
+}
+
+/* 한 줄의 카드들을 판 하나로 묶는다. 카드마다 테두리가 있으면 따로 붙인 것처럼 보여서,
+   바깥 테두리 하나만 두고 카드 사이는 1px 틈으로 테두리 색이 비치게 해 구분선을 만든다.
+   틈이 빈 칸으로 남지 않도록, 줄 수가 홀수인 화면에서는 쓰는 쪽이 마지막 칸을 넓힌다. */
+.panel-group {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: var(--border-width) solid var(--border);
+  border-radius: min(32px, var(--radius-3xl));
+  background-color: var(--border);
+}
+
+.panel-group > * {
+  background-color: var(--surface);
+}
+
+.panel-group .card {
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  --tw-shadow: 0 0 #0000;
+}
+
+/* 밝은 화면에서는 칩·보조 버튼·프로필 글자 바탕의 회색을 빼고, 흰 바탕에 얇은 테두리로 보여 준다. */
+:root:not(.dark) .chip--default {
+  --chip-bg: transparent;
+  box-shadow: inset 0 0 0 var(--border-width) var(--border);
+}
+
+:root:not(.dark) .button--tertiary {
+  --button-bg: transparent;
+  border: var(--border-width) solid var(--border);
+}
+
+:root:not(.dark) .avatar__fallback {
+  background-color: var(--background);
 }

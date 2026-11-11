@@ -29,7 +29,7 @@ export function PresentationCard({
   const percent = project ? Math.round(project.progress * 100) : null
 
   return (
-    <section aria-label="한눈에 보기" className="grid gap-4 md:grid-cols-3">
+    <section aria-label="한눈에 보기" className="panel-group md:grid-cols-3">
       <StatCard name="최종 발표" value={dDay} hint={dateLabel} />
       <StatCard name={cycle.name} value={cycle.value} hint={cycle.hint}>
         {cycle.ratio !== null && (
