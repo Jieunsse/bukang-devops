@@ -3,6 +3,7 @@ import {
   Calendar,
   ChartBar,
   CircleCheck,
+  Cubes3,
   Database,
   House,
   LayoutHeaderCells,
@@ -18,4 +19,5 @@ export const NAV_ITEMS = [
   { href: '/api-flow', label: 'API 흐름', Icon: ArrowRightArrowLeft },
   { href: '/request', label: '작업 요청', Icon: PaperPlane },
   { href: '/db', label: 'DB 구조', Icon: Database },
+  { href: '/architecture', label: '아키텍처', Icon: Cubes3 },
 ] as const

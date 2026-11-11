@@ -14,4 +14,8 @@ describe('메뉴', () => {
   it('DB 구조 페이지로 가는 메뉴가 있다', () => {
     expect(NAV_ITEMS.some((i) => i.href === '/db' && i.label === 'DB 구조')).toBe(true)
   })
+
+  it('아키텍처 페이지로 가는 메뉴가 있다', () => {
+    expect(NAV_ITEMS.some((i) => i.href === '/architecture' && i.label === '아키텍처')).toBe(true)
+  })
 })
