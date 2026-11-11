@@ -1,10 +1,12 @@
 'use client'
 
-import { Card, Chip, Input, Table, TextField } from '@heroui/react'
+import { Card, Chip, Input, Table, TextField, ToggleButton, ToggleButtonGroup } from '@heroui/react'
 import { useState } from 'react'
 
 import type { DbColumn, DbTable, DbTableGroup } from '@/entities/db-schema'
 import { formatMonthDay, kstDate } from '@/shared/lib/date'
+
+import { DbErdView } from './DbErdView'
 
 const KEY_LABEL: Record<string, string> = { PRI: '기본 키', UNI: '유일', MUL: '인덱스' }
 
@@ -21,6 +23,7 @@ export function DbSchemaView({
   const tables = groups.flatMap((g) => g.tables)
   const [selected, setSelected] = useState(tables[0]?.name)
   const [query, setQuery] = useState('')
+  const [view, setView] = useState<'list' | 'erd'>('list')
   const table = tables.find((t) => t.name === selected)
   const q = query.trim().toLowerCase()
   const shown = groups
@@ -29,14 +32,32 @@ export function DbSchemaView({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold">DB 구조</h2>
-        <p className="text-sm text-muted">
-          운영 DB {database} · {formatMonthDay(kstDate(dumpedAt))}에 읽음 · 테이블 {tables.length}개
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-lg font-semibold">DB 구조</h2>
+          <p className="text-sm text-muted">
+            운영 DB {database} · {formatMonthDay(kstDate(dumpedAt))}에 읽음 · 테이블 {tables.length}
+            개
+          </p>
+        </div>
+        <ToggleButtonGroup
+          aria-label="보기 방식"
+          size="sm"
+          selectionMode="single"
+          disallowEmptySelection
+          selectedKeys={[view]}
+          onSelectionChange={(keys) => setView([...keys][0] as 'list' | 'erd')}
+        >
+          <ToggleButton id="list">목록</ToggleButton>
+          <ToggleButton id="erd">ERD</ToggleButton>
+        </ToggleButtonGroup>
       </div>
+      {view === 'erd' && <DbErdView groups={groups} />}
       {/* 넓은 화면에서는 두 창 높이를 화면에 맞춰, 목록을 내려도 상세가 제자리에 있게 한다. */}
-      <div className="flex flex-col gap-4 xl:h-[calc(100dvh-13rem)] xl:min-h-96 xl:flex-row">
+      <div
+        hidden={view !== 'list'}
+        className="flex flex-col gap-4 xl:h-[calc(100dvh-13rem)] xl:min-h-96 xl:flex-row"
+      >
         <nav
           aria-label="테이블"
           className="flex max-h-80 shrink-0 flex-col rounded-2xl border border-border xl:max-h-none xl:w-80"
