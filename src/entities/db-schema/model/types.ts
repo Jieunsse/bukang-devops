@@ -12,6 +12,15 @@ export type DbColumn = {
 
 export type DbIndex = { name: string; unique: boolean; columns: string[] }
 
-export type DbTable = { name: string; comment: string; columns: DbColumn[]; indexes: DbIndex[] }
+/** 이 테이블의 column이 refTable.refColumn을 가리키는 외래 키 */
+export type DbForeignKey = { name: string; column: string; refTable: string; refColumn: string }
+
+export type DbTable = {
+  name: string
+  comment: string
+  columns: DbColumn[]
+  indexes: DbIndex[]
+  foreignKeys: DbForeignKey[]
+}
 
 export type DbSchema = { database: string; dumpedAt: string; tables: DbTable[] }

@@ -1,6 +1,6 @@
 {
   "database": "bukang-db",
-  "dumpedAt": "2026-11-11T02:42:11.874Z",
+  "dumpedAt": "2026-11-11T03:47:25.543Z",
   "tables": [
     {
       "name": "BATCH_JOB_EXECUTION",
@@ -108,6 +108,14 @@
           "unique": true,
           "columns": ["JOB_EXECUTION_ID"]
         }
+      ],
+      "foreignKeys": [
+        {
+          "name": "JOB_INST_EXEC_FK",
+          "column": "JOB_INSTANCE_ID",
+          "refTable": "BATCH_JOB_INSTANCE",
+          "refColumn": "JOB_INSTANCE_ID"
+        }
       ]
     },
     {
@@ -147,6 +155,14 @@
           "name": "PRIMARY",
           "unique": true,
           "columns": ["JOB_EXECUTION_ID"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "name": "JOB_EXEC_CTX_FK",
+          "column": "JOB_EXECUTION_ID",
+          "refTable": "BATCH_JOB_EXECUTION",
+          "refColumn": "JOB_EXECUTION_ID"
         }
       ]
     },
@@ -206,6 +222,14 @@
           "unique": false,
           "columns": ["JOB_EXECUTION_ID"]
         }
+      ],
+      "foreignKeys": [
+        {
+          "name": "JOB_EXEC_PARAMS_FK",
+          "column": "JOB_EXECUTION_ID",
+          "refTable": "BATCH_JOB_EXECUTION",
+          "refColumn": "JOB_EXECUTION_ID"
+        }
       ]
     },
     {
@@ -237,7 +261,8 @@
           "unique": true,
           "columns": ["UNIQUE_KEY"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "BATCH_JOB_INSTANCE",
@@ -291,7 +316,8 @@
           "unique": true,
           "columns": ["JOB_INSTANCE_ID"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "BATCH_JOB_INSTANCE_SEQ",
@@ -322,7 +348,8 @@
           "unique": true,
           "columns": ["UNIQUE_KEY"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "BATCH_STEP_EXECUTION",
@@ -511,6 +538,14 @@
           "unique": true,
           "columns": ["STEP_EXECUTION_ID"]
         }
+      ],
+      "foreignKeys": [
+        {
+          "name": "JOB_EXEC_STEP_FK",
+          "column": "JOB_EXECUTION_ID",
+          "refTable": "BATCH_JOB_EXECUTION",
+          "refColumn": "JOB_EXECUTION_ID"
+        }
       ]
     },
     {
@@ -551,6 +586,14 @@
           "unique": true,
           "columns": ["STEP_EXECUTION_ID"]
         }
+      ],
+      "foreignKeys": [
+        {
+          "name": "STEP_EXEC_CTX_FK",
+          "column": "STEP_EXECUTION_ID",
+          "refTable": "BATCH_STEP_EXECUTION",
+          "refColumn": "STEP_EXECUTION_ID"
+        }
       ]
     },
     {
@@ -582,7 +625,8 @@
           "unique": true,
           "columns": ["UNIQUE_KEY"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "cash_member",
@@ -631,7 +675,8 @@
           "unique": true,
           "columns": ["id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "cash_payment",
@@ -735,6 +780,14 @@
           "unique": true,
           "columns": ["order_id"]
         }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FKl07hu49ujvw1h9oq5la5qakg2",
+          "column": "wallet_id",
+          "refTable": "cash_wallet",
+          "refColumn": "id"
+        }
       ]
     },
     {
@@ -816,7 +869,8 @@
           "unique": true,
           "columns": ["payout_id", "transfer_type"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "cash_recovery_deposit",
@@ -933,7 +987,8 @@
           "unique": true,
           "columns": ["claim_code"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "cash_seller",
@@ -986,6 +1041,14 @@
           "name": "PRIMARY",
           "unique": true,
           "columns": ["id"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FKlcd2tgmayhtg7gwqmjiovctdv",
+          "column": "member_id",
+          "refTable": "cash_member",
+          "refColumn": "id"
         }
       ]
     },
@@ -1058,6 +1121,14 @@
           "name": "PRIMARY",
           "unique": true,
           "columns": ["id"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FKm14pbd3uf8mc3ndoxo7lwklfg",
+          "column": "holder_id",
+          "refTable": "cash_member",
+          "refColumn": "id"
         }
       ]
     },
@@ -1199,6 +1270,14 @@
           "unique": true,
           "columns": ["idempotency_key"]
         }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FKskxr1hoe5vjnfg4tyv3n1b2xu",
+          "column": "wallet_id",
+          "refTable": "cash_wallet",
+          "refColumn": "id"
+        }
       ]
     },
     {
@@ -1311,6 +1390,20 @@
           "name": "PRIMARY",
           "unique": true,
           "columns": ["id"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FK9w7q4uxm83x2aabwpsdx3tj3c",
+          "column": "holder_id",
+          "refTable": "cash_member",
+          "refColumn": "id"
+        },
+        {
+          "name": "FKjoat1008msx2gbvu49lcqva4g",
+          "column": "wallet_id",
+          "refTable": "cash_wallet",
+          "refColumn": "id"
         }
       ]
     },
@@ -1443,6 +1536,14 @@
           "unique": true,
           "columns": ["idempotency_key"]
         }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FK4milqw7fxl6hqfmuimlsfh3x7",
+          "column": "wallet_id",
+          "refTable": "cash_wallet",
+          "refColumn": "id"
+        }
       ]
     },
     {
@@ -1537,6 +1638,20 @@
           "name": "PRIMARY",
           "unique": true,
           "columns": ["id"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FK7b4q0q8c0hpbvv4b7mth22ylt",
+          "column": "withdrawal_id",
+          "refTable": "cash_wallet_withdrawal",
+          "refColumn": "id"
+        },
+        {
+          "name": "FK80kvs5vomufqk8o42ccqo6bl4",
+          "column": "charge_id",
+          "refTable": "cash_wallet_charge",
+          "refColumn": "id"
         }
       ]
     },
@@ -1700,7 +1815,8 @@
           "unique": true,
           "columns": ["message_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "file_file",
@@ -1845,7 +1961,8 @@
           "unique": true,
           "columns": ["s3_key"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "file_inbox_kafka_event",
@@ -1926,7 +2043,8 @@
           "unique": true,
           "columns": ["consumer_group", "message_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "flyway_schema_history_cash",
@@ -2034,7 +2152,8 @@
           "unique": true,
           "columns": ["installed_rank"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "flyway_schema_history_member",
@@ -2142,7 +2261,8 @@
           "unique": true,
           "columns": ["installed_rank"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "flyway_schema_history_notification",
@@ -2250,7 +2370,8 @@
           "unique": true,
           "columns": ["installed_rank"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "flyway_schema_history_order",
@@ -2358,7 +2479,8 @@
           "unique": true,
           "columns": ["installed_rank"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "flyway_schema_history_payout",
@@ -2466,7 +2588,8 @@
           "unique": true,
           "columns": ["installed_rank"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "member_crew",
@@ -2533,7 +2656,8 @@
           "unique": true,
           "columns": ["crew_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "member_crew_invite",
@@ -2655,6 +2779,14 @@
           "unique": true,
           "columns": ["token_hash"]
         }
+      ],
+      "foreignKeys": [
+        {
+          "name": "fk_crew_invite_crew",
+          "column": "crew_id",
+          "refTable": "member_crew",
+          "refColumn": "crew_id"
+        }
       ]
     },
     {
@@ -2750,6 +2882,14 @@
           "unique": true,
           "columns": ["crew_id", "member_id"]
         }
+      ],
+      "foreignKeys": [
+        {
+          "name": "fk_crew_member_crew",
+          "column": "crew_id",
+          "refTable": "member_crew",
+          "refColumn": "crew_id"
+        }
       ]
     },
     {
@@ -2804,7 +2944,8 @@
           "unique": true,
           "columns": ["removal_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "member_member",
@@ -3032,7 +3173,8 @@
           "unique": true,
           "columns": ["phone_hash"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "member_outbox_event",
@@ -3191,7 +3333,8 @@
           "unique": true,
           "columns": ["message_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "member_seller",
@@ -3317,6 +3460,14 @@
           "unique": true,
           "columns": ["seller_id"]
         }
+      ],
+      "foreignKeys": [
+        {
+          "name": "fk_member_seller_member",
+          "column": "member_id",
+          "refTable": "member_member",
+          "refColumn": "member_id"
+        }
       ]
     },
     {
@@ -3430,6 +3581,14 @@
           "unique": true,
           "columns": ["provider", "provider_user_id"]
         }
+      ],
+      "foreignKeys": [
+        {
+          "name": "fk_social_account_member",
+          "column": "member_id",
+          "refTable": "member_member",
+          "refColumn": "member_id"
+        }
       ]
     },
     {
@@ -3520,7 +3679,8 @@
           "unique": true,
           "columns": ["type", "version"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "member_terms_agreement",
@@ -3605,6 +3765,20 @@
           "name": "PRIMARY",
           "unique": true,
           "columns": ["id"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "name": "fk_terms_agreement_member",
+          "column": "member_id",
+          "refTable": "member_member",
+          "refColumn": "member_id"
+        },
+        {
+          "name": "fk_terms_agreement_terms",
+          "column": "terms_id",
+          "refTable": "member_terms",
+          "refColumn": "id"
         }
       ]
     },
@@ -3728,7 +3902,8 @@
           "unique": true,
           "columns": ["message_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "order_cart",
@@ -3782,7 +3957,8 @@
           "unique": true,
           "columns": ["member_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "order_cart_item",
@@ -3844,6 +4020,14 @@
           "name": "uk_cart_item_course",
           "unique": true,
           "columns": ["cart_id", "race_course_id"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FKo91wwyi74i23yxss7qtyjv4nq",
+          "column": "cart_id",
+          "refTable": "order_cart",
+          "refColumn": "id"
         }
       ]
     },
@@ -3926,7 +4110,8 @@
           "unique": true,
           "columns": ["consumer_group", "message_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "order_kit_option_sale",
@@ -3989,7 +4174,8 @@
           "unique": true,
           "columns": ["kit_option_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "order_kit_ship_notice",
@@ -4061,7 +4247,8 @@
           "unique": true,
           "columns": ["race_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "order_order",
@@ -4243,7 +4430,8 @@
           "unique": true,
           "columns": ["buyer_id", "idempotency_key"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "order_order_item",
@@ -4478,6 +4666,14 @@
           "unique": true,
           "columns": ["participation_id"]
         }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FKg5w1jqkpwikvtlb8g2vim8chh",
+          "column": "order_id",
+          "refTable": "order_order",
+          "refColumn": "id"
+        }
       ]
     },
     {
@@ -4609,7 +4805,8 @@
           "unique": true,
           "columns": ["message_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "order_participation",
@@ -4894,6 +5091,14 @@
           "unique": true,
           "columns": ["race_id", "member_id", "active_flag"]
         }
+      ],
+      "foreignKeys": [
+        {
+          "name": "fk_participation_party",
+          "column": "party_id",
+          "refTable": "order_party",
+          "refColumn": "id"
+        }
       ]
     },
     {
@@ -4975,7 +5180,8 @@
           "unique": true,
           "columns": ["participation_id", "option_name"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "order_party",
@@ -5155,7 +5361,8 @@
           "unique": true,
           "columns": ["join_token"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "order_party_member",
@@ -5254,6 +5461,14 @@
           "unique": true,
           "columns": ["party_id", "member_id"]
         }
+      ],
+      "foreignKeys": [
+        {
+          "name": "fk_party_member_party",
+          "column": "party_id",
+          "refTable": "order_party",
+          "refColumn": "id"
+        }
       ]
     },
     {
@@ -5326,7 +5541,8 @@
           "unique": true,
           "columns": ["member_id", "race_course_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "order_shipment",
@@ -5556,6 +5772,14 @@
           "unique": true,
           "columns": ["id"]
         }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FK4j6ri1yutxraql35f56d7hfr5",
+          "column": "order_id",
+          "refTable": "order_order",
+          "refColumn": "id"
+        }
       ]
     },
     {
@@ -5627,6 +5851,14 @@
           "name": "uk_shipment_item",
           "unique": true,
           "columns": ["shipment_id", "order_item_id"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FK2it8xvxkx09peyi935pqe2xfc",
+          "column": "shipment_id",
+          "refTable": "order_shipment",
+          "refColumn": "id"
         }
       ]
     },
@@ -5726,6 +5958,14 @@
           "name": "PRIMARY",
           "unique": true,
           "columns": ["id"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "name": "fk_shipment_tracking_event_shipment",
+          "column": "shipment_id",
+          "refTable": "order_shipment",
+          "refColumn": "id"
         }
       ]
     },
@@ -5885,6 +6125,14 @@
           "name": "UKe9un59562ckvxxa4a2rjcgwq6",
           "unique": true,
           "columns": ["application_id"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FKshkq8c3gx7o6y5vr5f3xxw83t",
+          "column": "race_course_id",
+          "refTable": "race_course",
+          "refColumn": "race_course_id"
         }
       ]
     },
@@ -6089,7 +6337,8 @@
           "unique": true,
           "columns": ["seller_id", "race_id", "payout_month", "payout_stage"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "payout_payout_claim",
@@ -6247,7 +6496,8 @@
           "unique": true,
           "columns": ["seller_id", "race_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "payout_payout_create_failure",
@@ -6395,7 +6645,8 @@
           "unique": true,
           "columns": ["id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "payout_payout_hold",
@@ -6525,6 +6776,14 @@
           "name": "UK690wvq5m1xblpjfy5r7bfuyye",
           "unique": true,
           "columns": ["hold_code"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FK1pu68hpwtmd4rwlad59ti9sr4",
+          "column": "payout_id",
+          "refTable": "payout_payout",
+          "refColumn": "id"
         }
       ]
     },
@@ -6699,6 +6958,20 @@
           "unique": true,
           "columns": ["order_item_id", "record_type"]
         }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FKajawje20wapiqqr1tqowiyg17",
+          "column": "recovery_id",
+          "refTable": "payout_payout_recovery",
+          "refColumn": "id"
+        },
+        {
+          "name": "FKhguq1wqmgkbrraskt1433ixus",
+          "column": "payout_id",
+          "refTable": "payout_payout",
+          "refColumn": "id"
+        }
       ]
     },
     {
@@ -6848,7 +7121,8 @@
           "unique": true,
           "columns": ["order_item_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "payout_payout_status_history",
@@ -6946,6 +7220,14 @@
           "name": "PRIMARY",
           "unique": true,
           "columns": ["id"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FK97y0g5iyy8mtwshi8m2thq113",
+          "column": "payout_id",
+          "refTable": "payout_payout",
+          "refColumn": "id"
         }
       ]
     },
@@ -7109,7 +7391,8 @@
           "unique": true,
           "columns": ["message_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "product_inbox_kafka_event",
@@ -7190,7 +7473,8 @@
           "unique": true,
           "columns": ["consumer_group", "message_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "product_kit_option",
@@ -7271,7 +7555,8 @@
           "unique": true,
           "columns": ["race_id", "name", "value"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "product_member",
@@ -7320,7 +7605,8 @@
           "unique": true,
           "columns": ["id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "product_outbox_kafka_event",
@@ -7451,7 +7737,8 @@
           "unique": true,
           "columns": ["message_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "product_race_document_sync_event",
@@ -7541,7 +7828,8 @@
           "unique": true,
           "columns": ["id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "product_seller",
@@ -7639,6 +7927,14 @@
           "name": "PRIMARY",
           "unique": true,
           "columns": ["id"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FKbaugo4e5w2q0qwmtl8rhvt9sh",
+          "column": "member_id",
+          "refTable": "product_member",
+          "refColumn": "id"
         }
       ]
     },
@@ -7802,7 +8098,8 @@
           "unique": true,
           "columns": ["message_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "queue_inbox_kafka_event",
@@ -7883,7 +8180,8 @@
           "unique": true,
           "columns": ["consumer_group", "message_id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "queue_race",
@@ -7959,7 +8257,8 @@
           "unique": true,
           "columns": ["id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "queue_race_course",
@@ -8008,7 +8307,8 @@
           "unique": true,
           "columns": ["id"]
         }
-      ]
+      ],
+      "foreignKeys": []
     },
     {
       "name": "race",
@@ -8232,6 +8532,14 @@
           "name": "uk_race_idempotency",
           "unique": true,
           "columns": ["seller_id", "idempotency_key"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FK2lkphq1okqohgmyrsh44lr5j2",
+          "column": "seller_id",
+          "refTable": "product_seller",
+          "refColumn": "id"
         }
       ]
     },
@@ -8466,6 +8774,14 @@
           "name": "PRIMARY",
           "unique": true,
           "columns": ["race_course_id"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "name": "FK2ydanu4kknm3a965sqhihko6u",
+          "column": "race_id",
+          "refTable": "race",
+          "refColumn": "race_id"
         }
       ]
     }
