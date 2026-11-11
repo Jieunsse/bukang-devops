@@ -2,6 +2,7 @@ import {
   Calendar,
   ChartBar,
   CircleCheck,
+  Database,
   House,
   LayoutHeaderCells,
   PaperPlane,
@@ -14,4 +15,5 @@ export const NAV_ITEMS = [
   { href: '/timeline', label: '타임라인', Icon: ChartBar },
   { href: '/done', label: '완료·취소', Icon: CircleCheck },
   { href: '/request', label: '작업 요청', Icon: PaperPlane },
+  { href: '/db', label: 'DB 구조', Icon: Database },
 ] as const
