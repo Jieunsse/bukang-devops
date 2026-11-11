@@ -28,7 +28,7 @@ const linkClass = (isCurrent: boolean) =>
 export function AppSidebar() {
   const links = useNavLinks()
   return (
-    <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-6 border-r border-separator bg-background-secondary p-3 md:flex">
+    <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-6 border-r border-separator bg-background p-3 md:flex">
       {/* NAV_ITEMS 첫 칸이 대시보드라서, 로고도 같은 주소로 보내 필터를 그대로 남긴다. */}
       <Link
         href={links[0]?.href ?? '/'}
