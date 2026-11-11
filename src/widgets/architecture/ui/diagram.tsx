@@ -148,12 +148,6 @@ export const down = (x1: number, y1: number, x2: number, y2: number) => {
   return `M${x1} ${y1} C${x1} ${m} ${x2} ${m} ${x2} ${y2}`
 }
 
-/** 왼쪽에서 오른쪽으로 휘는 선 */
-export const across = (x1: number, y1: number, x2: number, y2: number) => {
-  const m = (x1 + x2) / 2
-  return `M${x1} ${y1} C${m} ${y1} ${m} ${y2} ${x2} ${y2}`
-}
-
 /** 그림이 화면보다 넓으면 가로로 스크롤한다. 작은 화면에서 글자가 읽히지 않을 만큼 줄어드는 것을 막는다. */
 export function Canvas({
   label,
