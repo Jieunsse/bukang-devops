@@ -15,12 +15,12 @@ html {
   }
 }
 
-/* 밝은 화면 색. 회색 바탕이 칙칙해 보여서 바탕을 거의 흰색으로 밝히고, 무채색 회색에 파랑 기를 조금 섞는다.
-   카드는 바탕과 색 차이가 줄어서 그림자 대신 얇은 테두리로 나눈다.
+/* 밝은 화면 색. 회색 바탕 위에 흰 카드가 떠 있으면 카드마다 따로 붙인 것처럼 보여서, 바탕을 카드와 같은 흰색으로 한다.
+   카드는 바탕과 색이 같으므로 그림자 대신 얇은 테두리로만 나눈다. 회색 기에는 파랑 기를 조금 섞는다.
    보조 글자(--muted)는 진하게 해 바탕과의 대비를 4.4에서 5.3으로 올린다(WCAG AA 4.5 이상).
    어두운 화면(.dark)은 건드리지 않는다. HeroUI 값은 @layer base에 있어서 여기 값이 이긴다. */
 :root:not(.dark) {
-  --background: oklch(0.985 0.003 250);
+  --background: oklch(1 0 0);
   --muted: oklch(0.52 0.014 260);
   --default: oklch(0.955 0.006 250);
   --surface-secondary: oklch(0.965 0.005 250);
@@ -32,6 +32,11 @@ html {
 :root:not(.dark) .card {
   box-shadow: none;
   border: var(--border-width) solid var(--border);
+}
+
+/* 탭 묶음도 회색 바탕 없이 흰 화면 위에 바로 놓는다. 고른 탭은 아래 옅은 파랑으로 구분된다. */
+:root:not(.dark) .tabs__list-container {
+  background-color: transparent;
 }
 
 /* 지금 있는 메뉴와 고른 탭만 옅은 파랑 바탕으로 보여 준다. 글자는 대비를 지키려고 검정 그대로 둔다. */
