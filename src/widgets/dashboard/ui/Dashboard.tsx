@@ -119,10 +119,11 @@ export function Dashboard({
             ))}
           </Tabs.List>
         </Tabs.ListContainer>
-        <Tabs.Panel id={bucket} className="flex flex-col gap-6 pt-6">
+        {/* 탭 내용의 기본 안쪽 여백을 빼서 위 판과 왼쪽 시작선을 맞춘다. */}
+        <Tabs.Panel id={bucket} className="flex flex-col gap-6 px-0 pt-6">
           <SummaryCards counts={counts} selected={bucket} onSelect={setBucket} />
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="panel-group md:grid-cols-2 xl:grid-cols-3">
             <AssigneeCard
               rows={assigneeLoad(issues, range, visibleMembers(snapshot.members ?? [], filters))}
               onSelect={(id) => setFilters(toggle(filters, 'assignee', id))}
@@ -131,13 +132,16 @@ export function Dashboard({
               {...milestoneProgress(issues)}
               onSelect={(id) => setFilters(toggle(filters, 'milestone', id))}
             />
-            <CalendarCard
-              counts={dueCounts}
-              cycles={snapshot.cycles}
-              today={today}
-              selected={date}
-              onSelect={setDate}
-            />
+            {/* 두 칸 화면에서는 달력이 홀로 남으므로 줄 전체를 쓴다. */}
+            <div className="md:col-span-2 xl:col-span-1">
+              <CalendarCard
+                counts={dueCounts}
+                cycles={snapshot.cycles}
+                today={today}
+                selected={date}
+                onSelect={setDate}
+              />
+            </div>
           </div>
 
           <div className="flex flex-col gap-6">

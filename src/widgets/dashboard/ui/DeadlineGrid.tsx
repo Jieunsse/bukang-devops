@@ -28,7 +28,7 @@ const SPAN: Record<Bucket, string> = {
   today: 'xl:col-span-3',
   thisWeek: 'xl:col-span-2',
   later: 'xl:col-span-2',
-  noDue: 'xl:col-span-2',
+  noDue: 'md:col-span-2 xl:col-span-2',
 }
 
 /** 전체 보기의 마감 목록. 묶음마다 카드 하나를 두고, 누르면 그 묶음을 골라 표로 보여 준다. */
@@ -42,10 +42,9 @@ export function DeadlineGrid({
   onSelect: (bucket: Bucket) => void
 }) {
   return (
-    <ul aria-label="마감 묶음 카드" className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+    <ul aria-label="마감 묶음 카드" className="panel-group md:grid-cols-2 xl:grid-cols-6">
       {BUCKETS.map((b) => (
-        // 0건 카드는 줄 높이에 맞춰 늘이지 않아 작게 남긴다.
-        <li key={b} className={`${SPAN[b]} ${groups[b].length === 0 ? 'self-start' : ''}`}>
+        <li key={b} className={SPAN[b]}>
           <BucketCard
             label={BUCKET_LABEL[b]}
             issues={groups[b]}
