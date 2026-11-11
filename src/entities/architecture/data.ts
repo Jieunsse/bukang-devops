@@ -134,6 +134,8 @@ export type KafkaEvent = {
   meaning: string
   from: ServiceId[]
   to: ServiceId[]
+  /** 보내는 서비스 중 아웃박스 없이 커밋 뒤 바로 보내는 곳. 나머지는 아웃박스 테이블에 저장했다가 보낸다 */
+  direct?: ServiceId[]
 }
 
 export const EVENTS: KafkaEvent[] = [
@@ -177,6 +179,7 @@ export const EVENTS: KafkaEvent[] = [
     meaning: '저장한 대회·글에 이미지 연결',
     from: ['product', 'board'],
     to: ['file'],
+    direct: ['board'],
   },
   { topic: 'order.race.cancel', meaning: '대회 취소', from: ['product'], to: ['order', 'payout'] },
   {
@@ -208,11 +211,54 @@ export const EVENTS: KafkaEvent[] = [
     meaning: '판매자가 청구 계좌에 입금함',
     from: ['cash'],
     to: ['payout'],
+    direct: ['cash'],
   },
   {
     topic: 'push.notification.requested',
     meaning: '회원 한 명에게 알림 띄우기',
     from: ['member', 'order', 'inquiry'],
     to: ['notification'],
+    direct: ['member', 'order', 'inquiry'],
   },
 ]
+
+// compose.yml의 bukang-kafka. 운영(compose.prod.yml)도 같은 설정에 데이터 볼륨만 더한다.
+export const KAFKA_BROKER = {
+  name: 'Redpanda',
+  version: 'v26.2.3',
+  count: 1,
+  resources: 'CPU 1코어 · 512MB',
+  internal: 'bukang-kafka:29092',
+  external: ':9092',
+  replicas: 1,
+  /** 모든 토픽과 재시도·DLT 토픽의 파티션 수 */
+  partitions: 1,
+  autoCreate: true,
+}
+
+export type Consumer = {
+  group: string
+  /** 처음 시도를 뺀 재시도 횟수. 다 실패하면 DLT로 간다. 0이면 재시도 토픽이 없다 */
+  retries: number
+}
+
+// 서비스별 @KafkaListener groupId와 @RetryableTopic attempts - 1
+export const CONSUMERS: Record<ServiceId, Consumer | undefined> = {
+  member: undefined,
+  inquiry: undefined,
+  cash: { group: '', retries: 2 },
+  product: { group: 'product', retries: 2 },
+  queue: { group: 'queue-service', retries: 2 },
+  file: { group: 'file', retries: 2 },
+  order: { group: 'order', retries: 3 },
+  payout: { group: 'payout', retries: 3 },
+  board: { group: 'board', retries: 0 },
+  notification: { group: 'NotificationKafkaListener__handleRequested__1', retries: 0 },
+}
+
+/** 예치금은 리스너마다 groupId가 달라 토픽별로 적는다 */
+export const CASH_GROUPS: Record<string, string> = {
+  'queuing.member.joined': 'CashEventListener__handleMemberJoined__1',
+  'queuing.member.modified': 'CashEventListener__handleMemberModified__1',
+  'queuing.seller.changed': 'CashEventListener__handleSellerChanged__1',
+}
