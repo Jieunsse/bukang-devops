@@ -22,7 +22,7 @@ export function StatCards<K extends string>({
 }) {
   const card = cardVariants()
   return (
-    <div role="group" aria-label="숫자 요약" className="panel-group grid-cols-2 lg:grid-cols-4">
+    <div role="group" aria-label="숫자 요약" className="panel-group stat-panel grid-cols-2 lg:grid-cols-4">
       {items.map((item) => {
         const isSelected = selected === item.key
         return (

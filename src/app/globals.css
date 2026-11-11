@@ -72,6 +72,46 @@ html {
   --tw-shadow: 0 0 #0000;
 }
 
+/* 숫자 요약 판(칸 4개, 좁은 화면 2열·넓은 화면 4열)은 고른 칸에 파란 안쪽 테두리를 그린다.
+   칸이 각져 있으면 판의 둥근 모서리에 테두리가 잘리므로, 판 모서리에 닿는 칸에만 판 안쪽 둥글기를 준다. */
+.stat-panel {
+  --stat-corner: calc(min(32px, var(--radius-3xl)) - var(--border-width));
+}
+
+:root .stat-panel > .card:nth-child(1) {
+  border-top-left-radius: var(--stat-corner);
+}
+
+:root .stat-panel > .card:nth-child(2) {
+  border-top-right-radius: var(--stat-corner);
+}
+
+:root .stat-panel > .card:nth-child(3) {
+  border-bottom-left-radius: var(--stat-corner);
+}
+
+:root .stat-panel > .card:nth-child(4) {
+  border-bottom-right-radius: var(--stat-corner);
+}
+
+@media (width >= 64rem) {
+  :root .stat-panel > .card:nth-child(1) {
+    border-bottom-left-radius: var(--stat-corner);
+  }
+
+  :root .stat-panel > .card:nth-child(2) {
+    border-top-right-radius: 0;
+  }
+
+  :root .stat-panel > .card:nth-child(3) {
+    border-bottom-left-radius: 0;
+  }
+
+  :root .stat-panel > .card:nth-child(4) {
+    border-top-right-radius: var(--stat-corner);
+  }
+}
+
 /* 밝은 화면에서는 칩·보조 버튼·프로필 글자 바탕의 회색을 빼고, 흰 바탕에 얇은 테두리로 보여 준다. */
 :root:not(.dark) .chip--default {
   --chip-bg: transparent;
