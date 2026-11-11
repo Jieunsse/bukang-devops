@@ -19,7 +19,7 @@ const names = (list: ServiceId[]) => list.map((id) => LABEL[id]).join(', ')
 const EXTERNAL = [...new Set(SERVICES.flatMap((s) => s.external))]
 
 const STORES = [
-  { name: 'MySQL 8.4', note: 'DB 하나를 같이 쓰고, 테이블 이름 앞부분으로 서비스를 나눠요' },
+  { name: 'MySQL 8.4', note: 'DB 하나를 같이 쓰고, 대부분 테이블 이름 앞부분으로 서비스를 나눠요' },
   { name: 'Kafka (Redpanda)', note: '서비스끼리 이벤트를 주고받아요' },
   { name: 'Redis', note: '대기열 순번, 로그인 토큰, 잠깐 쓰는 값' },
   { name: 'Elasticsearch (nori)', note: '대회 검색' },

@@ -42,7 +42,7 @@ export const SERVICES: Service[] = [
     paths: ['/api/v1/member/**', '/api/v1/auth/**'],
     stores: ['MySQL', 'Redis'],
     calls: ['cash', 'order'],
-    external: ['카카오·구글 로그인', '카카오톡 메시지', '메일(SMTP)'],
+    external: ['카카오·구글 로그인', '포트원 본인인증', '카카오톡 메시지', '메일(SMTP)'],
   },
   {
     id: 'product',
@@ -51,7 +51,7 @@ export const SERVICES: Service[] = [
     paths: ['/api/v1/product/**'],
     stores: ['MySQL', 'Elasticsearch'],
     calls: [],
-    external: [],
+    external: ['Slack(처리 실패 메시지 알림)'],
   },
   {
     id: 'queue',
@@ -60,7 +60,7 @@ export const SERVICES: Service[] = [
     paths: ['/api/v1/queue/**'],
     stores: ['MySQL', 'Redis'],
     calls: [],
-    external: [],
+    external: ['Slack(처리 실패 메시지 알림)'],
   },
   {
     id: 'order',
@@ -96,7 +96,7 @@ export const SERVICES: Service[] = [
     paths: ['/api/v1/file/**'],
     stores: ['MySQL', 'S3'],
     calls: [],
-    external: [],
+    external: ['Slack(처리 실패 메시지 알림)'],
   },
   {
     id: 'notification',
@@ -212,7 +212,7 @@ export const EVENTS: KafkaEvent[] = [
   {
     topic: 'push.notification.requested',
     meaning: '회원 한 명에게 알림 띄우기',
-    from: [],
+    from: ['member', 'order', 'inquiry'],
     to: ['notification'],
   },
 ]
