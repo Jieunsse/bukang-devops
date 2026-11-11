@@ -13,6 +13,7 @@ import {
 import { formatMonthDay } from '@/shared/lib/date'
 
 import { EventFlow } from './EventFlow'
+import { KafkaLayout } from './KafkaLayout'
 import { RequestFlow } from './RequestFlow'
 import { ServiceCalls } from './ServiceCalls'
 
@@ -23,9 +24,10 @@ const VIEWS = [
   { id: 'request', title: '요청 흐름', Diagram: RequestFlow },
   { id: 'calls', title: '서비스 호출', Diagram: ServiceCalls },
   { id: 'events', title: '이벤트 흐름', Diagram: EventFlow },
+  { id: 'kafka', title: 'Kafka 구성', Diagram: KafkaLayout },
 ] as const
 
-/** 목적이 다른 그림 세 장을 탭으로 나눈다. 고른 서비스는 탭을 바꿔도 유지되고, 아래 카드에 자세히 나온다. */
+/** 목적이 다른 그림 네 장을 탭으로 나눈다. 고른 서비스는 탭을 바꿔도 유지되고, 아래 카드에 자세히 나온다. */
 export function ArchitectureView() {
   const [selected, setSelected] = useState<ServiceId | null>(null)
   const toggle = (id: ServiceId) => setSelected((cur) => (cur === id ? null : id))
