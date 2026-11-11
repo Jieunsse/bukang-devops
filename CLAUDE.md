@@ -8,6 +8,7 @@
 - `pnpm dev`: 개발 서버. `LINEAR_API_KEY`가 없으면 고정 예시 데이터로 동작합니다.
 - `pnpm lint && pnpm typecheck && pnpm test`: 커밋 전 검사. `pnpm build`까지 CI에서 돌립니다.
 - `pnpm test`는 램을 아끼려고 `--maxWorkers=2`로 돕니다.
+- `node scripts/api-flow/extract.cjs <frontend 폴더>`: 「API 흐름」 데이터를 크루런 프론트 코드에서 다시 뽑습니다(기본값은 모노레포의 `frontend`, 워크트리에서 돌려도 같음). 규칙에 없는 주소 문자열이나 찾지 못한 요청 함수 이름이 나오면 멈추고 알려 줍니다.
 
 ## 폴더 (얕은 FSD)
 

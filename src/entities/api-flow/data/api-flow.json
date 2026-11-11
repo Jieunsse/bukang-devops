@@ -1,0 +1,434 @@
+{
+  "commit": "7729ff7b",
+  "committedAt": "2026-11-10",
+  "dirty": true,
+  "routes": [
+    {
+      "route": "/",
+      "calls": ["GET /api/v1/product/races"]
+    },
+    {
+      "route": "/admin",
+      "calls": ["POST /api/v1/auth/logout"]
+    },
+    {
+      "route": "/admin/claims",
+      "calls": [
+        "GET /api/v1/member/admin/sellers",
+        "GET /api/v1/payout/admin/claims",
+        "POST /api/v1/auth/logout",
+        "POST /api/v1/payout/claims/{claimId}/confirm"
+      ]
+    },
+    {
+      "route": "/admin/holds",
+      "calls": ["POST /api/v1/auth/logout", "POST /api/v1/payout/payouts/{payoutId}/holds"]
+    },
+    {
+      "route": "/admin/members",
+      "calls": ["POST /api/v1/auth/logout"]
+    },
+    {
+      "route": "/admin/races",
+      "calls": ["POST /api/v1/auth/logout"]
+    },
+    {
+      "route": "/admin/sellers",
+      "calls": [
+        "GET /api/v1/member/admin/sellers",
+        "POST /api/v1/auth/logout",
+        "POST /api/v1/member/admin/sellers/{id}/approval",
+        "POST /api/v1/member/admin/sellers/{id}/rejection"
+      ]
+    },
+    {
+      "route": "/admin/settings",
+      "calls": ["POST /api/v1/auth/logout"]
+    },
+    {
+      "route": "/admin/settlements",
+      "calls": ["POST /api/v1/auth/logout"]
+    },
+    {
+      "route": "/admin/stats",
+      "calls": ["GET /admin/stats/data?section={구역}", "POST /api/v1/auth/logout"]
+    },
+    {
+      "route": "/admin/stats/data",
+      "calls": ["GET /api/v1/member/admin/sellers?status=PENDING", "POST /api/v1/auth/logout"]
+    },
+    {
+      "route": "/auth/social/complete",
+      "calls": []
+    },
+    {
+      "route": "/cart",
+      "calls": [
+        "DELETE /api/v1/order/cart/items/{cartItemId}",
+        "GET /api/v1/order/cart",
+        "GET /api/v1/product/races/{raceId}",
+        "POST /api/v1/order/cart/checkout"
+      ]
+    },
+    {
+      "route": "/checkout",
+      "calls": [
+        "GET /api/v1/cash/wallets/balance",
+        "GET /api/v1/order/orders/{orderId}",
+        "GET /api/v1/order/participations/{participationId}",
+        "GET /api/v1/order/queue/admission",
+        "GET /api/v1/product/races/{raceId}",
+        "POST /api/v1/order/orders/{orderId}/payment"
+      ]
+    },
+    {
+      "route": "/checkout/complete",
+      "calls": [
+        "GET /api/v1/order/orders/{orderId}",
+        "GET /api/v1/order/participations/{participationId}",
+        "GET /api/v1/product/races/{raceId}"
+      ]
+    },
+    {
+      "route": "/crews",
+      "calls": ["GET /api/v1/member/crews/me"]
+    },
+    {
+      "route": "/crews/{crewId}",
+      "calls": [
+        "DELETE /api/v1/member/crews/{crewId}/members/me",
+        "GET /api/v1/member/crews/{crewId}"
+      ]
+    },
+    {
+      "route": "/crews/{crewId}/invites",
+      "calls": [
+        "DELETE /api/v1/member/crews/{crewId}/invites/{inviteId}",
+        "GET /api/v1/member/crews/{crewId}",
+        "GET /api/v1/member/crews/{crewId}/invites",
+        "GET /api/v1/member/crews/{crewId}/kakao-invites/friends",
+        "GET /api/v1/member/members/me",
+        "POST /api/v1/member/crews/{crewId}/invites",
+        "POST /api/v1/member/crews/{crewId}/kakao-invites",
+        "POST /api/v1/member/members/me/kakao-message/consent-ticket",
+        "이동 /api/v1/auth/oauth2/authorize/{provider}"
+      ]
+    },
+    {
+      "route": "/crews/{crewId}/manage",
+      "calls": [
+        "DELETE /api/v1/member/crews/{crewId}",
+        "DELETE /api/v1/member/crews/{crewId}/members/{memberId}",
+        "GET /api/v1/member/crews/{crewId}",
+        "PATCH /api/v1/member/crews/{crewId}",
+        "PUT /api/v1/member/crews/{crewId}/leader"
+      ]
+    },
+    {
+      "route": "/crews/new",
+      "calls": ["POST /api/v1/member/crews"]
+    },
+    {
+      "route": "/find-email",
+      "calls": []
+    },
+    {
+      "route": "/find-email/result",
+      "calls": []
+    },
+    {
+      "route": "/forbidden",
+      "calls": []
+    },
+    {
+      "route": "/invite/{inviteToken}",
+      "calls": [
+        "GET /api/v1/member/crews/invites/{inviteToken}",
+        "POST /api/v1/member/crews/invites/{inviteToken}/join"
+      ]
+    },
+    {
+      "route": "/login",
+      "calls": ["POST /api/v1/auth/login", "이동 /api/v1/auth/oauth2/authorize/{provider}"]
+    },
+    {
+      "route": "/me",
+      "calls": [
+        "GET /api/v1/cash/wallets/balance",
+        "GET /api/v1/member/members/me",
+        "GET /api/v1/member/sellers/me",
+        "GET /api/v1/order/orders",
+        "GET /api/v1/order/orders/{orderId}",
+        "POST /api/v1/auth/logout"
+      ]
+    },
+    {
+      "route": "/me/accounts",
+      "calls": [
+        "DELETE /api/v1/member/members/me/social-accounts/{provider}",
+        "GET /api/v1/member/members/me",
+        "POST /api/v1/member/members/me/social-accounts/{provider}/link-ticket",
+        "이동 /api/v1/auth/oauth2/authorize/{provider}"
+      ]
+    },
+    {
+      "route": "/me/deposit",
+      "calls": ["GET /api/v1/cash/wallets/balance", "GET /api/v1/cash/wallets/ledgers"]
+    },
+    {
+      "route": "/me/deposit/charge",
+      "calls": ["GET /api/v1/cash/wallets/balance"]
+    },
+    {
+      "route": "/me/deposit/charge/return",
+      "calls": ["POST /api/v1/cash/charges/confirm"]
+    },
+    {
+      "route": "/me/deposit/refund",
+      "calls": ["GET /api/v1/cash/wallets/balance", "POST /api/v1/cash/withdrawals"]
+    },
+    {
+      "route": "/me/deposit/refund/done",
+      "calls": []
+    },
+    {
+      "route": "/me/edit",
+      "calls": ["GET /api/v1/member/members/me", "PUT /api/v1/member/members/me"]
+    },
+    {
+      "route": "/me/settings",
+      "calls": ["GET /api/v1/member/members/me"]
+    },
+    {
+      "route": "/me/withdraw",
+      "calls": ["DELETE /api/v1/member/members/me"]
+    },
+    {
+      "route": "/me/withdraw/done",
+      "calls": []
+    },
+    {
+      "route": "/notifications",
+      "calls": [
+        "GET /api/v1/member/sellers/me",
+        "GET /api/v1/notification/notifications",
+        "POST /api/v1/notification/notifications/read-all"
+      ]
+    },
+    {
+      "route": "/notifications/{category}",
+      "calls": [
+        "GET /api/v1/member/sellers/me",
+        "GET /api/v1/notification/notifications",
+        "POST /api/v1/notification/notifications/{id}/read"
+      ]
+    },
+    {
+      "route": "/password-reset",
+      "calls": ["POST /api/v1/auth/password-reset/request"]
+    },
+    {
+      "route": "/password-reset/new",
+      "calls": [
+        "POST /api/v1/auth/password-reset/confirm",
+        "POST /api/v1/auth/password-reset/verify"
+      ]
+    },
+    {
+      "route": "/races",
+      "calls": ["GET /api/v1/product/races", "GET /api/v1/product/races/suggestions"]
+    },
+    {
+      "route": "/races/{raceId}",
+      "calls": ["GET /api/v1/product/races/{raceId}"]
+    },
+    {
+      "route": "/races/{raceId}/apply",
+      "calls": [
+        "DELETE /api/v1/order/cart/items/{cartItemId}",
+        "GET /api/v1/member/members/me",
+        "GET /api/v1/order/cart",
+        "GET /api/v1/order/participations/latest-participant",
+        "GET /api/v1/order/queue/admission",
+        "GET /api/v1/product/races/{raceId}",
+        "POST /api/v1/order/cart/items",
+        "POST /api/v1/order/orders",
+        "POST /api/v1/order/participations",
+        "PUT /api/v1/order/participations/{participationId}/participant"
+      ]
+    },
+    {
+      "route": "/races/{raceId}/queue",
+      "calls": [
+        "GET /api/v1/order/queue/admission",
+        "GET /api/v1/product/races/{raceId}",
+        "GET /api/v1/queue/races/{raceId}/racecourses/{raceCourseId}",
+        "POST /api/v1/queue"
+      ]
+    },
+    {
+      "route": "/seller",
+      "calls": [
+        "GET /api/v1/order/seller/kits/summary",
+        "GET /api/v1/payout/seller/holds",
+        "GET /api/v1/payout/seller/summary",
+        "GET /api/v1/product/races/mine",
+        "POST /api/v1/auth/logout"
+      ]
+    },
+    {
+      "route": "/seller-apply",
+      "calls": ["GET /api/v1/member/sellers/me", "POST /api/v1/member/sellers"]
+    },
+    {
+      "route": "/seller-apply/mine",
+      "calls": ["GET /api/v1/member/sellers/me"]
+    },
+    {
+      "route": "/seller-apply/result",
+      "calls": ["GET /api/v1/member/sellers/me", "POST /api/v1/member/sellers/me/result-check"]
+    },
+    {
+      "route": "/seller/kits",
+      "calls": [
+        "GET /api/v1/order/seller/kits",
+        "GET /api/v1/order/seller/kits/summary",
+        "GET /api/v1/product/races/mine",
+        "POST /api/v1/auth/logout",
+        "POST /api/v1/order/seller/kits/{orderItemId}/delivery",
+        "POST /api/v1/order/seller/kits/{orderItemId}/shipment"
+      ]
+    },
+    {
+      "route": "/seller/races",
+      "calls": [
+        "GET /api/v1/product/races/mine",
+        "GET /api/v1/product/races/{raceId}",
+        "POST /api/v1/auth/logout",
+        "PUT /api/v1/product/races/{raceId}"
+      ]
+    },
+    {
+      "route": "/seller/races/{raceId}/change",
+      "calls": [
+        "GET /api/v1/product/races/mine",
+        "GET /api/v1/product/races/{raceId}",
+        "POST /api/v1/auth/logout",
+        "POST /api/v1/product/races/{raceId}/cancel",
+        "PUT /api/v1/product/races/{raceId}"
+      ]
+    },
+    {
+      "route": "/seller/races/new",
+      "calls": [
+        "GET /api/v1/member/sellers/me",
+        "GET /api/v1/product/races/mine",
+        "POST /api/v1/auth/logout",
+        "POST /api/v1/file/files",
+        "POST /api/v1/file/files/{fileId}/complete",
+        "POST /api/v1/product/races",
+        "POST /api/v1/product/races/{raceId}/kit-options",
+        "PUT /api/v1/product/races/{raceId}/kit-options"
+      ]
+    },
+    {
+      "route": "/seller/sales",
+      "calls": [
+        "GET /api/v1/product/races/mine",
+        "GET /api/v1/product/races/{raceId}",
+        "POST /api/v1/auth/logout"
+      ]
+    },
+    {
+      "route": "/seller/settings",
+      "calls": ["GET /api/v1/member/sellers/me", "POST /api/v1/auth/logout"]
+    },
+    {
+      "route": "/seller/settlements",
+      "calls": [
+        "GET /api/v1/payout/seller/holds",
+        "GET /api/v1/payout/seller/payout-items",
+        "GET /api/v1/payout/seller/payouts",
+        "GET /api/v1/payout/seller/summary",
+        "POST /api/v1/auth/logout"
+      ]
+    },
+    {
+      "route": "/signup",
+      "calls": [
+        "POST /api/v1/auth/identity-verifications",
+        "POST /api/v1/auth/identity-verifications/pass",
+        "POST /api/v1/auth/identity-verifications/{identityVerificationId}/complete"
+      ]
+    },
+    {
+      "route": "/signup/account",
+      "calls": ["GET /api/v1/member/members/email-availability"]
+    },
+    {
+      "route": "/signup/profile",
+      "calls": ["POST /api/v1/auth/join", "POST /api/v1/auth/login"]
+    },
+    {
+      "route": "/signup/social",
+      "calls": [
+        "GET /api/v1/auth/oauth2/signup",
+        "POST /api/v1/auth/identity-verifications",
+        "POST /api/v1/auth/identity-verifications/pass",
+        "POST /api/v1/auth/identity-verifications/{identityVerificationId}/complete",
+        "POST /api/v1/auth/oauth2/join"
+      ]
+    },
+    {
+      "route": "/terms/{slug}",
+      "calls": []
+    },
+    {
+      "route": "/tickets",
+      "calls": [
+        "GET /api/v1/cash/wallets/balance",
+        "GET /api/v1/member/members/me",
+        "GET /api/v1/order/orders",
+        "GET /api/v1/order/orders/{orderId}",
+        "GET /api/v1/order/participations/{participationId}",
+        "GET /api/v1/product/races/{raceId}"
+      ]
+    },
+    {
+      "route": "/tickets/{ticketId}",
+      "calls": [
+        "GET /api/v1/order/orders/{orderId}",
+        "GET /api/v1/order/participations/{participationId}",
+        "GET /api/v1/product/races/{raceId}",
+        "POST /api/v1/order/orders/{orderId}/items/{orderItemId}/cancel"
+      ]
+    },
+    {
+      "route": "/tickets/{ticketId}/canceled",
+      "calls": [
+        "GET /api/v1/cash/wallets/balance",
+        "GET /api/v1/order/orders/{orderId}",
+        "GET /api/v1/order/participations/{participationId}",
+        "GET /api/v1/product/races/{raceId}"
+      ]
+    },
+    {
+      "route": "/tickets/{ticketId}/edit",
+      "calls": [
+        "GET /api/v1/order/orders/{orderId}",
+        "GET /api/v1/order/participations/{participationId}",
+        "GET /api/v1/product/races/{raceId}",
+        "PUT /api/v1/order/participations/{participationId}/participant"
+      ]
+    },
+    {
+      "route": "/tickets/{ticketId}/notice",
+      "calls": [
+        "GET /api/v1/order/orders/{orderId}",
+        "GET /api/v1/order/participations/{participationId}",
+        "GET /api/v1/product/races/{raceId}",
+        "POST /api/v1/order/orders/{orderId}/items/{orderItemId}/cancel"
+      ]
+    }
+  ]
+}
