@@ -5,7 +5,13 @@ import type { DbTable } from '../model/types'
 
 import { groupByService, serviceOf } from './group'
 
-const table = (name: string): DbTable => ({ name, comment: '', columns: [], indexes: [] })
+const table = (name: string): DbTable => ({
+  name,
+  comment: '',
+  columns: [],
+  indexes: [],
+  foreignKeys: [],
+})
 
 describe('serviceOf', () => {
   it('앞부분으로 서비스를 정한다', () => {

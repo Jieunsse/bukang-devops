@@ -30,6 +30,11 @@ const indexes = query(
   `SELECT table_name AS t, index_name AS name, non_unique AS nonUnique, column_name AS col FROM information_schema.statistics WHERE ${where} ORDER BY table_name, index_name, seq_in_index`,
 )
 
+// 외래 키는 ERD 관계선으로 그린다. 서비스 사이 관계는 DB에 외래 키가 없어 여기 나오지 않는다.
+const foreignKeys = query(
+  `SELECT table_name AS t, constraint_name AS name, column_name AS col, referenced_table_name AS refTable, referenced_column_name AS refCol FROM information_schema.key_column_usage WHERE ${where} AND referenced_table_name IS NOT NULL ORDER BY table_name, constraint_name, ordinal_position`,
+)
+
 const schema = {
   database: DB,
   dumpedAt: new Date().toISOString(),
@@ -55,6 +60,9 @@ const schema = {
           comment: c.comment || '',
         })),
       indexes: [...idx.values()],
+      foreignKeys: foreignKeys
+        .filter((f) => f.t === t.name)
+        .map((f) => ({ name: f.name, column: f.col, refTable: f.refTable, refColumn: f.refCol })),
     }
   }),
 }
