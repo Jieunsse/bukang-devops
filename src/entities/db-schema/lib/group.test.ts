@@ -31,6 +31,11 @@ describe('groupByService', () => {
     expect(groups.map((g) => g.label)).toEqual(['회원', '예치금', '기타'])
   })
 
+  it('서비스 묶음은 공통 앞부분을, 기타는 빈 문자열을 갖는다', () => {
+    const groups = groupByService([table('cash_wallet'), table('x')])
+    expect(groups.map((g) => g.prefix)).toEqual(['cash_', ''])
+  })
+
   it('저장된 스키마의 테이블이 빠짐없이 한 번씩 들어간다', () => {
     const groups = groupByService(schema.tables as DbTable[])
     expect(groups.flatMap((g) => g.tables).length).toBe(schema.tables.length)
