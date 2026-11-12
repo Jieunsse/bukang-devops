@@ -18,4 +18,8 @@ describe('메뉴', () => {
   it('아키텍처 페이지로 가는 메뉴가 있다', () => {
     expect(NAV_ITEMS.some((i) => i.href === '/architecture' && i.label === '아키텍처')).toBe(true)
   })
+
+  it('이용 통계 페이지로 가는 메뉴가 있다', () => {
+    expect(NAV_ITEMS.some((i) => i.href === '/analytics' && i.label === '이용 통계')).toBe(true)
+  })
 })
