@@ -2,6 +2,7 @@ import {
   ArrowRightArrowLeft,
   Calendar,
   ChartBar,
+  ChartLine,
   CircleCheck,
   Cubes3,
   Database,
@@ -18,6 +19,7 @@ export const NAV_ITEMS = [
   { href: '/done', label: '완료·취소', Icon: CircleCheck },
   { href: '/api-flow', label: 'API 흐름', Icon: ArrowRightArrowLeft },
   { href: '/request', label: '작업 요청', Icon: PaperPlane },
+  { href: '/analytics', label: '이용 통계', Icon: ChartLine },
   { href: '/db', label: 'DB 구조', Icon: Database },
   { href: '/architecture', label: '아키텍처', Icon: Cubes3 },
 ] as const
