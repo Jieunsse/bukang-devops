@@ -22,4 +22,8 @@ describe('메뉴', () => {
   it('이용 통계 페이지로 가는 메뉴가 있다', () => {
     expect(NAV_ITEMS.some((i) => i.href === '/analytics' && i.label === '이용 통계')).toBe(true)
   })
+
+  it('링크 모음 페이지로 가는 메뉴가 있다', () => {
+    expect(NAV_ITEMS.some((i) => i.href === '/links' && i.label === '링크 모음')).toBe(true)
+  })
 })
