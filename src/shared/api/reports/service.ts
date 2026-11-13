@@ -23,7 +23,9 @@ export function openReport(
       html: string
     }
     return { ok: true, html, url }
-  } catch {
+  } catch (e) {
+    // 키 값은 남기지 않고 실패 종류만 Vercel 로그에 남긴다.
+    console.error('리포트 복호화 실패', e instanceof Error ? `${e.name}: ${e.message}` : 'unknown')
     return { ok: false, reason: 'failed' }
   }
 }
