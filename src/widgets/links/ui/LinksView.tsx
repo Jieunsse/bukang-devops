@@ -103,7 +103,7 @@ export function LinksView() {
         summary={`${REPORTS.length}개 · 팀 비밀번호를 넣어야 보여요`}
       />
       {/* 벤토 그리드: 넓은 화면에서 첫 리포트를 크게, 나머지를 오른쪽에 쌓는다. 휴대폰에서는 한 줄씩. */}
-      <ul className="grid max-w-3xl grid-cols-1 gap-3 md:auto-rows-[9rem] md:grid-cols-3">
+      <ul className="grid max-w-2xl grid-cols-1 gap-3 md:auto-rows-[5rem] md:grid-cols-3">
         {REPORTS.map((report, i) => (
           <li key={report.slug} className={i === 0 ? 'md:col-span-2 md:row-span-2' : ''}>
             <button
@@ -115,7 +115,7 @@ export function LinksView() {
               <Card className="size-full justify-between transition-colors hover:bg-default">
                 <Card.Header>
                   <Card.Title
-                    className={i === 0 ? 'text-2xl font-semibold' : 'text-lg font-semibold'}
+                    className={i === 0 ? 'text-xl font-semibold' : 'text-base font-semibold'}
                   >
                     {report.title}
                   </Card.Title>
