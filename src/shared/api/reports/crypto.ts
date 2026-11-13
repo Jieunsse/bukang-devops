@@ -35,5 +35,15 @@ export function openSealedReport(sealed: SealedReport, privateKeyPem: string): s
   ]).toString('utf8')
 }
 
-/** Vercel 환경변수에 한 줄로 넣으면 줄바꿈이 \n 글자로 들어오므로 되돌린다. */
-export const normalizePem = (pem: string) => pem.replace(/\\n/g, '\n')
+/**
+ * 환경변수에 붙여 넣은 개인키를 PEM 모양으로 되돌린다.
+ * 따옴표가 붙거나, 줄바꿈이 \n 글자·공백으로 바뀌거나, 본문만 들어와도 읽히게 본문 글자만 남겨 다시 만든다.
+ */
+export function normalizePem(raw: string): string {
+  const body = raw
+    .replace(/\\n/g, '\n')
+    .replace(/-----(BEGIN|END) [A-Z ]*PRIVATE KEY-----/g, '')
+    .replace(/[^A-Za-z0-9+/=]/g, '')
+  const lines = body.match(/.{1,64}/g) ?? []
+  return `-----BEGIN PRIVATE KEY-----\n${lines.join('\n')}\n-----END PRIVATE KEY-----\n`
+}

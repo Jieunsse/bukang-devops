@@ -40,9 +40,18 @@ describe('리포트 열기', () => {
     })
   })
 
-  it('한 줄로 넣은 개인키(\\n 글자)도 읽는다', () => {
-    const oneLine = { ...env, REPORTS_PRIVATE_KEY: privateKey.replace(/\n/g, '\\n') }
-    expect(openReport(sealed, 'team-secret', oneLine)).toEqual({ ok: true, html, url })
+  it.each([
+    ['줄바꿈을 \\n 글자로 넣은 키', privateKey.replace(/\n/g, '\\n')],
+    ['줄바꿈이 공백으로 바뀐 키', privateKey.replace(/\n/g, ' ')],
+    ['줄바꿈이 모두 빠진 키', privateKey.replace(/\n/g, '')],
+    ['따옴표로 감싼 키', `"${privateKey}"`],
+    ['앞뒤에 빈 줄이 붙은 키', `\n\n${privateKey}\n\n`],
+  ])('%s도 읽는다', (_, key) => {
+    expect(openReport(sealed, 'team-secret', { ...env, REPORTS_PRIVATE_KEY: key })).toEqual({
+      ok: true,
+      html,
+      url,
+    })
   })
 
   it('암호문이 바뀌었으면 실패로 답한다', () => {
