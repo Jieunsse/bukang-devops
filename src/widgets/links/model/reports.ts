@@ -23,6 +23,12 @@ export const REPORTS = [
     hash: '#team5',
     syncedAt: '2026-11-13',
   },
+  {
+    slug: 'frontend',
+    title: '프론트엔드 종합평가',
+    hash: '#crewrun',
+    syncedAt: '2026-11-13',
+  },
 ] as const
 
 export type Report = (typeof REPORTS)[number]
