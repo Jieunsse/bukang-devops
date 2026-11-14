@@ -26,8 +26,8 @@ export const REPORTS = [
   {
     slug: 'frontend',
     title: '프론트엔드 종합평가',
-    hash: '#crewrun',
-    syncedAt: '2026-11-13',
+    hash: '#v2',
+    syncedAt: '2026-11-14',
   },
 ] as const
 
