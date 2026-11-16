@@ -192,6 +192,36 @@ describe('두 워크스페이스 합치기', () => {
     expect(snapshot?.failure).toBe('Linear에 연결하지 못했어요')
   })
 
+  it('CRU가 잠깐 실패하면 CRU 몫은 직전에 받은 값을 그대로 보여 주고 실패를 알린다', async () => {
+    const { loadSnapshot } = await freshServer()
+    answer({ BUK: buk, CRU: cru })
+    await loadSnapshot()
+    answer({ BUK: buk, CRU: new LinearRequestError('Linear 요청 실패(400): Rate limit exceeded') })
+    const { snapshot } = await loadSnapshot()
+    expect(snapshot?.issues.map((i) => i.identifier)).toEqual(['BUK-12', 'CRU-3'])
+    expect(snapshot?.cycles.map((c) => c.id).sort()).toEqual(['buk-c8', 'cru-c1'])
+    expect(snapshot?.members?.map((m) => m.name)).toEqual(['옥지훈', '새 팀원'])
+    expect(snapshot?.failure).toBe('CRU 팀: Linear 요청 한도에 걸렸어요')
+  })
+
+  it('이름이 같은 라벨과 마일스톤은 앞(BUK) 워크스페이스 id로 맞춰 필터에 한 번만 보인다', async () => {
+    const { loadSnapshot } = await freshServer()
+    const tagged = (s: Snapshot, prefix: string): Snapshot => ({
+      ...s,
+      issues: s.issues.map((i) => ({
+        ...i,
+        labels: [{ id: `${prefix}-bug`, name: 'Bug' }],
+        milestone: { id: `${prefix}-m1`, name: '최종 발표', progress: 0.5 },
+      })),
+    })
+    answer({ BUK: tagged(buk, 'buk'), CRU: tagged(cru, 'cru') })
+    const { snapshot } = await loadSnapshot()
+    expect(snapshot?.issues.map((i) => [i.labels[0]?.id, i.milestone?.id])).toEqual([
+      ['buk-bug', 'buk-m1'],
+      ['buk-bug', 'buk-m1'],
+    ])
+  })
+
   it('CRU 키가 없으면 BUK만 부른다', async () => {
     vi.stubEnv('LINEAR_API_KEY_CRU', '')
     const { loadSnapshot } = await freshServer()

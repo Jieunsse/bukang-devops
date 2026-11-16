@@ -5,6 +5,33 @@ import type { DoneIssue } from './done-schema'
 const { fetchDone } = vi.hoisted(() => ({ fetchDone: vi.fn() }))
 vi.mock('next/cache', () => ({ unstable_cache: (fn: () => unknown) => fn }))
 vi.mock('./fetch-done', () => ({ fetchDone }))
+// 대시보드 스냅샷. 완료·취소 티켓의 사람·라벨 id를 여기에 맞춘다. 실제 Linear는 부르지 않는다.
+const { seed } = vi.hoisted(() => ({
+  seed: {
+    fetchedAt: '2026-11-16T00:00:00.000Z',
+    issues: [
+      {
+        id: 'BUK-20',
+        identifier: 'BUK-20',
+        title: 'BUK-20',
+        url: 'https://linear.app/bukang-final/issue/BUK-20',
+        dueDate: null,
+        startedAt: null,
+        state: { name: 'Todo', type: 'unstarted' },
+        assignee: { id: 'buk-jihoon', name: '옥지훈' },
+        labels: [{ id: 'buk-bug', name: 'Bug' }],
+        milestone: null,
+        cycle: null,
+      },
+    ],
+    cycles: [],
+    members: [{ id: 'buk-jihoon', name: '옥지훈' }],
+  },
+}))
+vi.mock('./server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./server')>()),
+  loadSnapshot: async () => ({ snapshot: seed }),
+}))
 
 const { loadDoneAction } = await import('./done-actions')
 
@@ -60,5 +87,21 @@ describe('완료·취소 티켓을 두 워크스페이스에서 받기', () => {
   it('둘 다 실패하면 오류를 낸다', async () => {
     answer({ BUK: new Error('down'), CRU: new Error('down') })
     await expect(loadDoneAction(RANGE)).rejects.toThrow('down')
+  })
+
+  it('같은 사람과 같은 이름 라벨은 대시보드와 같은 id로 맞춰 한 묶음으로 보인다', async () => {
+    answer({
+      BUK: [],
+      CRU: [
+        {
+          ...done('CRU-1', '2026-11-15T01:00:00.000Z'),
+          assignee: { id: 'cru-jihoon', name: '옥지훈' },
+          labels: [{ id: 'cru-bug', name: 'Bug' }],
+        },
+      ],
+    })
+    const [issue] = (await loadDoneAction(RANGE)).issues
+    expect(issue?.assignee?.id).toBe('buk-jihoon')
+    expect(issue?.labels.map((l) => l.id)).toEqual(['buk-bug'])
   })
 })
