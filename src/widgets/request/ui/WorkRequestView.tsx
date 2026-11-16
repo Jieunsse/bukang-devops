@@ -29,7 +29,6 @@ import { Controller, useForm, useWatch, type Control } from 'react-hook-form'
 
 import { MemberAvatar } from '@/entities/member'
 import { PriorityIcon } from '@/entities/ticket'
-import { useSnapshot } from '@/shared/api/linear/query'
 import {
   NO_CYCLE,
   PRIORITY_LABEL,
@@ -106,7 +105,8 @@ export function WorkRequestView() {
 }
 
 function WorkRequestForm({ options }: { options: RequestOptions }) {
-  const members = useSnapshot().members ?? []
+  // 티켓을 만드는 팀의 멤버다. 대시보드 멤버와 사용자 id가 다를 수 있다.
+  const members = options.members
   const queryClient = useQueryClient()
   // 한 번 넣은 팀 비밀번호는 페이지를 떠날 때까지 다시 묻지 않는다. 브라우저 저장소에는 남기지 않는다.
   const [password, setPassword] = useState('')

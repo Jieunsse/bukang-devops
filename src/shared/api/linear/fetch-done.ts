@@ -1,5 +1,6 @@
 import 'server-only'
 
+import type { Workspace } from '../../config/env'
 import { addDays } from '../../lib/date'
 import { doneIssuesResponseSchema, doneRangeSchema, type DoneIssue } from './done-schema'
 import { paginate } from './fetch-snapshot'
@@ -32,14 +33,21 @@ const doneQuery = (from: string, until: string) => `
 
 type FetchImpl = (url: string, init: RequestInit) => Promise<Response>
 
-/** BUK 팀에서 고른 기간(한국 날짜, 양 끝 포함)에 완료하거나 취소한 티켓. 늦게 닫힌 순이다. */
+/** 워크스페이스 팀에서 고른 기간(한국 날짜, 양 끝 포함)에 완료하거나 취소한 티켓. 늦게 닫힌 순이다. */
 export async function fetchDone(
-  apiKey: string,
+  { apiKey, teamKey }: Workspace,
   range: unknown,
   fetchImpl: FetchImpl = fetch,
 ): Promise<DoneIssue[]> {
   const { start, end } = doneRangeSchema.parse(range)
   const query = doneQuery(kstMidnight(start), kstMidnight(addDays(end, 1)))
-  const issues = await paginate(fetchImpl, apiKey, query, doneIssuesResponseSchema, (d) => d.issues)
+  const issues = await paginate(
+    fetchImpl,
+    apiKey,
+    query,
+    doneIssuesResponseSchema,
+    (d) => d.issues,
+    teamKey,
+  )
   return issues.sort((a, b) => b.closedAt.localeCompare(a.closedAt))
 }

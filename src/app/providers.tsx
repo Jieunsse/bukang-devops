@@ -42,8 +42,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <PersistQueryClientProvider
         client={queryClient}
-        // 형식은 꺼낼 때 검사한다. 값의 뜻이 바뀔 때(예: 단위)만 buster를 올려 지난 저장분을 버린다.
-        persistOptions={{ persister, maxAge: ONE_DAY, buster: 'snapshot-v7' }}
+        // 스냅샷 형식은 꺼낼 때 검사한다. 값의 뜻이 바뀔 때(예: 단위)나 다른 질의(완료·취소, 요청 내역)의
+        // 모양이 바뀔 때 buster를 올려 지난 저장분을 버린다.
+        persistOptions={{ persister, maxAge: ONE_DAY, buster: 'snapshot-v8' }}
       >
         {children}
         <Toast.Provider />

@@ -3,7 +3,8 @@ import 'server-only'
 import { z } from 'zod'
 
 import { displayName } from '../linear/display-names'
-import { LinearRequestError, request, TEAM_KEY, type FetchImpl } from '../linear/fetch-snapshot'
+import type { Workspace } from '../../config/env'
+import { LinearRequestError, request, type FetchImpl } from '../linear/fetch-snapshot'
 import type { RequestLogEntry, RequestOptions } from './schema'
 import { REQUEST_MARKER, type IssueCreator } from './service'
 
@@ -13,6 +14,7 @@ const OPTIONS_QUERY = `
     teams(first: 1, filter: { key: { eq: $teamKey } }) {
       nodes {
         id
+        members(first: 50) { nodes { id name avatarUrl active } }
         labels(first: 100) { nodes { id name color isGroup } }
         projects(first: 50) {
           nodes { id name state projectMilestones(first: 50) { nodes { id name } } }
@@ -54,6 +56,14 @@ const optionsSchema = z.object({
   teams: nodes(
     z.object({
       id: z.string(),
+      members: nodes(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          avatarUrl: z.url().nullish(),
+          active: z.boolean(),
+        }),
+      ),
       labels: nodes(
         z.object({ id: z.string(), name: z.string(), color: z.string(), isGroup: z.boolean() }),
       ),
@@ -105,24 +115,22 @@ const createSchema = z.object({
 })
 
 /**
- * 작업 요청에서 고를 라벨·프로젝트·사이클. 묶음 라벨은 티켓에 바로 붙일 수 없고,
+ * 작업 요청에서 고를 팀원·라벨·프로젝트·사이클. 묶음 라벨은 티켓에 바로 붙일 수 없고,
  * 끝나거나 취소된 프로젝트에는 새 일을 넣지 않아서 뺀다.
+ * 팀원은 티켓을 만드는 워크스페이스의 사용자 id라야 Linear가 담당자로 받는다.
  */
 export async function fetchRequestOptions(
-  apiKey: string,
+  { apiKey, teamKey }: Workspace,
   fetchImpl: FetchImpl = fetch,
 ): Promise<RequestOptions> {
-  const { teams } = await request(
-    fetchImpl,
-    apiKey,
-    OPTIONS_QUERY,
-    { teamKey: TEAM_KEY },
-    optionsSchema,
-  )
+  const { teams } = await request(fetchImpl, apiKey, OPTIONS_QUERY, { teamKey }, optionsSchema)
   const team = teams.nodes[0]
-  if (!team) throw new LinearRequestError(`${TEAM_KEY} 팀을 찾지 못했어요.`)
+  if (!team) throw new LinearRequestError(`${teamKey} 팀을 찾지 못했어요.`)
   return {
     teamId: team.id,
+    members: team.members.nodes
+      .filter((m) => m.active)
+      .map(({ id, name, avatarUrl }) => ({ id, name: displayName({ id, name }), avatarUrl })),
     labels: team.labels.nodes
       .filter((l) => !l.isGroup)
       .map(({ id, name, color }) => ({ id, name, color })),
@@ -154,16 +162,16 @@ export function linearIssueCreator(
   }
 }
 
-/** 작업 요청으로 만든 BUK 티켓을 최근 것부터. 설명 끝 표시로 찾고, 설명 본문은 버린다. */
+/** 워크스페이스 팀에서 작업 요청으로 만든 티켓을 최근 것부터. 설명 끝 표시로 찾고, 설명 본문은 버린다. */
 export async function fetchRequestLog(
-  apiKey: string,
+  { apiKey, teamKey }: Workspace,
   fetchImpl: FetchImpl = fetch,
 ): Promise<RequestLogEntry[]> {
   const { issues } = await request(
     fetchImpl,
     apiKey,
     LOG_QUERY,
-    { teamKey: TEAM_KEY, marker: REQUEST_MARKER },
+    { teamKey, marker: REQUEST_MARKER },
     logSchema,
   )
   return issues.nodes

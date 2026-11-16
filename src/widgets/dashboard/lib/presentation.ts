@@ -1,4 +1,4 @@
-import { currentPeriod } from '@/entities/ticket'
+import { currentPeriod, cycleName } from '@/entities/ticket'
 import type { Cycle, Issue } from '@/shared/api/linear'
 import { daysBetween, formatMonthDay, kstDate, weekdayOf, type DateString } from '@/shared/lib/date'
 
@@ -34,7 +34,7 @@ export function cycleProgress(
     const total = completed + issues.filter((i) => i.cycle?.id === period.cycle.id).length
     const ratio = total === 0 ? 0 : completed / total
     return {
-      name: `사이클 ${period.cycle.number} 진행률`,
+      name: `${cycleName({ ...period.cycle, name: null })} 진행률`,
       value: `${Math.round(ratio * 100)}%`,
       ratio,
       hint: `완료 ${completed} / 전체 ${total}`,
@@ -50,6 +50,6 @@ export function cycleProgress(
     name: '다음 사이클까지',
     value: `D-${daysBetween(kstDate(nowMs), start)}`,
     ratio: null,
-    hint: `사이클 ${next.number}${next.name ? ` ${next.name}` : ''} · ${withWeekday(start)} 시작`,
+    hint: `${cycleName(next)} · ${withWeekday(start)} 시작`,
   }
 }
