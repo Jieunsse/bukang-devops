@@ -55,6 +55,14 @@ describe('지금 사이클 카드', () => {
     ).toEqual({ name: '사이클 1 진행률', value: '60%', ratio: 0.6, hint: '완료 3 / 전체 5' })
   })
 
+  it('팀 키가 있는 사이클은 이름 앞에 팀 키를 붙인다', () => {
+    const now = '2026-11-10T03:00:00.000Z'
+    expect(cycleProgress(now, [{ ...cycle1, team: 'CRU' }], []).name).toBe('CRU 사이클 1 진행률')
+    expect(cycleProgress('2026-11-05T03:00:00.000Z', [{ ...cycle1, team: 'CRU' }], []).hint).toBe(
+      'CRU 사이클 1 · 11/9(월) 시작',
+    )
+  })
+
   it('사이클 안인데 티켓이 하나도 없으면 0%다', () => {
     const empty = { ...cycle1, completedIssueCount: 0 }
     expect(cycleProgress('2026-11-10T03:00:00.000Z', [empty], [])).toMatchObject({

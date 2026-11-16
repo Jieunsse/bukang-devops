@@ -36,6 +36,7 @@ const cycle = {
   startsAt: '2026-11-08T15:00:00.000Z',
   endsAt: '2026-11-15T15:00:00.000Z',
   completedIssueCount: 3,
+  team: 'BUK',
 }
 
 const json = (body: unknown, status = 200) =>
@@ -89,11 +90,13 @@ const fakeLinear = (
   })
 
 const NOW = new Date('2026-11-05T03:00:00.000Z')
+const BUK = { apiKey: 'k', teamKey: 'BUK' }
+const CRU = { apiKey: 'k-cru', teamKey: 'CRU' }
 
 describe('Linear에서 한 번에 받기', () => {
   it('키를 Authorization에 넣고 BUK 팀의 끝나지 않은 티켓만 요청한다', async () => {
     const fetchImpl = fakeLinear([issuesPage([rawIssue])])
-    await fetchSnapshot('lin_api_x', fetchImpl, NOW)
+    await fetchSnapshot({ apiKey: 'lin_api_x', teamKey: 'BUK' }, fetchImpl, NOW)
 
     const [url, init] = fetchImpl.mock.calls[0]!
     expect(url).toBe('https://api.linear.app/graphql')
@@ -117,7 +120,7 @@ describe('Linear에서 한 번에 받기', () => {
     // teams에 개수를 정하지 않으면 Linear가 기본값 50팀으로 계산해 멤버 수와 곱한다.
     // 그래서 「Query too complex」로 운영 화면 전체가 멈췄다.
     const fetchImpl = fakeLinear([issuesPage([rawIssue])])
-    await fetchSnapshot('k', fetchImpl, NOW)
+    await fetchSnapshot(BUK, fetchImpl, NOW)
     const queries = fetchImpl.mock.calls.map(
       ([, init]) => (JSON.parse(String(init?.body)) as { query: string }).query,
     )
@@ -126,7 +129,7 @@ describe('Linear에서 한 번에 받기', () => {
   })
 
   it('BUK 팀 멤버를 받아 비활성 멤버는 빼고 실명 규칙으로 이름을 바꾼다', async () => {
-    const snapshot = await fetchSnapshot('k', fakeLinear([issuesPage([rawIssue])]), NOW)
+    const snapshot = await fetchSnapshot(BUK, fakeLinear([issuesPage([rawIssue])]), NOW)
     expect(snapshot.members).toEqual([
       { id: 'f6ad6c3a-2e01-4c69-b3d6-71966925bd01', name: '옥지훈', avatarUrl: null },
     ])
@@ -135,13 +138,12 @@ describe('Linear에서 한 번에 받기', () => {
   it('팀 멤버 응답 형식이 다르면 오류를 낸다', async () => {
     const broken = membersPage([{ id: 'u1', name: '지훈', active: 'yes' }])
     await expect(
-      fetchSnapshot('k', fakeLinear([issuesPage([rawIssue])], undefined, [broken]), NOW),
+      fetchSnapshot(BUK, fakeLinear([issuesPage([rawIssue])], undefined, [broken]), NOW),
     ).rejects.toThrow(LinearResponseError)
   })
 
   it('부모 이슈가 없는 티켓은 부모를 비워 둔다', async () => {
-    const snapshot = await fetchSnapshot(
-      'k',
+    const snapshot = await fetchSnapshot(BUK,
       fakeLinear([issuesPage([{ ...rawIssue, parent: null, priority: 0 }])]),
       NOW,
     )
@@ -156,7 +158,7 @@ describe('Linear에서 한 번에 받기', () => {
       { ...rawIssue, state: { name: 'Todo', type: 'unstarted' } },
     ]
     for (const issue of broken) {
-      await expect(fetchSnapshot('k', fakeLinear([issuesPage([issue])]), NOW)).rejects.toThrow(
+      await expect(fetchSnapshot(BUK, fakeLinear([issuesPage([issue])]), NOW)).rejects.toThrow(
         LinearResponseError,
       )
     }
@@ -164,7 +166,7 @@ describe('Linear에서 한 번에 받기', () => {
 
   it('사이클의 완료 수 기록을 요청한다', async () => {
     const fetchImpl = fakeLinear([issuesPage([rawIssue])])
-    await fetchSnapshot('k', fetchImpl, NOW)
+    await fetchSnapshot(BUK, fetchImpl, NOW)
     const queries = fetchImpl.mock.calls.map(
       ([, init]) => (JSON.parse(String(init?.body)) as { query: string }).query,
     )
@@ -176,13 +178,12 @@ describe('Linear에서 한 번에 받기', () => {
       [issuesPage([rawIssue])],
       [cyclesPage([rawCycle, { ...rawCycle, id: 'c2', completedIssueCountHistory: [] }])],
     )
-    const snapshot = await fetchSnapshot('k', fetchImpl, NOW)
+    const snapshot = await fetchSnapshot(BUK, fetchImpl, NOW)
     expect(snapshot.cycles.map((c) => c.completedIssueCount)).toEqual([3, 0])
   })
 
   it('사이클에 들지 않은 티켓은 사이클을 비워 둔다', async () => {
-    const snapshot = await fetchSnapshot(
-      'k',
+    const snapshot = await fetchSnapshot(BUK,
       fakeLinear([issuesPage([{ ...rawIssue, cycle: null }])]),
       NOW,
     )
@@ -192,17 +193,17 @@ describe('Linear에서 한 번에 받기', () => {
   it('티켓의 사이클이나 사이클의 완료 수 기록이 응답에 없으면 오류를 낸다', async () => {
     // JSON으로 보낼 때 undefined 칸은 빠진다.
     const noCycle = { ...rawIssue, cycle: undefined }
-    await expect(fetchSnapshot('k', fakeLinear([issuesPage([noCycle])]), NOW)).rejects.toThrow(
+    await expect(fetchSnapshot(BUK, fakeLinear([issuesPage([noCycle])]), NOW)).rejects.toThrow(
       LinearResponseError,
     )
     const noHistory = { ...rawCycle, completedIssueCountHistory: undefined }
     await expect(
-      fetchSnapshot('k', fakeLinear([issuesPage([rawIssue])], [cyclesPage([noHistory])]), NOW),
+      fetchSnapshot(BUK, fakeLinear([issuesPage([rawIssue])], [cyclesPage([noHistory])]), NOW),
     ).rejects.toThrow(LinearResponseError)
   })
 
   it('받은 값을 화면에서 쓰는 모양으로 바꾸고 받은 시각을 남긴다', async () => {
-    const snapshot = await fetchSnapshot('k', fakeLinear([issuesPage([rawIssue])]), NOW)
+    const snapshot = await fetchSnapshot(BUK, fakeLinear([issuesPage([rawIssue])]), NOW)
     expect(snapshot).toEqual({
       fetchedAt: '2026-11-05T03:00:00.000Z',
       cycles: [cycle],
@@ -234,8 +235,7 @@ describe('Linear에서 한 번에 받기', () => {
       ...rawIssue,
       projectMilestone: { id: 'm', name: 'm', progress },
     })
-    const snapshot = await fetchSnapshot(
-      'k',
+    const snapshot = await fetchSnapshot(BUK,
       fakeLinear([issuesPage([at(4), { ...at(100), id: 'i2' }, { ...at(0), id: 'i3' }])]),
       NOW,
     )
@@ -248,8 +248,7 @@ describe('Linear에서 한 번에 받기', () => {
       id: `i${n}`,
       assignee: { id, name },
     })
-    const snapshot = await fetchSnapshot(
-      'k',
+    const snapshot = await fetchSnapshot(BUK,
       fakeLinear([
         issuesPage([
           by('870b71d5-9aed-4a8c-bf90-1972694b203b', 'Da Wit Lee', 1),
@@ -270,8 +269,7 @@ describe('Linear에서 한 번에 받기', () => {
 
   it('담당자의 프로필 이미지 주소를 받고, 없으면 비워 둔다', async () => {
     const avatar = 'https://public.linear.app/u1/avatar.png'
-    const snapshot = await fetchSnapshot(
-      'k',
+    const snapshot = await fetchSnapshot(BUK,
       fakeLinear([
         issuesPage([
           { ...rawIssue, assignee: { id: 'u1', name: '지훈', avatarUrl: avatar } },
@@ -285,14 +283,14 @@ describe('Linear에서 한 번에 받기', () => {
 
   it('라벨 색이 색 코드가 아니면 응답 형식 오류로 본다', async () => {
     const broken = { ...rawIssue, labels: { nodes: [{ id: 'l1', name: 'FE', color: 'blue' }] } }
-    await expect(fetchSnapshot('k', fakeLinear([issuesPage([broken])]), NOW)).rejects.toThrow(
+    await expect(fetchSnapshot(BUK, fakeLinear([issuesPage([broken])]), NOW)).rejects.toThrow(
       LinearResponseError,
     )
   })
 
   it('담당자와 마일스톤이 없는 티켓도 받는다', async () => {
     const bare = { ...rawIssue, assignee: null, projectMilestone: null, dueDate: null }
-    const snapshot = await fetchSnapshot('k', fakeLinear([issuesPage([bare])]), NOW)
+    const snapshot = await fetchSnapshot(BUK, fakeLinear([issuesPage([bare])]), NOW)
     expect(snapshot.issues[0]).toMatchObject({ assignee: null, milestone: null, dueDate: null })
   })
 
@@ -301,7 +299,7 @@ describe('Linear에서 한 번에 받기', () => {
       issuesPage([rawIssue], true, 'cursor-1'),
       issuesPage([{ ...rawIssue, id: 'i2' }]),
     ])
-    const snapshot = await fetchSnapshot('k', fetchImpl, NOW)
+    const snapshot = await fetchSnapshot(BUK, fetchImpl, NOW)
     expect(snapshot.issues.map((i) => i.id)).toEqual(['i1', 'i2'])
     const second = fetchImpl.mock.calls.find(
       ([, init]) =>
@@ -315,7 +313,7 @@ describe('Linear에서 한 번에 받기', () => {
       [issuesPage([rawIssue])],
       [cyclesPage([rawCycle], true, 'cy-1'), cyclesPage([{ ...rawCycle, id: 'c2', number: 8 }])],
     )
-    const snapshot = await fetchSnapshot('k', fetchImpl, NOW)
+    const snapshot = await fetchSnapshot(BUK, fetchImpl, NOW)
     expect(snapshot.cycles.map((c) => c.number)).toEqual([7, 8])
   })
 
@@ -323,15 +321,15 @@ describe('Linear에서 한 번에 받기', () => {
     const pages = Array.from({ length: MAX_PAGES + 1 }, (_, n) =>
       issuesPage([rawIssue], true, `c${n}`),
     )
-    await expect(fetchSnapshot('k', fakeLinear(pages), NOW)).rejects.toThrow(LinearRequestError)
+    await expect(fetchSnapshot(BUK, fakeLinear(pages), NOW)).rejects.toThrow(LinearRequestError)
   })
 
   it('응답 형식이 바뀌면 어느 값이 틀렸는지 담아 오류를 낸다', async () => {
     const broken = { ...rawIssue, dueDate: 20261106 }
-    await expect(fetchSnapshot('k', fakeLinear([issuesPage([broken])]), NOW)).rejects.toThrow(
+    await expect(fetchSnapshot(BUK, fakeLinear([issuesPage([broken])]), NOW)).rejects.toThrow(
       LinearResponseError,
     )
-    await expect(fetchSnapshot('k', fakeLinear([issuesPage([broken])]), NOW)).rejects.toThrow(
+    await expect(fetchSnapshot(BUK, fakeLinear([issuesPage([broken])]), NOW)).rejects.toThrow(
       /dueDate/,
     )
   })
@@ -341,15 +339,40 @@ describe('Linear에서 한 번에 받기', () => {
       { errors: [{ message: 'Rate limit exceeded', extensions: { code: 'RATELIMITED' } }] },
       400,
     )
-    await expect(fetchSnapshot('k', fakeLinear([limited]), NOW)).rejects.toThrow(/Rate limit/)
+    await expect(fetchSnapshot(BUK, fakeLinear([limited]), NOW)).rejects.toThrow(/Rate limit/)
   })
 
   it('키가 틀리면 오류를 내고 오류 내용에 키를 넣지 않는다', async () => {
     const unauthorized = json({ errors: [{ message: 'Authentication required' }] }, 401)
-    const error = await fetchSnapshot('lin_api_secret', fakeLinear([unauthorized]), NOW).catch(
+    const error = await fetchSnapshot({ apiKey: 'lin_api_secret', teamKey: 'BUK' }, fakeLinear([unauthorized]), NOW).catch(
       (e: unknown) => e,
     )
     expect(error).toBeInstanceOf(LinearRequestError)
     expect(String((error as Error).message)).not.toContain('lin_api_secret')
+  })
+
+  it('CRU 워크스페이스는 모든 질의에 CRU 팀 키를 넣고, 사이클에 CRU 팀이라고 적는다', async () => {
+    const fetchImpl = fakeLinear([issuesPage([{ ...rawIssue, identifier: 'CRU-1' }])])
+    const snapshot = await fetchSnapshot(CRU, fetchImpl, NOW)
+    for (const [, init] of fetchImpl.mock.calls) {
+      const { variables } = JSON.parse(String(init?.body)) as { variables: { teamKey: string } }
+      expect(variables.teamKey).toBe('CRU')
+      expect(new Headers(init?.headers).get('authorization')).toBe('k-cru')
+    }
+    expect(snapshot.cycles.map((c) => c.team)).toEqual(['CRU'])
+  })
+
+  it('다른 워크스페이스라 사용자 id가 달라도 Linear 이름이 같으면 실명으로 바꾼다', async () => {
+    const snapshot = await fetchSnapshot(
+      CRU,
+      fakeLinear(
+        [issuesPage([{ ...rawIssue, assignee: { id: 'cru-u1', name: 'bari cesco' } }])],
+        undefined,
+        [membersPage([{ id: 'cru-u2', name: 'Da Wit Lee', avatarUrl: null, active: true }])],
+      ),
+      NOW,
+    )
+    expect(snapshot.issues[0]?.assignee?.name).toBe('김호빈')
+    expect(snapshot.members?.map((m) => m.name)).toEqual(['이다윗'])
   })
 })

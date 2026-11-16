@@ -15,6 +15,8 @@ const issue = {
   priority: 3,
   cycleId: 'c-1',
 }
+const BUK = { apiKey: 'key', teamKey: 'BUK' }
+const CRU = { apiKey: 'key-cru', teamKey: 'CRU' }
 const json = (data: unknown) => new Response(JSON.stringify({ data }))
 
 describe('Linear 티켓 만들기', () => {
@@ -51,6 +53,17 @@ describe('작업 요청 선택지 받기', () => {
           nodes: [
             {
               id: 'team-buk',
+              members: {
+                nodes: [
+                  {
+                    id: '833c0d35-5772-4e08-875c-dc85ca4fc8cb',
+                    name: 'bari cesco',
+                    avatarUrl: null,
+                    active: true,
+                  },
+                  { id: 'u-left', name: '나간 사람', avatarUrl: null, active: false },
+                ],
+              },
               labels: {
                 nodes: [
                   { id: 'l-bug', name: 'Bug', color: '#eb5757', isGroup: false },
@@ -89,8 +102,10 @@ describe('작업 요청 선택지 받기', () => {
         },
       }),
     )
-    expect(await fetchRequestOptions('key', fetchImpl)).toEqual({
+    expect(await fetchRequestOptions(BUK, fetchImpl)).toEqual({
       teamId: 'team-buk',
+      // 받는 사람·요청하는 사람은 티켓을 만드는 팀의 멤버라야 Linear가 받는다.
+      members: [{ id: '833c0d35-5772-4e08-875c-dc85ca4fc8cb', name: '김호빈', avatarUrl: null }],
       labels: [{ id: 'l-bug', name: 'Bug', color: '#eb5757' }],
       projects: [{ id: 'p-1', name: '최종', milestones: [{ id: 'm-1', name: '1차' }] }],
       cycles: [
@@ -107,7 +122,7 @@ describe('작업 요청 선택지 받기', () => {
 
   it('팀을 찾지 못하면 오류를 낸다', async () => {
     const fetchImpl = vi.fn().mockResolvedValueOnce(json({ teams: { nodes: [] } }))
-    await expect(fetchRequestOptions('key', fetchImpl)).rejects.toThrow('팀을 찾지 못했어요')
+    await expect(fetchRequestOptions(BUK, fetchImpl)).rejects.toThrow('팀을 찾지 못했어요')
   })
 })
 
@@ -138,7 +153,7 @@ describe('작업 요청 내역 받기', () => {
         },
       }),
     )
-    const log = await fetchRequestLog('key', fetchImpl)
+    const log = await fetchRequestLog(BUK, fetchImpl)
     expect(log.map((e) => [e.identifier, e.requester])).toEqual([
       ['BUK-2', '김호빈'],
       ['BUK-1', '옥지훈'],
@@ -162,7 +177,7 @@ describe('작업 요청 내역 받기', () => {
         },
       }),
     )
-    const [entry] = await fetchRequestLog('key', fetchImpl)
+    const [entry] = await fetchRequestLog(BUK, fetchImpl)
     expect(entry!.requester).toBe('옥지훈')
   })
 
@@ -183,7 +198,7 @@ describe('작업 요청 내역 받기', () => {
         },
       }),
     )
-    const [entry] = await fetchRequestLog('key', fetchImpl)
+    const [entry] = await fetchRequestLog(BUK, fetchImpl)
     expect(entry!.assignee).toEqual({ name: '김호빈', avatarUrl: null })
   })
 
@@ -193,7 +208,36 @@ describe('작업 요청 내역 받기', () => {
       .mockResolvedValueOnce(
         json({ issues: { nodes: [node('BUK-3', '2026-11-08T01:00:00.000Z', null)] } }),
       )
-    const [entry] = await fetchRequestLog('key', fetchImpl)
+    const [entry] = await fetchRequestLog(BUK, fetchImpl)
     expect(entry!.requester).toBeNull()
+  })
+})
+
+describe('워크스페이스마다 팀 키 넣기', () => {
+  it('선택지와 요청 내역을 CRU 키와 CRU 팀 키로 묻는다', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        json({
+          teams: {
+            nodes: [
+              {
+                id: 'team-cru',
+                members: { nodes: [] },
+                labels: { nodes: [] },
+                projects: { nodes: [] },
+                cycles: { nodes: [] },
+              },
+            ],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(json({ issues: { nodes: [] } }))
+    expect((await fetchRequestOptions(CRU, fetchImpl)).teamId).toBe('team-cru')
+    await fetchRequestLog(CRU, fetchImpl)
+    for (const [, init] of fetchImpl.mock.calls) {
+      expect(JSON.parse(init.body).variables.teamKey).toBe('CRU')
+      expect(new Headers(init.headers).get('authorization')).toBe('key-cru')
+    }
   })
 })

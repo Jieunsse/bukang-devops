@@ -45,12 +45,13 @@ const fakeLinear = (pages: Response[]) =>
     return next
   })
 
+const BUK = { apiKey: 'k', teamKey: 'BUK' }
 const RANGE = { start: '2026-10-23', end: '2026-11-05' }
 
 describe('완료·취소 티켓 받기', () => {
   it('BUK 팀의 완료·취소 티켓을 한국 날짜 경계로 요청한다', async () => {
     const fetchImpl = fakeLinear([page([rawDone])])
-    await fetchDone('lin_api_x', RANGE, fetchImpl)
+    await fetchDone({ apiKey: 'lin_api_x', teamKey: 'BUK' }, RANGE, fetchImpl)
 
     const [url, init] = fetchImpl.mock.calls[0]!
     expect(url).toBe('https://api.linear.app/graphql')
@@ -76,7 +77,7 @@ describe('완료·취소 티켓 받기', () => {
 
   it('완료했다가 취소한 티켓은 취소 시각을 닫힌 시각으로 쓴다', async () => {
     const reopened = { ...rawCanceled, completedAt: '2026-09-01T01:00:00.000Z' }
-    const [issue] = await fetchDone('k', RANGE, fakeLinear([page([reopened])]))
+    const [issue] = await fetchDone(BUK, RANGE, fakeLinear([page([reopened])]))
     expect(issue?.closedAt).toBe('2026-11-05T01:00:00.000Z')
   })
 
@@ -87,13 +88,13 @@ describe('완료·취소 티켓 받기', () => {
       state: { ...rawCanceled.state, name: 'Duplicate', type: 'duplicate' },
       completedAt: null,
     }
-    const [issue] = await fetchDone('k', RANGE, fakeLinear([page([duplicate])]))
+    const [issue] = await fetchDone(BUK, RANGE, fakeLinear([page([duplicate])]))
     expect(issue?.closedAt).toBe('2026-11-05T01:00:00.000Z')
     expect(issue?.state).toMatchObject({ name: 'Duplicate', type: 'canceled' })
   })
 
   it('화면에서 쓰는 모양으로 바꾸고 닫힌 시각이 늦은 순으로 놓는다', async () => {
-    const issues = await fetchDone('k', RANGE, fakeLinear([page([rawDone, rawCanceled])]))
+    const issues = await fetchDone(BUK, RANGE, fakeLinear([page([rawDone, rawCanceled])]))
     expect(issues).toEqual([
       {
         id: 'i2',
@@ -135,38 +136,38 @@ describe('완료·취소 티켓 받기', () => {
   })
 
   it('티켓이 없으면 빈 목록을 돌려준다', async () => {
-    expect(await fetchDone('k', RANGE, fakeLinear([page([])]))).toEqual([])
+    expect(await fetchDone(BUK, RANGE, fakeLinear([page([])]))).toEqual([])
   })
 
   it('다음 쪽이 있으면 끝까지 이어 받는다', async () => {
     const fetchImpl = fakeLinear([page([rawDone], true, 'c1'), page([rawCanceled])])
-    const issues = await fetchDone('k', RANGE, fetchImpl)
+    const issues = await fetchDone(BUK, RANGE, fetchImpl)
     expect(issues.map((i) => i.id).sort()).toEqual(['i1', 'i2'])
     expect(fetchImpl).toHaveBeenCalledTimes(2)
   })
 
   it('쪽 수가 한도를 넘으면 잘린 목록 대신 오류를 낸다', async () => {
     const pages = Array.from({ length: MAX_PAGES + 1 }, (_, n) => page([rawDone], true, `c${n}`))
-    await expect(fetchDone('k', RANGE, fakeLinear(pages))).rejects.toThrow(LinearRequestError)
+    await expect(fetchDone(BUK, RANGE, fakeLinear(pages))).rejects.toThrow(LinearRequestError)
   })
 
   it('완료 시각도 취소 시각도 없으면 응답 형식이 바뀐 것으로 본다', async () => {
     const broken = { ...rawDone, completedAt: null }
-    await expect(fetchDone('k', RANGE, fakeLinear([page([broken])]))).rejects.toThrow(
+    await expect(fetchDone(BUK, RANGE, fakeLinear([page([broken])]))).rejects.toThrow(
       LinearResponseError,
     )
   })
 
   it('응답 형식이 바뀌면 오류를 낸다', async () => {
     const broken = { ...rawDone, completedAt: 20261104 }
-    await expect(fetchDone('k', RANGE, fakeLinear([page([broken])]))).rejects.toThrow(
+    await expect(fetchDone(BUK, RANGE, fakeLinear([page([broken])]))).rejects.toThrow(
       LinearResponseError,
     )
   })
 
   it('키가 틀리면 오류를 내고 오류 내용에 키를 넣지 않는다', async () => {
     const unauthorized = json({ errors: [{ message: 'Authentication required' }] }, 401)
-    const error = await fetchDone('lin_api_secret', RANGE, fakeLinear([unauthorized])).catch(
+    const error = await fetchDone({ apiKey: 'lin_api_secret', teamKey: 'BUK' }, RANGE, fakeLinear([unauthorized])).catch(
       (e: unknown) => e,
     )
     expect(error).toBeInstanceOf(LinearRequestError)
@@ -182,7 +183,16 @@ describe('완료·취소 티켓 받기', () => {
     ['너무 먼 미래', { start: '9999-12-30', end: '9999-12-31' }],
   ])('%s은 Linear를 부르지 않고 거절한다', async (_, range) => {
     const fetchImpl = fakeLinear([page([rawDone])])
-    await expect(fetchDone('k', range, fetchImpl)).rejects.toThrow()
+    await expect(fetchDone(BUK, range, fetchImpl)).rejects.toThrow()
     expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('CRU 워크스페이스는 CRU 팀 키로 요청한다', async () => {
+    const fetchImpl = fakeLinear([page([rawDone])])
+    await fetchDone({ apiKey: 'k-cru', teamKey: 'CRU' }, RANGE, fetchImpl)
+    const { variables } = JSON.parse(String(fetchImpl.mock.calls[0]![1]?.body)) as {
+      variables: { teamKey: string }
+    }
+    expect(variables.teamKey).toBe('CRU')
   })
 })
