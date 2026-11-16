@@ -29,6 +29,18 @@ export const REPORTS = [
     hash: '#v2',
     syncedAt: '2026-11-14',
   },
+  {
+    slug: 'presentation',
+    title: '최종 발표 기획서',
+    hash: '#cover',
+    syncedAt: '2026-11-16',
+  },
+  {
+    slug: 'e2e',
+    title: 'E2E 실서버 테스트 설계',
+    hash: '#summary',
+    syncedAt: '2026-11-16',
+  },
 ] as const
 
 export type Report = (typeof REPORTS)[number]
