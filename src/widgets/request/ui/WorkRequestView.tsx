@@ -72,7 +72,7 @@ function emptyInput(options: RequestOptions, requesterId = ''): WorkRequestInput
 const cycleText = (c: RequestOptions['cycles'][number]) =>
   `사이클 ${c.number}${c.name ? ` ${c.name}` : ''} · ${formatMonthDay(kstDate(c.startsAt))}~${formatMonthDay(addDays(kstDate(c.endsAt), -1))}`
 
-/** 팀원을 골라 Linear BUK 팀에 티켓을 만든다. 고를 라벨·프로젝트·사이클을 먼저 받는다. */
+/** 팀원을 골라 Linear 팀(CRU 키가 있으면 CRU, 없으면 BUK)에 티켓을 만든다. 고를 라벨·프로젝트·사이클을 먼저 받는다. */
 export function WorkRequestView() {
   const options = useQuery({
     queryKey: ['request-options'],
@@ -84,8 +84,8 @@ export function WorkRequestView() {
       <div className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold">작업 요청</h2>
         <p className="text-sm text-muted">
-          팀원을 고르면 그 사람이 담당자인 Linear 티켓이 BUK 팀에 만들어져요. 받는 사람이 다시
-          채우지 않게 분류까지 정해서 보내 주세요.
+          팀원을 고르면 그 사람이 담당자인 Linear 티켓이 만들어져요. 받는 사람이 다시 채우지 않게
+          분류까지 정해서 보내 주세요.
         </p>
       </div>
       {options.isPending ? (
@@ -104,7 +104,7 @@ export function WorkRequestView() {
   )
 }
 
-function WorkRequestForm({ options }: { options: RequestOptions }) {
+function WorkRequestForm({ options }: { options: RequestOptions & { teamKey: string } }) {
   // 티켓을 만드는 팀의 멤버다. 대시보드 멤버와 사용자 id가 다를 수 있다.
   const members = options.members
   const queryClient = useQueryClient()
@@ -151,6 +151,8 @@ function WorkRequestForm({ options }: { options: RequestOptions }) {
     <Card>
       <form onSubmit={handleSubmit((input) => mutate(input))} noValidate>
         <Card.Content className="flex flex-col gap-6">
+          {/* 선택지를 받은 뒤에만 그려서 서버가 그린 화면과 어긋나지 않는다. */}
+          <p className="text-sm text-muted">{options.teamKey} 팀에 티켓을 만들어요.</p>
           {error && !error.password && (
             <p role="alert" className="text-sm text-danger">
               {error.message}

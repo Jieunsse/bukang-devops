@@ -45,14 +45,18 @@ const FIXTURE_OPTIONS: RequestOptions = {
  * 팀원·라벨·프로젝트·사이클은 자주 바뀌지 않아서 서버 전체가 10분 동안 나눠 쓴다.
  * 새 요청은 마지막 워크스페이스(CRU 키가 있으면 CRU, 없으면 BUK)에 만들어서 그 팀의 값을 받는다.
  */
-export const getRequestOptions: () => Promise<RequestOptions> = unstable_cache(
-  async () => {
-    const source = getLinearSource()
-    return source.kind === 'live' ? fetchRequestOptions(source.workspaces.at(-1)!) : FIXTURE_OPTIONS
-  },
-  ['request-options-v2'],
-  { revalidate: TEN_MINUTES },
-)
+export const getRequestOptions: () => Promise<RequestOptions & { teamKey: string }> =
+  unstable_cache(
+    async () => {
+      const source = getLinearSource()
+      if (source.kind === 'fixture') return { ...FIXTURE_OPTIONS, teamKey: 'BUK' }
+      const target = source.workspaces.at(-1)!
+      // 화면에 어느 팀에 만드는지 보여 주려고 팀 키를 함께 준다.
+      return { ...(await fetchRequestOptions(target)), teamKey: target.teamKey }
+    },
+    ['request-options-v3'],
+    { revalidate: TEN_MINUTES },
+  )
 
 // 키가 없는 로컬 개발 서버에서 쓰는 예시 내역
 const FIXTURE_LOG: RequestLogEntry[] = [
