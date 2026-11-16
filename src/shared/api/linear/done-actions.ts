@@ -6,7 +6,7 @@ import { getLinearSource } from '../../config/env'
 import { createFixtureDone } from './done-fixture'
 import { doneRangeSchema, type DoneIssue } from './done-schema'
 import { fetchDone } from './fetch-done'
-import { fromEachWorkspace } from './server'
+import { fromEachWorkspace, loadSnapshot, unifyIds } from './server'
 
 const TEN_MINUTES = 600
 
@@ -21,7 +21,11 @@ const getDone = unstable_cache(
     const { values, failure } = await fromEachWorkspace(source.workspaces, (ws) =>
       fetchDone(ws, { start, end }),
     )
-    const issues = values.flat().sort((a, b) => b.closedAt.localeCompare(a.closedAt))
+    // 사람별 묶음과 필터가 대시보드와 같은 id를 쓰게 맞춘다. 대시보드 값이 없으면 BUK 쪽 id부터 쓴다.
+    const { snapshot } = await loadSnapshot()
+    const issues = unifyIds(values.flat(), snapshot ?? undefined).sort((a, b) =>
+      b.closedAt.localeCompare(a.closedAt),
+    )
     return failure ? { issues, failure } : { issues }
   },
   ['linear-done-v2'],
