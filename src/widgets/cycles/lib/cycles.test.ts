@@ -65,7 +65,13 @@ describe('사이클 탭', () => {
   })
 
   it('두 워크스페이스 사이클을 구분하려고 팀 키를 앞에 붙인다', () => {
-    const tabs = cycleTabs([], [{ ...cycle1, team: 'BUK', number: 8 }, { ...cycle1, id: 'c-cru', team: 'CRU' }])
+    const tabs = cycleTabs(
+      [],
+      [
+        { ...cycle1, team: 'BUK', number: 8 },
+        { ...cycle1, id: 'c-cru', team: 'CRU' },
+      ],
+    )
     expect(tabs.map((t) => t.title)).toEqual(['BUK 사이클 8', 'CRU 사이클 1'])
   })
 

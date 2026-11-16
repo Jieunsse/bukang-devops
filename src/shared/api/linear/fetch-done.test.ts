@@ -167,9 +167,11 @@ describe('완료·취소 티켓 받기', () => {
 
   it('키가 틀리면 오류를 내고 오류 내용에 키를 넣지 않는다', async () => {
     const unauthorized = json({ errors: [{ message: 'Authentication required' }] }, 401)
-    const error = await fetchDone({ apiKey: 'lin_api_secret', teamKey: 'BUK' }, RANGE, fakeLinear([unauthorized])).catch(
-      (e: unknown) => e,
-    )
+    const error = await fetchDone(
+      { apiKey: 'lin_api_secret', teamKey: 'BUK' },
+      RANGE,
+      fakeLinear([unauthorized]),
+    ).catch((e: unknown) => e)
     expect(error).toBeInstanceOf(LinearRequestError)
     expect(String((error as Error).message)).not.toContain('lin_api_secret')
   })

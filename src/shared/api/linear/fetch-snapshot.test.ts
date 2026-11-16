@@ -143,7 +143,8 @@ describe('Linear에서 한 번에 받기', () => {
   })
 
   it('부모 이슈가 없는 티켓은 부모를 비워 둔다', async () => {
-    const snapshot = await fetchSnapshot(BUK,
+    const snapshot = await fetchSnapshot(
+      BUK,
       fakeLinear([issuesPage([{ ...rawIssue, parent: null, priority: 0 }])]),
       NOW,
     )
@@ -183,7 +184,8 @@ describe('Linear에서 한 번에 받기', () => {
   })
 
   it('사이클에 들지 않은 티켓은 사이클을 비워 둔다', async () => {
-    const snapshot = await fetchSnapshot(BUK,
+    const snapshot = await fetchSnapshot(
+      BUK,
       fakeLinear([issuesPage([{ ...rawIssue, cycle: null }])]),
       NOW,
     )
@@ -235,7 +237,8 @@ describe('Linear에서 한 번에 받기', () => {
       ...rawIssue,
       projectMilestone: { id: 'm', name: 'm', progress },
     })
-    const snapshot = await fetchSnapshot(BUK,
+    const snapshot = await fetchSnapshot(
+      BUK,
       fakeLinear([issuesPage([at(4), { ...at(100), id: 'i2' }, { ...at(0), id: 'i3' }])]),
       NOW,
     )
@@ -248,7 +251,8 @@ describe('Linear에서 한 번에 받기', () => {
       id: `i${n}`,
       assignee: { id, name },
     })
-    const snapshot = await fetchSnapshot(BUK,
+    const snapshot = await fetchSnapshot(
+      BUK,
       fakeLinear([
         issuesPage([
           by('870b71d5-9aed-4a8c-bf90-1972694b203b', 'Da Wit Lee', 1),
@@ -269,7 +273,8 @@ describe('Linear에서 한 번에 받기', () => {
 
   it('담당자의 프로필 이미지 주소를 받고, 없으면 비워 둔다', async () => {
     const avatar = 'https://public.linear.app/u1/avatar.png'
-    const snapshot = await fetchSnapshot(BUK,
+    const snapshot = await fetchSnapshot(
+      BUK,
       fakeLinear([
         issuesPage([
           { ...rawIssue, assignee: { id: 'u1', name: '지훈', avatarUrl: avatar } },
@@ -344,9 +349,11 @@ describe('Linear에서 한 번에 받기', () => {
 
   it('키가 틀리면 오류를 내고 오류 내용에 키를 넣지 않는다', async () => {
     const unauthorized = json({ errors: [{ message: 'Authentication required' }] }, 401)
-    const error = await fetchSnapshot({ apiKey: 'lin_api_secret', teamKey: 'BUK' }, fakeLinear([unauthorized]), NOW).catch(
-      (e: unknown) => e,
-    )
+    const error = await fetchSnapshot(
+      { apiKey: 'lin_api_secret', teamKey: 'BUK' },
+      fakeLinear([unauthorized]),
+      NOW,
+    ).catch((e: unknown) => e)
     expect(error).toBeInstanceOf(LinearRequestError)
     expect(String((error as Error).message)).not.toContain('lin_api_secret')
   })

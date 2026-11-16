@@ -39,9 +39,9 @@ describe('Linear 데이터 출처', () => {
     expect(getLinearSource({ LINEAR_API_KEY_CRU: 'c', VERCEL_ENV: 'preview' })).toEqual({
       kind: 'fixture',
     })
-    expect(() =>
-      getLinearSource({ LINEAR_API_KEY_CRU: 'c', VERCEL_ENV: 'production' }),
-    ).toThrow(MissingApiKeyError)
+    expect(() => getLinearSource({ LINEAR_API_KEY_CRU: 'c', VERCEL_ENV: 'production' })).toThrow(
+      MissingApiKeyError,
+    )
   })
 
   it('운영에서 키가 없으면 예시 데이터 대신 오류를 낸다', () => {
