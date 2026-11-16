@@ -1,6 +1,6 @@
 export { BUCKET_LABEL, BUCKETS, bucketOf, groupByBucket } from './lib/bucket'
 export type { Bucket, BucketRange } from './lib/bucket'
-export { beforeCycleLabel, currentPeriod, periodBadge } from './lib/period'
+export { beforeCycleLabel, currentPeriod, cycleName, periodBadge } from './lib/period'
 export type { Period, PeriodBadge } from './lib/period'
 export { dueLabel } from './lib/due-label'
 export type { DueTone } from './lib/due-label'

@@ -11,6 +11,7 @@ const members: Member[] = [
 ]
 const options: RequestOptions = {
   teamId: 'team-buk',
+  members,
   labels: [
     { id: 'l-bug', name: 'Bug' },
     { id: 'l-feature', name: 'Feature' },

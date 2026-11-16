@@ -58,7 +58,7 @@ export async function createWorkRequest(
   const { assigneeId, requesterId, title, description, dueDate, ...fields } = parsed.data
   const nameOf = (id: string) => deps.members.find((m) => m.id === id)?.name
   const requester = nameOf(requesterId)
-  // 브라우저에서 온 id라서 BUK 팀 멤버인지 서버에서 다시 본다.
+  // 브라우저에서 온 id라서 티켓을 만드는 팀의 멤버인지 서버에서 다시 본다.
   if (!nameOf(assigneeId) || !requester) return { ok: false, reason: 'invalid' }
 
   const footer = `요청한 사람: ${requester} ${REQUEST_MARKER}`

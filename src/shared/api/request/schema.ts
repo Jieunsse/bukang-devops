@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { calendarDate } from '../linear/done-schema'
+import type { Member } from '../linear/schema'
 
 export const REQUEST_TITLE_MAX = 100
 export const REQUEST_DESCRIPTION_MAX = 2000
@@ -47,6 +48,8 @@ export type WorkRequestResult =
 /** 작업 요청 창에서 고르는 Linear 값. 서버가 받아 오고, 받은 값 밖의 id는 거절한다. */
 export type RequestOptions = {
   teamId: string
+  /** 티켓을 만드는 팀의 멤버. 실명 규칙을 거친 이름이다. */
+  members: Member[]
   labels: { id: string; name: string; color?: string }[]
   projects: { id: string; name: string; milestones: { id: string; name: string }[] }[]
   cycles: { id: string; number: number; name: string | null; startsAt: string; endsAt: string }[]

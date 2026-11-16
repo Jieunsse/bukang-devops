@@ -1,4 +1,4 @@
-import { bucketOf, currentPeriod, STATE_TYPE_ORDER, stateLabel } from '@/entities/ticket'
+import { bucketOf, currentPeriod, cycleName, STATE_TYPE_ORDER, stateLabel } from '@/entities/ticket'
 import { NONE } from '@/features/filter'
 import type { Cycle, Issue, Member } from '@/shared/api/linear'
 import { daysBetween, kstDate, type DateString } from '@/shared/lib/date'
@@ -31,7 +31,7 @@ export function cycleTabs(issues: Issue[], cycles: Cycle[]): CycleTab[] {
       const completed = c.completedIssueCount ?? 0
       return {
         key: c.id,
-        title: `사이클 ${c.number}${c.name ? ` ${c.name}` : ''}`,
+        title: cycleName(c),
         // 끝 시각은 사이클에 들지 않는다. 그 직전 순간이 속한 날이 마지막 날이다.
         days: { start: kstDate(c.startsAt), end: kstDate(Date.parse(c.endsAt) - 1) },
         issues: mine,

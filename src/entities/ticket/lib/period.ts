@@ -37,7 +37,9 @@ export function currentPeriod(now: string | number | Date, cycles: Cycle[]): Per
   return { kind: 'outside', start: today, end: end < today ? today : end }
 }
 
-const cycleName = (c: Cycle) => `사이클 ${c.number}${c.name ? ` ${c.name}` : ''}`
+/** 「사이클 7」. 두 워크스페이스 사이클 번호가 겹쳐서 팀이 있으면 「CRU 사이클 1」처럼 앞에 붙인다. */
+export const cycleName = (c: Pick<Cycle, 'number' | 'name' | 'team'>) =>
+  `${c.team ? `${c.team} ` : ''}사이클 ${c.number}${c.name ? ` ${c.name}` : ''}`
 
 /** 지금 사이클 밖일 때 쓰는 이름. 「사이클 밖」 대신 다음 사이클을 기준으로 말한다. */
 export function beforeCycleLabel(now: string | number | Date, cycles: Cycle[]): string {

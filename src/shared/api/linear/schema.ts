@@ -48,6 +48,8 @@ export const cycleSchema = z.object({
   endsAt: z.iso.datetime({ offset: true }),
   /** 이 사이클에서 끝낸 티켓 수. 모르면 0으로 본다. */
   completedIssueCount: z.number().optional(),
+  /** 어느 팀(BUK, CRU) 사이클인지. 예전에 저장된 값과 예시 데이터에는 없다. */
+  team: z.string().optional(),
 })
 
 /** BUK 팀 멤버. 남은 티켓이 0건이어도 사람별 화면에 보여 주려고 받는다. 이름은 실명 규칙을 거친 값이다. */

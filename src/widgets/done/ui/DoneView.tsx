@@ -11,6 +11,7 @@ import { loadDoneAction } from '@/shared/api/linear/done-actions'
 import { useSnapshot } from '@/shared/api/linear/query'
 import { kstDate } from '@/shared/lib/date'
 import { useNow } from '@/shared/lib/use-now'
+import { PartialFailure } from '@/shared/ui'
 
 import { DoneList } from './DoneList'
 import { RangeForm } from './RangeForm'
@@ -47,7 +48,7 @@ export function DoneView() {
           </div>
         </div>
         {/* 이름은 남은 티켓과 이 기간의 완료·취소 티켓에서 함께 찾는다. */}
-        <FilterChips issues={[...snapshot.issues, ...(query.data ?? [])]} />
+        <FilterChips issues={[...snapshot.issues, ...(query.data?.issues ?? [])]} />
       </div>
       {error && <p className="text-sm text-muted">{error}</p>}
       {query.isPending ? (
@@ -63,7 +64,10 @@ export function DoneView() {
           </Button>
         </div>
       ) : (
-        <DoneList issues={query.data} members={snapshot.members ?? []} />
+        <>
+          {query.data.failure && <PartialFailure failure={query.data.failure} />}
+          <DoneList issues={query.data.issues} members={snapshot.members ?? []} />
+        </>
       )}
     </div>
   )
