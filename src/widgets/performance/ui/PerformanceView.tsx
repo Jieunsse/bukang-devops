@@ -1,17 +1,20 @@
 'use client'
 
-import { Card, Table, Tabs } from '@heroui/react'
+import { Card, Table } from '@heroui/react'
+import { cardVariants } from '@heroui/styles'
+import { useState } from 'react'
 
 import {
-  BOTTLENECK,
   CLUES,
+  CONCLUSIONS,
   CONDITIONS,
   LOAD,
   MEASURED_AT,
   SMOKE,
   type LoadResult,
+  type ServiceId,
 } from '@/entities/performance'
-import { PageToolbar } from '@/shared/ui'
+import { CollapseButton, PageToolbar } from '@/shared/ui'
 
 const READ_LIMIT = 300
 const WRITE_LIMIT = 1000
@@ -26,56 +29,36 @@ function Value({ text, over }: { text: string; over: boolean }) {
   return <span className={over ? 'font-semibold' : 'text-muted'}>{text}</span>
 }
 
-/** 운영 서버 부하 테스트 결과. 서비스별로 기준을 넘었는지, 어디서 막혔는지 보는 기록 페이지다. */
+/** 운영 서버 부하 테스트 결과. 결론을 먼저 보고, 서비스 카드를 눌러 그 서비스의 상세를 본다. */
 export function PerformanceView() {
+  const [selected, setSelected] = useState<ServiceId>('board')
+  const result = LOAD.find((r) => r.id === selected)
+
   return (
     <div className="flex flex-col gap-6">
-      <PageToolbar title="성능 측정" summary={`${MEASURED_AT} 운영 서버 · 회원 · 크루 · 게시판`} />
+      <PageToolbar title="성능 측정" summary={`${MEASURED_AT} 운영 서버 · 목표 부하 5분`} />
 
       <Card>
         <Card.Header>
-          <Card.Title className="text-base font-semibold">측정 조건</Card.Title>
+          <Card.Title className="text-base font-semibold">결론</Card.Title>
         </Card.Header>
         <Card.Content>
-          <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-[8rem_1fr]">
-            {CONDITIONS.map(([k, v]) => (
-              <div key={k} className="contents">
-                <dt className="text-muted">{k}</dt>
-                <dd>{v}</dd>
-              </div>
+          <ul className="flex list-disc flex-col gap-1.5 pl-5">
+            {CONCLUSIONS.map((c) => (
+              <li key={c}>{c}</li>
             ))}
-          </dl>
+          </ul>
         </Card.Content>
       </Card>
 
-      <section className="flex flex-col gap-3">
-        <h3 className="text-base font-semibold">목표 부하 5분 (load)</h3>
-        <p className="text-sm text-muted">{BOTTLENECK}</p>
-        <LoadSummary />
-        <Tabs className="w-full">
-          <Tabs.ListContainer className="w-fit">
-            <Tabs.List aria-label="서비스">
-              {LOAD.map((r) => (
-                <Tabs.Tab key={r.id} id={r.id} className="whitespace-nowrap">
-                  {r.name}
-                  <Tabs.Indicator />
-                </Tabs.Tab>
-              ))}
-            </Tabs.List>
-          </Tabs.ListContainer>
-          {LOAD.map((r) => (
-            <Tabs.Panel key={r.id} id={r.id} className="pt-4">
-              <ServiceDetail result={r} />
-            </Tabs.Panel>
-          ))}
-        </Tabs>
-      </section>
+      <ServiceCards selected={selected} onSelect={setSelected} />
 
-      <section className="flex flex-col gap-3">
-        <h3 className="text-base font-semibold">스크립트 확인 (smoke, 초당 1번 30초)</h3>
-        <p className="text-sm text-muted">요청 수가 적어서 성능을 판단하는 값으로 쓰지 않아요.</p>
-        <SmokeTable />
-      </section>
+      {result && (
+        <section aria-label={`${result.name} 상세`} className="flex flex-col gap-4">
+          <h3 className="text-base font-semibold">{result.name} 상세</h3>
+          <ServiceDetail result={result} />
+        </section>
+      )}
 
       <Card>
         <Card.Header>
@@ -89,55 +72,102 @@ export function PerformanceView() {
           </ul>
         </Card.Content>
       </Card>
+
+      <Folded title="측정 조건" hint={`대상·기준 등 ${CONDITIONS.length}가지`}>
+        <Card>
+          <Card.Content>
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-[8rem_1fr]">
+              {CONDITIONS.map(([k, v]) => (
+                <div key={k} className="contents">
+                  <dt className="text-muted">{k}</dt>
+                  <dd>{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </Card.Content>
+        </Card>
+      </Folded>
+
+      <Folded title="스크립트 확인 (smoke)" hint="초당 1번 30초, 성능 판단에는 쓰지 않아요">
+        <SmokeTable />
+      </Folded>
     </div>
   )
 }
 
-function LoadSummary() {
+function Folded({
+  title,
+  hint,
+  children,
+}: {
+  title: string
+  hint: string
+  children: React.ReactNode
+}) {
+  const [isOpen, setOpen] = useState(false)
   return (
-    <Table>
-      <Table.ScrollContainer>
-        <Table.Content aria-label="서비스별 결과" className="min-w-[44rem]">
-          <Table.Header>
-            <Table.Column isRowHeader>서비스</Table.Column>
-            <Table.Column>초당 반복 (목표 → 실제)</Table.Column>
-            <Table.Column>요청</Table.Column>
-            <Table.Column>실패율</Table.Column>
-            <Table.Column>조회 p95</Table.Column>
-            <Table.Column>쓰기 p95</Table.Column>
-            <Table.Column>판정</Table.Column>
-          </Table.Header>
-          <Table.Body>
-            {LOAD.map((r) => (
-              <Table.Row key={r.id} id={r.id}>
-                <Table.Cell className="font-medium">{r.name}</Table.Cell>
-                <Table.Cell className="tabular-nums">
-                  {r.targetRps} → {r.actualRps}
-                </Table.Cell>
-                <Table.Cell className="tabular-nums">{r.requests.toLocaleString()}</Table.Cell>
-                <Table.Cell className="tabular-nums">
-                  <Value text={`${r.failRate}%`} over={r.failRate >= FAIL_LIMIT} />
-                </Table.Cell>
-                <Table.Cell className="tabular-nums">
-                  <Value text={formatMs(r.readP95)} over={r.readP95 > READ_LIMIT} />
-                </Table.Cell>
-                <Table.Cell className="tabular-nums">
-                  <Value text={formatMs(r.writeP95)} over={r.writeP95 > WRITE_LIMIT} />
-                </Table.Cell>
-                <Table.Cell>{r.verdict}</Table.Cell>
-              </Table.Row>
-            ))}
-          </Table.Body>
-        </Table.Content>
-      </Table.ScrollContainer>
-    </Table>
+    <section aria-label={title} className="flex flex-col gap-2">
+      <h3>
+        <CollapseButton isOpen={isOpen} onToggle={() => setOpen(!isOpen)}>
+          {title}
+          <span className="text-sm font-normal text-muted">{hint}</span>
+        </CollapseButton>
+      </h3>
+      {isOpen && children}
+    </section>
+  )
+}
+
+/** 서비스마다 조회 p95를 크게 보여 준다. 누르면 아래 상세가 그 서비스로 바뀐다. */
+function ServiceCards({
+  selected,
+  onSelect,
+}: {
+  selected: ServiceId
+  onSelect: (id: ServiceId) => void
+}) {
+  const card = cardVariants()
+  return (
+    <div role="group" aria-label="서비스별 결과" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {LOAD.map((r) => {
+        const isSelected = r.id === selected
+        return (
+          <button
+            key={r.id}
+            type="button"
+            aria-pressed={isSelected}
+            onClick={() => onSelect(r.id)}
+            className={card.base({
+              className: `gap-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset ${isSelected ? 'ring-2 ring-accent ring-inset' : 'hover:bg-default'}`,
+            })}
+          >
+            <span className="font-semibold">{r.name}</span>
+            <span className="text-sm text-muted">조회 p95</span>
+            <span
+              className={`text-3xl tabular-nums ${r.readP95 > READ_LIMIT ? 'font-semibold' : ''}`}
+            >
+              {formatMs(r.readP95)}
+            </span>
+            <span className="text-sm text-muted tabular-nums">
+              실패 {r.failRate}% · 초당 {r.targetRps} → {r.actualRps}번
+            </span>
+            <span className="mt-1 text-sm">{r.verdict}</span>
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
 function ServiceDetail({ result }: { result: LoadResult }) {
   const hasP99 = result.endpoints.some((e) => e.p99 !== undefined)
   return (
-    <div className="flex flex-col gap-4">
+    <>
+      <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
+        {result.notes.map((n) => (
+          <li key={n}>{n}</li>
+        ))}
+      </ul>
       {result.timeline && (
         <Table>
           <Table.ScrollContainer>
@@ -177,7 +207,7 @@ function ServiceDetail({ result }: { result: LoadResult }) {
                 const limit = e.path.startsWith('GET') ? READ_LIMIT : WRITE_LIMIT
                 return (
                   <Table.Row key={e.path} id={e.path}>
-                    <Table.Cell className="font-mono text-xs break-all">{e.path}</Table.Cell>
+                    <Table.Cell className="text-sm break-all">{e.path}</Table.Cell>
                     <Table.Cell className="tabular-nums">{e.requests.toLocaleString()}</Table.Cell>
                     <Table.Cell className="tabular-nums">
                       <Value text={`${e.failRate}%`} over={e.failRate >= FAIL_LIMIT} />
@@ -199,12 +229,7 @@ function ServiceDetail({ result }: { result: LoadResult }) {
           </Table.Content>
         </Table.ScrollContainer>
       </Table>
-      <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
-        {result.notes.map((n) => (
-          <li key={n}>{n}</li>
-        ))}
-      </ul>
-    </div>
+    </>
   )
 }
 
