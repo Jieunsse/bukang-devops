@@ -19,7 +19,7 @@ export const NAV_ITEMS = [
   { href: '/calendar', label: '달력', Icon: LayoutHeaderCells },
   { href: '/timeline', label: '타임라인', Icon: ChartBar },
   { href: '/done', label: '완료·취소', Icon: CircleCheck },
-  { href: '/api-flow', label: 'API 흐름', Icon: ArrowRightArrowLeft },
+  { href: '/api-flow', label: 'API 명세', Icon: ArrowRightArrowLeft },
   { href: '/request', label: '작업 요청', Icon: PaperPlane },
   { href: '/analytics', label: '이용 통계', Icon: ChartLine },
   { href: '/db', label: 'DB 구조', Icon: Database },

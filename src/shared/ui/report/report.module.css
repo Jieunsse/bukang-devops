@@ -1,4 +1,4 @@
-/* 크루런 리포트 아티팩트(종합점검·트랜잭션·카프카)와 같은 모양. 값은 .claude/skills/team-compare-report/template.html에서 가져왔다.
+/* 크루런 리포트 아티팩트(종합점검·트랜잭션·카프카)와 같은 모양. 성능 측정·API 명세·DB 구조·이용 통계가 함께 쓴다. 값은 .claude/skills/team-compare-report/template.html에서 가져왔다.
    색 변수는 이 페이지 안에만 둔다. 어두운 화면은 next-themes가 <html>에 붙이는 .dark로 바꾼다. */
 .report {
   --bg: #f5f6f8;
@@ -48,8 +48,11 @@
 
 /* 왼쪽 목차 */
 .toc {
+  grid-template-columns: minmax(0, 1fr);
   position: sticky;
   top: 16px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
   display: grid;
   gap: 2px;
   background: var(--surface);
@@ -64,6 +67,7 @@
   padding: 10px 12px 4px;
 }
 .tocItem {
+  min-width: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -93,6 +97,29 @@
 }
 .tocItem[aria-current='true'] small {
   color: var(--accent);
+}
+
+/* 목차 위 찾기 칸처럼 목차에 붙는 도구 */
+.tocTools {
+  padding: 4px 4px 8px;
+}
+.search {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--fg);
+}
+.search:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 8px 12px;
 }
 
 /* 본문 */
@@ -330,7 +357,92 @@ button.fact:focus-visible {
 }
 
 /* 폰 폭: 목차를 위쪽 가로 탭으로 */
+/* 칩처럼 옆으로 늘어놓는 작은 꼬리표 */
+.tag {
+  display: inline-block;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.muted {
+  color: var(--muted);
+}
+.bar {
+  background: var(--accent);
+}
+
+/* 이름-설명 짝을 줄마다 보여 주는 목록 (리포트의 checks) */
+.checks {
+  display: grid;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin: 0;
+}
+.check {
+  display: grid;
+  grid-template-columns: minmax(120px, 200px) minmax(0, 1fr);
+  gap: 4px 16px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--line);
+}
+.check:first-child {
+  border-top: 0;
+}
+.check dt {
+  font-weight: 500;
+}
+.check dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* 위쪽 버튼 줄 (기간 고르기 등) */
+.seg {
+  display: inline-flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 4px;
+}
+.seg a,
+.seg button {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--fg);
+}
+.seg [aria-current='page'],
+.seg [aria-pressed='true'] {
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 700;
+}
+
 @media (max-width: 760px) {
+  .check {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .toc {
+    max-height: none;
+  }
+  .tocTools {
+    display: none;
+  }
   .report {
     grid-template-columns: minmax(0, 1fr);
   }

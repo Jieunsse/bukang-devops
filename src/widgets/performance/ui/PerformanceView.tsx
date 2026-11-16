@@ -9,26 +9,26 @@ import {
   LOAD,
   MEASURED_AT,
   SMOKE,
-  type Grade,
   type LoadResult,
   type ServiceId,
 } from '@/entities/performance'
-
-import s from './report.module.css'
+import {
+  Fact,
+  GradeChip,
+  report as s,
+  ReportHeader,
+  ReportLayout,
+  type ReportTocGroup,
+} from '@/shared/ui'
 
 const READ_LIMIT = 300
 const WRITE_LIMIT = 1000
 const FAIL_LIMIT = 1
 
 type Section = 'overview' | ServiceId | 'clues' | 'conditions'
-type TocEntry = { id: Section; label: string; note?: string }
 
 export function formatMs(ms: number) {
   return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`
-}
-
-function GradeChip({ grade, children }: { grade: Grade; children: React.ReactNode }) {
-  return <span className={`${s.grade} ${s[grade]}`}>{children}</span>
 }
 
 /** 기준을 넘은 값만 굵게 표시한다 */
@@ -36,7 +36,7 @@ function Num({ text, over }: { text: string; over: boolean }) {
   return <span className={over ? s.over : undefined}>{text}</span>
 }
 
-const TOC: { group: string; items: TocEntry[] }[] = [
+const TOC: ReportTocGroup<Section>[] = [
   { group: '요약', items: [{ id: 'overview', label: '개요' }] },
   {
     group: '서비스',
@@ -57,43 +57,22 @@ export function PerformanceView() {
   const service = LOAD.find((r) => r.id === section)
 
   return (
-    <div className={s.report}>
-      <nav aria-label="성능 측정 목차" className={s.toc}>
-        {TOC.map((g) => (
-          <div key={g.group} className="contents">
-            <div className={s.group}>{g.group}</div>
-            {g.items.map((i) => (
-              <button
-                key={i.id}
-                type="button"
-                className={s.tocItem}
-                aria-current={i.id === section}
-                onClick={() => setSection(i.id)}
-              >
-                {i.label}
-                {i.note && <small>{i.note}</small>}
-              </button>
-            ))}
-          </div>
-        ))}
-      </nav>
-      <div className={s.page}>
-        {section === 'overview' && <Overview onSelect={setSection} />}
-        {service && <ServicePage result={service} />}
-        {section === 'clues' && <Clues />}
-        {section === 'conditions' && <Conditions />}
-      </div>
-    </div>
+    <ReportLayout label="성능 측정 목차" toc={TOC} current={section} onSelect={setSection}>
+      {section === 'overview' && <Overview onSelect={setSection} />}
+      {service && <ServicePage result={service} />}
+      {section === 'clues' && <Clues />}
+      {section === 'conditions' && <Conditions />}
+    </ReportLayout>
   )
 }
 
 function Overview({ onSelect }: { onSelect: (id: Section) => void }) {
   return (
     <>
-      <header>
-        <h2 className={s.title}>성능 측정</h2>
-        <p className={s.sub}>{MEASURED_AT} 운영 서버 · 회원 · 크루 · 게시판 · 목표 부하 5분</p>
-      </header>
+      <ReportHeader
+        title={'성능 측정'}
+        sub={<>{MEASURED_AT} 운영 서버 · 회원 · 크루 · 게시판 · 목표 부하 5분</>}
+      />
       <div className={s.lead}>
         {CONCLUSIONS.map((c) => (
           <p key={c}>{c}</p>
@@ -165,12 +144,14 @@ function ServicePage({ result }: { result: LoadResult }) {
   const hasP99 = result.endpoints.some((e) => e.p99 !== undefined)
   return (
     <>
-      <header>
-        <h2 className={s.title}>{result.name}</h2>
-        <p className={s.sub}>
-          <GradeChip grade={result.grade}>{result.verdict}</GradeChip> · 목표 부하 5분
-        </p>
-      </header>
+      <ReportHeader
+        title={result.name}
+        sub={
+          <>
+            <GradeChip grade={result.grade}>{result.verdict}</GradeChip> · 목표 부하 5분
+          </>
+        }
+      />
       <dl className={s.facts}>
         <Fact label="조회 p95" value={formatMs(result.readP95)} />
         <Fact label="쓰기 p95" value={formatMs(result.writeP95)} />
@@ -242,22 +223,13 @@ function ServicePage({ result }: { result: LoadResult }) {
   )
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={s.fact}>
-      <dt>{label}</dt>
-      <dd className={s.big}>{value}</dd>
-    </div>
-  )
-}
-
 function Clues() {
   return (
     <>
-      <header>
-        <h2 className={s.title}>개선 단서</h2>
-        <p className={s.sub}>기록에서 나온 단서예요. 원인은 아직 단정하지 않았어요.</p>
-      </header>
+      <ReportHeader
+        title={'개선 단서'}
+        sub={<>기록에서 나온 단서예요. 원인은 아직 단정하지 않았어요.</>}
+      />
       <ol className={s.steps} aria-label="개선 단서">
         {CLUES.map((c, i) => {
           const [head, ...rest] = c.split(': ')
@@ -277,10 +249,7 @@ function Clues() {
 function Conditions() {
   return (
     <>
-      <header>
-        <h2 className={s.title}>측정 조건</h2>
-        <p className={s.sub}>{MEASURED_AT} 운영 서버에서 잰 조건이에요.</p>
-      </header>
+      <ReportHeader title={'측정 조건'} sub={<>{MEASURED_AT} 운영 서버에서 잰 조건이에요.</>} />
       <dl className={s.facts}>
         {CONDITIONS.map(([k, v]) => (
           <div key={k} className={s.fact}>

@@ -1,16 +1,5 @@
 'use client'
 
-import {
-  Card,
-  Chip,
-  EmptyState,
-  Input,
-  Table,
-  Tabs,
-  TextField,
-  ToggleButton,
-  ToggleButtonGroup,
-} from '@heroui/react'
 import { useMemo, useState } from 'react'
 
 import {
@@ -20,9 +9,16 @@ import {
   screenGroups,
   type ApiCall,
   type ApiRow,
-  type ScreenGroupView,
+  type ScreenRow,
 } from '@/entities/api-flow'
-import { CollapseButton, PageToolbar } from '@/shared/ui'
+import {
+  Fact,
+  report as s,
+  ReportHeader,
+  ReportLayout,
+  ReportSection,
+  type ReportTocGroup,
+} from '@/shared/ui'
 
 /** 표 위에 한 번만 적는 규칙. 화면마다 같은 내용이라 표에서는 뺐다. */
 const COMMON_RULES: [string, string][] = [
@@ -68,263 +64,280 @@ const COMMON_RULES: [string, string][] = [
   ],
 ]
 
-type View = 'screens' | 'apis'
-const ALL = 'all'
+/** 목차 키: 개요, 화면 묶음(g:묶음 id), 서비스(s:서비스 이름, s:all은 전체) */
+type Section = 'overview' | `g:${string}` | `s:${string}`
 
-/** 크루런 프론트 화면 주소마다 백엔드에 보내는 요청. 백엔드 팀원이 URI로 찾아보는 참고 페이지다. */
+/** 크루런 프론트 화면 주소마다 백엔드에 보내는 요청. 리포트 아티팩트와 같은 틀(왼쪽 목차 + 본문)로 보여 준다. */
 export function ApiFlowView() {
-  const [view, setView] = useState<View>('screens')
+  const [section, setSection] = useState<Section>('overview')
   const [query, setQuery] = useState('')
   const groups = useMemo(() => screenGroups(), [])
   const apis = useMemo(() => apiRows(), [])
+  const services = useMemo(() => [...new Set(apis.map((r) => r.service))], [apis])
   const screenCount = groups.reduce((n, g) => n + g.rows.length, 0)
+  const searching = query.trim() !== ''
+
+  const toc: ReportTocGroup<Section>[] = [
+    { group: '요약', items: [{ id: 'overview', label: '개요' }] },
+    {
+      group: '화면 묶음',
+      items: groups.map((g) => ({
+        id: `g:${g.id}` as const,
+        label: g.title,
+        note: `${g.rows.length}`,
+      })),
+    },
+    {
+      group: '서비스별 API',
+      items: [
+        { id: 's:all' as const, label: '전체', note: `${apis.length}` },
+        ...services.map((sv) => ({
+          id: `s:${sv}` as const,
+          label: sv,
+          note: `${apis.filter((r) => r.service === sv).length}`,
+        })),
+      ],
+    },
+  ]
+
+  const group = section.startsWith('g:') ? groups.find((g) => `g:${g.id}` === section) : undefined
+  const service = section.startsWith('s:') ? section.slice(2) : undefined
 
   return (
-    <div className="flex flex-col gap-4">
-      <PageToolbar
-        title="API 흐름"
-        summary={`화면 ${screenCount}개 · 요청 ${apis.length}종 · 프론트 ${FLOW_DATA.committedAt} 코드 기준(${FLOW_DATA.commit}${FLOW_DATA.dirty ? ', 커밋 안 한 변경 포함' : ''})`}
-      />
-      <CommonRules />
-      <Tabs className="w-full" selectedKey={view} onSelectionChange={(key) => setView(key as View)}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Tabs.ListContainer className="w-fit">
-            <Tabs.List aria-label="보는 방식">
-              <Tabs.Tab id="screens" className="whitespace-nowrap">
-                화면별
-                <Tabs.Indicator />
-              </Tabs.Tab>
-              <Tabs.Tab id="apis" className="whitespace-nowrap">
-                API별
-                <Tabs.Indicator />
-              </Tabs.Tab>
-            </Tabs.List>
-          </Tabs.ListContainer>
-          <TextField aria-label="찾기" value={query} onChange={setQuery} className="w-full sm:w-80">
-            <Input placeholder="찾기: URI · 화면 · 서비스" />
-          </TextField>
-        </div>
-        <Tabs.Panel id="screens" className="pt-4">
-          <ScreenView groups={groups} query={query} />
-        </Tabs.Panel>
-        <Tabs.Panel id="apis" className="pt-4">
-          <ApiView rows={apis} query={query} />
-        </Tabs.Panel>
-      </Tabs>
-    </div>
-  )
-}
-
-/** 규칙은 한 번 읽으면 되는 내용이라 처음에는 접어 둔다. */
-function CommonRules() {
-  const [isOpen, setOpen] = useState(false)
-  return (
-    <section aria-label="모든 화면에 같은 규칙" className="flex flex-col gap-2">
-      <h3>
-        <CollapseButton isOpen={isOpen} onToggle={() => setOpen(!isOpen)}>
-          모든 화면에 같은 규칙
-          <span className="text-sm font-normal text-muted">
-            토큰 · 재발급 · 응답 형식 등 {COMMON_RULES.length}가지
-          </span>
-        </CollapseButton>
-      </h3>
-      {isOpen && (
-        <Card>
-          <Card.Content>
-            <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-[10rem_1fr]">
-              {COMMON_RULES.map(([term, text]) => (
-                <div key={term} className="contents">
-                  <dt className="font-medium">{term}</dt>
-                  <dd className="text-muted">{text}</dd>
-                </div>
-              ))}
-            </dl>
-          </Card.Content>
-        </Card>
+    <ReportLayout
+      label="API 명세 목차"
+      toc={toc}
+      current={section}
+      onSelect={(id) => {
+        setQuery('')
+        setSection(id)
+      }}
+      tools={
+        <input
+          type="search"
+          aria-label="찾기"
+          placeholder="찾기: URI · 화면 · 서비스"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className={s.search}
+        />
+      }
+    >
+      {searching ? (
+        <SearchResult query={query} groups={groups} apis={apis} />
+      ) : (
+        <>
+          {section === 'overview' && (
+            <Overview
+              screenCount={screenCount}
+              apiCount={apis.length}
+              serviceCount={services.length}
+            />
+          )}
+          {group && (
+            <>
+              <ReportHeader title={group.title} sub={group.description} />
+              <ScreenTable rows={group.rows} />
+            </>
+          )}
+          {service && (
+            <>
+              <ReportHeader
+                title={service === 'all' ? '전체 API' : `${service} API`}
+                sub="요청 하나마다 그 요청을 보내는 화면을 모았어요. 화면 이름에 마우스를 올리면 주소가 보여요."
+              />
+              <ApiTable
+                rows={service === 'all' ? apis : apis.filter((r) => r.service === service)}
+              />
+            </>
+          )}
+        </>
       )}
-    </section>
+    </ReportLayout>
   )
 }
 
-/** 메서드는 굵은 글자로만 구분한다. 색은 기한 표시에만 쓰는 규칙이라 칠하지 않는다. */
+function Overview({
+  screenCount,
+  apiCount,
+  serviceCount,
+}: {
+  screenCount: number
+  apiCount: number
+  serviceCount: number
+}) {
+  return (
+    <>
+      <ReportHeader
+        title="API 명세"
+        sub={`프론트 ${FLOW_DATA.committedAt} 코드 기준 (${FLOW_DATA.commit}${FLOW_DATA.dirty ? ', 커밋 안 한 변경 포함' : ''})`}
+      />
+      <div className={s.lead}>
+        <p>크루런 프론트 화면마다 백엔드에 보내는 요청과 받는 서비스를 모았어요.</p>
+        <p>
+          왼쪽에서 화면 묶음이나 서비스를 고르고, 위 찾기 칸으로 URI·화면·서비스를 한 번에 찾아요.
+        </p>
+      </div>
+      <dl className={s.facts}>
+        <Fact label="화면" value={`${screenCount}개`} />
+        <Fact label="요청 종류" value={`${apiCount}종`} />
+        <Fact label="서비스" value={`${serviceCount}개`} />
+      </dl>
+      <ReportSection
+        title="모든 화면에 같은 규칙"
+        description="화면마다 같은 내용이라 표에서는 뺐어요."
+      >
+        <dl className={s.checks}>
+          {COMMON_RULES.map(([term, text]) => (
+            <div key={term} className={s.check}>
+              <dt>{term}</dt>
+              <dd>{text}</dd>
+            </div>
+          ))}
+        </dl>
+      </ReportSection>
+    </>
+  )
+}
+
+/** 메서드는 굵은 글자로 구분한다 */
 function CallText({ call }: { call: ApiCall }) {
   return (
-    <span className="font-mono text-xs break-all">
-      <span className="inline-block w-14 font-semibold">{call.method}</span>
+    <span className={s.code}>
+      <b className="inline-block w-14">{call.method}</b>
       {call.path}
-      {call.note && <span className="ml-2 font-sans text-muted">({call.note})</span>}
+      {call.note && <span className={`ml-2 ${s.muted}`}>({call.note})</span>}
     </span>
   )
 }
 
 function NoResult() {
   return (
-    <EmptyState className="py-12">
-      <p className="font-medium">찾는 요청이 없어요</p>
-      <p className="text-sm text-muted">URI 일부만 넣어 보세요. 예: wallets, crews</p>
-    </EmptyState>
+    <div className={s.lead}>
+      <p>찾는 요청이 없어요. URI 일부만 넣어 보세요. 예: wallets, crews</p>
+    </div>
   )
 }
 
-/** 묶음 하나씩 골라 본다. 찾기 칸에 글자가 있으면 모든 묶음에서 찾는다. */
-function ScreenView({ groups, query }: { groups: ScreenGroupView[]; query: string }) {
-  const [picked, setPicked] = useState(groups[0]?.id ?? '')
-  const searching = query.trim() !== ''
-  const rows = groups.flatMap((g) =>
-    (searching || g.id === picked ? g.rows : [])
+function ScreenTable({
+  rows,
+  showGroup,
+}: {
+  rows: (ScreenRow & { group?: string })[]
+  showGroup?: boolean
+}) {
+  if (rows.length === 0) return <NoResult />
+  return (
+    <div className={s.tbl}>
+      <table aria-label="화면별 보내는 요청">
+        <thead>
+          <tr>
+            <th className="w-56">화면</th>
+            <th>보내는 요청</th>
+            <th className="w-28">서비스</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.route}>
+              <td>
+                <b>{r.name}</b>
+                <span className={`block break-all ${s.code} ${s.muted}`}>{r.route}</span>
+                {showGroup && r.group && (
+                  <span className={`block text-xs ${s.muted}`}>{r.group}</span>
+                )}
+              </td>
+              <td>
+                {r.calls.length === 0 ? (
+                  <span className={s.muted}>
+                    보내는 요청 없음{r.emptyNote && ` (${r.emptyNote})`}
+                  </span>
+                ) : (
+                  <ul className="flex flex-col gap-0.5">
+                    {r.calls.map((c) => (
+                      <li key={c.key} className="break-all">
+                        <CallText call={c} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </td>
+              <td className={s.muted}>{[...new Set(r.calls.map((c) => c.service))].join(' · ')}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function ApiTable({ rows }: { rows: ApiRow[] }) {
+  if (rows.length === 0) return <NoResult />
+  return (
+    <div className={s.tbl}>
+      <table aria-label="API별 보내는 화면">
+        <thead>
+          <tr>
+            <th className="w-[45%]">요청</th>
+            <th className="w-28">서비스</th>
+            <th>보내는 화면</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.key}>
+              <td className="break-all">
+                <CallText call={r} />
+              </td>
+              <td className={s.muted}>{r.service}</td>
+              <td>
+                <ul className={s.tags}>
+                  {r.screens.map((sc) => (
+                    <li key={sc.route} className={s.tag} title={sc.route}>
+                      {sc.name}
+                      <span className="sr-only"> ({sc.route})</span>
+                    </li>
+                  ))}
+                </ul>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+/** 찾기 칸에 글자가 있으면 모든 묶음과 모든 서비스에서 찾는다 */
+function SearchResult({
+  query,
+  groups,
+  apis,
+}: {
+  query: string
+  groups: ReturnType<typeof screenGroups>
+  apis: ApiRow[]
+}) {
+  const screens = groups.flatMap((g) =>
+    g.rows
       .filter((r) => matches(query, r.route, r.name, ...r.calls.flatMap((c) => [c.key, c.service])))
       .map((r) => ({ ...r, group: g.title })),
   )
-  const group = groups.find((g) => g.id === picked)
-
-  return (
-    <div className="flex flex-col gap-3">
-      <ToggleButtonGroup
-        aria-label="화면 묶음"
-        size="sm"
-        selectionMode="single"
-        disallowEmptySelection
-        isDisabled={searching}
-        selectedKeys={[picked]}
-        onSelectionChange={(keys) => setPicked(String([...keys][0]))}
-        className="flex-wrap justify-start"
-      >
-        {groups.map((g) => (
-          <ToggleButton key={g.id} id={g.id} className="gap-1.5">
-            {g.title}
-            <span className="text-muted tabular-nums">{g.rows.length}</span>
-          </ToggleButton>
-        ))}
-      </ToggleButtonGroup>
-      <p className="text-sm text-muted">
-        {searching ? `모든 묶음에서 찾은 화면 ${rows.length}개` : group?.description}
-      </p>
-      {rows.length === 0 ? (
-        <NoResult />
-      ) : (
-        <Table>
-          <Table.ScrollContainer>
-            <Table.Content aria-label="화면별 보내는 요청" className="min-w-[44rem] table-fixed">
-              <Table.Header>
-                <Table.Column isRowHeader className="w-56">
-                  화면
-                </Table.Column>
-                <Table.Column>보내는 요청</Table.Column>
-                <Table.Column className="w-24">서비스</Table.Column>
-              </Table.Header>
-              <Table.Body>
-                {rows.map((r) => (
-                  <Table.Row key={r.route} id={r.route}>
-                    <Table.Cell className="py-2 align-top">
-                      <span className="flex flex-col">
-                        <span className="font-medium">{r.name}</span>
-                        <span className="font-mono text-xs break-all text-muted">{r.route}</span>
-                        {searching && <span className="text-xs text-muted">{r.group}</span>}
-                      </span>
-                    </Table.Cell>
-                    <Table.Cell className="py-2 align-top">
-                      {r.calls.length === 0 ? (
-                        <span className="text-sm text-muted">
-                          보내는 요청 없음{r.emptyNote && ` (${r.emptyNote})`}
-                        </span>
-                      ) : (
-                        <ul className="flex flex-col gap-0.5">
-                          {r.calls.map((c) => (
-                            <li key={c.key}>
-                              <CallText call={c} />
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </Table.Cell>
-                    <Table.Cell className="py-2 align-top text-sm text-muted">
-                      {[...new Set(r.calls.map((c) => c.service))].join(' · ')}
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table.Content>
-          </Table.ScrollContainer>
-        </Table>
-      )}
-    </div>
+  const found = apis.filter((r) =>
+    matches(query, r.key, r.service, ...r.screens.flatMap((sc) => [sc.route, sc.name])),
   )
-}
-
-/** 서비스를 골라 그 서비스 요청만 본다. 보내는 화면은 옆으로 이어 붙여 줄이 길어지지 않게 한다. */
-function ApiView({ rows: all, query }: { rows: ApiRow[]; query: string }) {
-  const [service, setService] = useState(ALL)
-  const services = [...new Set(all.map((r) => r.service))]
-  const rows = all.filter(
-    (r) =>
-      (service === ALL || r.service === service) &&
-      matches(query, r.key, r.service, ...r.screens.flatMap((s) => [s.route, s.name])),
-  )
-
   return (
-    <div className="flex flex-col gap-3">
-      <ToggleButtonGroup
-        aria-label="서비스"
-        size="sm"
-        selectionMode="single"
-        disallowEmptySelection
-        selectedKeys={[service]}
-        onSelectionChange={(keys) => setService(String([...keys][0]))}
-        className="flex-wrap justify-start"
-      >
-        <ToggleButton id={ALL} className="gap-1.5">
-          전체<span className="text-muted tabular-nums">{all.length}</span>
-        </ToggleButton>
-        {services.map((s) => (
-          <ToggleButton key={s} id={s} className="gap-1.5">
-            {s}
-            <span className="text-muted tabular-nums">
-              {all.filter((r) => r.service === s).length}
-            </span>
-          </ToggleButton>
-        ))}
-      </ToggleButtonGroup>
-      {rows.length === 0 ? (
-        <NoResult />
-      ) : (
-        <Table>
-          <Table.ScrollContainer>
-            <Table.Content aria-label="API별 보내는 화면" className="min-w-[44rem] table-fixed">
-              <Table.Header>
-                <Table.Column isRowHeader className="w-[45%]">
-                  요청
-                </Table.Column>
-                <Table.Column className="w-24">서비스</Table.Column>
-                <Table.Column>보내는 화면</Table.Column>
-              </Table.Header>
-              <Table.Body>
-                {rows.map((r) => (
-                  <Table.Row key={r.key} id={r.key}>
-                    <Table.Cell className="py-2 align-top">
-                      <CallText call={r} />
-                    </Table.Cell>
-                    <Table.Cell className="py-2 align-top text-sm whitespace-nowrap text-muted">
-                      {r.service}
-                    </Table.Cell>
-                    <Table.Cell className="py-2 align-top">
-                      <ul className="flex flex-wrap gap-1">
-                        {r.screens.map((s) => (
-                          <li key={s.route}>
-                            <Chip size="sm" title={s.route}>
-                              {s.name}
-                              <span className="sr-only"> ({s.route})</span>
-                            </Chip>
-                          </li>
-                        ))}
-                      </ul>
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table.Content>
-          </Table.ScrollContainer>
-        </Table>
-      )}
-    </div>
+    <>
+      <ReportHeader
+        title={`「${query.trim()}」 찾기`}
+        sub={`화면 ${screens.length}개 · 요청 ${found.length}종`}
+      />
+      <ReportSection title="화면">
+        <ScreenTable rows={screens} showGroup />
+      </ReportSection>
+      <ReportSection title="요청">
+        <ApiTable rows={found} />
+      </ReportSection>
+    </>
   )
 }
