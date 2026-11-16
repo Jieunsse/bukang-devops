@@ -54,8 +54,13 @@ export const CONDITIONS: [string, string][] = [
   ['문의', '운영에 배포되지 않아 빠졌어요. main 배포 뒤 다시 측정해요'],
 ]
 
-export const BOTTLENECK =
-  '데이터 서버(MySQL·Redis)는 한가했어요. MySQL CPU 최대 22%, Redis 최대 7%예요. 병목은 DB가 아니라 앱 서버 쪽이에요.'
+/** 페이지 맨 위에 보여 주는 결론. 한 줄에 하나씩 */
+export const CONCLUSIONS = [
+  '게시판은 초당 68번에서 CPU가 바닥나 47초 만에 무너졌어요. 입구 Traefik까지 다시 시작돼 모든 서비스 연결이 함께 끊겼어요.',
+  '회원은 실패 없이 끝났지만 CPU에 여유가 있는데도 중앙값이 200ms예요.',
+  '크루는 중앙값 60ms로 빠르고, 느린 쪽 5%만 기준을 조금 넘었어요.',
+  'MySQL·Redis는 한가했어요. 병목은 DB가 아니라 앱 서버 쪽이에요.',
+]
 
 export const LOAD: LoadResult[] = [
   {
