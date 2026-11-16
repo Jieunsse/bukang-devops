@@ -10,6 +10,7 @@ import {
   LayoutHeaderCells,
   Link,
   PaperPlane,
+  Speedometer,
 } from '@gravity-ui/icons'
 
 export const NAV_ITEMS = [
@@ -23,5 +24,6 @@ export const NAV_ITEMS = [
   { href: '/analytics', label: '이용 통계', Icon: ChartLine },
   { href: '/db', label: 'DB 구조', Icon: Database },
   { href: '/architecture', label: '아키텍처', Icon: Cubes3 },
+  { href: '/performance', label: '성능 측정', Icon: Speedometer },
   { href: '/links', label: '링크 모음', Icon: Link },
 ] as const
