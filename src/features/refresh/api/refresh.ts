@@ -35,7 +35,8 @@ export async function refreshSnapshot(): Promise<RefreshResult> {
   if (!decision.allowed) {
     return { status: 'tooSoon', secondsAgo: decision.secondsAgo, snapshot: current }
   }
-  // 먼저 받아서 성공한 뒤에만 캐시를 바꾼다. Linear가 실패하면 지금 캐시가 그대로 남는다.
+  // 먼저 받아서 성공한 뒤에만 캐시를 바꾼다. 두 워크스페이스가 모두 실패하면 지금 캐시가 그대로 남는다.
+  // 한 곳만 실패하면 그 팀 몫은 직전 값으로 채운 값이 캐시에 들어간다.
   const fresh = await fetchFreshSnapshot()
   primeNextSnapshot(fresh)
   updateTag(SNAPSHOT_TAG)

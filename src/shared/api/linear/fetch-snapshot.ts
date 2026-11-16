@@ -2,6 +2,7 @@ import 'server-only'
 
 import { z } from 'zod'
 
+import type { Workspace } from '../../config/env'
 import {
   cyclesResponseSchema,
   ISSUE_FIELDS,
@@ -12,7 +13,6 @@ import {
 } from './schema'
 
 const ENDPOINT = 'https://api.linear.app/graphql'
-export const TEAM_KEY = 'BUK'
 const PAGE_SIZE = 100
 /** 100건 × 10쪽 = 1000건. 넘으면 잘린 목록 대신 오류를 낸다. */
 export const MAX_PAGES = 10
@@ -122,13 +122,12 @@ export async function paginate<T, N>(
   query: string,
   schema: z.ZodType<T>,
   pick: (data: T) => Page<N>,
+  teamKey: string,
 ): Promise<N[]> {
   const nodes: N[] = []
   let after: string | null = null
   for (let page = 0; page < MAX_PAGES; page++) {
-    const data: Page<N> = pick(
-      await request(fetchImpl, apiKey, query, { teamKey: TEAM_KEY, after }, schema),
-    )
+    const data: Page<N> = pick(await request(fetchImpl, apiKey, query, { teamKey, after }, schema))
     nodes.push(...data.nodes)
     if (!data.pageInfo.hasNextPage) return nodes
     after = data.pageInfo.endCursor
@@ -136,9 +135,9 @@ export async function paginate<T, N>(
   throw new LinearRequestError(`목록이 ${MAX_PAGES * PAGE_SIZE}건을 넘어 다 받지 못했어요.`)
 }
 
-/** BUK 팀의 끝나지 않은 티켓 전부와 사이클, 멤버, 진행 중인 프로젝트를 받는다. */
+/** 워크스페이스 팀의 끝나지 않은 티켓 전부와 사이클, 멤버, 진행 중인 프로젝트를 받는다. */
 export async function fetchSnapshot(
-  apiKey: string,
+  { apiKey, teamKey }: Workspace,
   fetchImpl: FetchImpl = fetch,
   now: Date = new Date(),
 ): Promise<Snapshot> {
@@ -148,6 +147,7 @@ export async function fetchSnapshot(
     ISSUES_QUERY,
     issuesResponseSchema,
     (d) => d.issues,
+    teamKey,
   )
   const cycles = await paginate(
     fetchImpl,
@@ -155,6 +155,7 @@ export async function fetchSnapshot(
     CYCLES_QUERY,
     cyclesResponseSchema,
     (d) => d.cycles,
+    teamKey,
   )
   const members = await paginate(
     fetchImpl,
@@ -162,13 +163,21 @@ export async function fetchSnapshot(
     MEMBERS_QUERY,
     membersResponseSchema,
     (d) => d.members,
+    teamKey,
   )
   const project = await request(
     fetchImpl,
     apiKey,
     PROJECT_QUERY,
-    { teamKey: TEAM_KEY },
+    { teamKey },
     projectResponseSchema,
   )
-  return { fetchedAt: now.toISOString(), issues, cycles, members, project }
+  return {
+    fetchedAt: now.toISOString(),
+    issues,
+    // 두 워크스페이스 사이클 번호가 겹쳐서 어느 팀 사이클인지 적어 둔다.
+    cycles: cycles.map((c) => ({ ...c, team: teamKey })),
+    members,
+    project,
+  }
 }
