@@ -1,0 +1,468 @@
+/* 크루런 리포트 아티팩트(종합점검·트랜잭션·카프카)와 같은 모양. 성능 측정·API 명세·DB 구조·이용 통계가 함께 쓴다. 값은 .claude/skills/team-compare-report/template.html에서 가져왔다.
+   색 변수는 이 페이지 안에만 둔다. 어두운 화면은 next-themes가 <html>에 붙이는 .dark로 바꾼다. */
+.report {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --fg: #1b1f27;
+  --muted: #626a78;
+  --line: #e0e3ea;
+  --accent: #2456d6;
+  --accent-bg: #eaf0ff;
+  --good: #1c7a46;
+  --good-bg: #e8f6ee;
+  --ok: #5a6170;
+  --ok-bg: #eef0f3;
+  --bad: #b4410f;
+  --bad-bg: #fff1e8;
+  --none: #9b1c2e;
+  --none-bg: #fdecef;
+
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  color: var(--fg);
+  font-size: 15px;
+  line-height: 1.65;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+:global(.dark) .report {
+  --bg: #111419;
+  --surface: #1a1e26;
+  --fg: #e6e9ef;
+  --muted: #9aa3b2;
+  --line: #2b313e;
+  --accent: #82a5ff;
+  --accent-bg: #1e2a47;
+  --good: #63d69a;
+  --good-bg: #163021;
+  --ok: #b3bac6;
+  --ok-bg: #252a34;
+  --bad: #ff9d68;
+  --bad-bg: #38221a;
+  --none: #ff8a9b;
+  --none-bg: #3a1a22;
+}
+
+/* 왼쪽 목차 */
+.toc {
+  grid-template-columns: minmax(0, 1fr);
+  position: sticky;
+  top: 16px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  display: grid;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 8px;
+}
+.group {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  padding: 10px 12px 4px;
+}
+.tocItem {
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--fg);
+  font-size: 14px;
+  text-align: left;
+  white-space: nowrap;
+}
+.tocItem:hover {
+  background: var(--bg);
+}
+.tocItem:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.tocItem small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.tocItem[aria-current='true'] {
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 700;
+}
+.tocItem[aria-current='true'] small {
+  color: var(--accent);
+}
+
+/* 목차 위 찾기 칸처럼 목차에 붙는 도구 */
+.tocTools {
+  padding: 4px 4px 8px;
+}
+.search {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--fg);
+}
+.search:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
+/* 본문 */
+.page {
+  max-width: 980px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  min-width: 0;
+}
+.title {
+  font-size: 28px;
+  line-height: 1.3;
+  font-weight: 700;
+  margin: 0;
+}
+.sub {
+  color: var(--muted);
+  margin: 6px 0 0;
+  font-size: 14px;
+}
+.h2 {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+
+.lead {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: grid;
+  gap: 6px;
+}
+.lead p {
+  margin: 0;
+}
+.lead strong {
+  color: var(--accent);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.fact {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+.fact dt,
+.factLabel {
+  font-size: 12px;
+  color: var(--muted);
+}
+.fact dd {
+  margin: 0;
+  font-weight: 500;
+}
+.big {
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+button.fact:hover {
+  border-color: var(--accent);
+}
+button.fact:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tbl {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.tbl table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 640px;
+  font-size: 14px;
+}
+.tbl th,
+.tbl td {
+  text-align: left;
+  vertical-align: top;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.tbl th {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+  background: var(--bg);
+  white-space: nowrap;
+}
+.tbl td b {
+  white-space: nowrap;
+}
+.tbl tr:last-child td {
+  border-bottom: 0;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.over {
+  font-weight: 700;
+  color: var(--bad);
+}
+.code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 13px;
+}
+
+.pts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+.pts li {
+  padding-left: 16px;
+  position: relative;
+}
+.pts li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.68em;
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--muted);
+}
+
+.grade {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.good {
+  background: var(--good-bg);
+  color: var(--good);
+}
+.ok {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+.weak {
+  background: var(--bad-bg);
+  color: var(--bad);
+}
+.none {
+  background: var(--none-bg);
+  color: var(--none);
+}
+
+.take {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  padding: 14px 18px;
+}
+.take b {
+  color: var(--accent);
+  display: block;
+}
+
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+.step {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 4px 16px;
+  align-items: start;
+}
+.step.urgent {
+  border-color: var(--bad);
+}
+.n {
+  grid-row: span 2;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.stepTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.step p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.foot {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0;
+}
+
+/* 폰 폭: 목차를 위쪽 가로 탭으로 */
+/* 칩처럼 옆으로 늘어놓는 작은 꼬리표 */
+.tag {
+  display: inline-block;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.muted {
+  color: var(--muted);
+}
+.bar {
+  background: var(--accent);
+}
+
+/* 이름-설명 짝을 줄마다 보여 주는 목록 (리포트의 checks) */
+.checks {
+  display: grid;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin: 0;
+}
+.check {
+  display: grid;
+  grid-template-columns: minmax(120px, 200px) minmax(0, 1fr);
+  gap: 4px 16px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--line);
+}
+.check:first-child {
+  border-top: 0;
+}
+.check dt {
+  font-weight: 500;
+}
+.check dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* 위쪽 버튼 줄 (기간 고르기 등) */
+.seg {
+  display: inline-flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 4px;
+}
+.seg a,
+.seg button {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--fg);
+}
+.seg [aria-current='page'],
+.seg [aria-pressed='true'] {
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .check {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .toc {
+    max-height: none;
+  }
+  .tocTools {
+    display: none;
+  }
+  .report {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .toc {
+    display: flex;
+    overflow-x: auto;
+    top: 0;
+    z-index: 5;
+    padding: 6px;
+  }
+  .group {
+    display: none;
+  }
+  .tocItem {
+    flex: none;
+  }
+  .tocItem small {
+    display: none;
+  }
+  .title {
+    font-size: 24px;
+  }
+}

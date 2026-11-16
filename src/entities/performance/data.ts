@@ -6,6 +6,9 @@
 
 export type ServiceId = 'board' | 'crew' | 'member' | 'inquiry'
 
+/** 리포트 아티팩트와 같은 등급 칩. good 통과, ok 조금 넘음, weak 크게 넘음, none 무너짐·측정 못 함 */
+export type Grade = 'good' | 'ok' | 'weak' | 'none'
+
 export type Endpoint = {
   path: string
   requests: number
@@ -26,6 +29,7 @@ export type LoadResult = {
   readP95: number
   writeP95: number
   verdict: string
+  grade: Grade
   endpoints: Endpoint[]
   notes: string[]
   /** 무너진 서비스만 있다. [시각, 일어난 일] */
@@ -41,6 +45,7 @@ export type SmokeResult = {
   p50?: number
   max?: number
   verdict: string
+  grade: Grade
 }
 
 export const MEASURED_AT = '2026-11-16'
@@ -73,6 +78,7 @@ export const LOAD: LoadResult[] = [
     readP95: 14890,
     writeP95: 15840,
     verdict: '47초 만에 무너져 자동 중단',
+    grade: 'none',
     endpoints: [
       {
         path: 'GET /board/posts (최신)',
@@ -182,6 +188,7 @@ export const LOAD: LoadResult[] = [
     readP95: 347,
     writeP95: 363,
     verdict: '조회 p95가 기준을 조금 넘음',
+    grade: 'ok',
     endpoints: [
       {
         path: 'GET /member/crews/me',
@@ -226,6 +233,7 @@ export const LOAD: LoadResult[] = [
     readP95: 962,
     writeP95: 930,
     verdict: '조회 p95가 기준을 크게 넘음',
+    grade: 'weak',
     endpoints: [
       {
         path: 'GET /member/members/me',
@@ -274,6 +282,7 @@ export const SMOKE: SmokeResult[] = [
     p50: 143,
     max: 1460,
     verdict: '통과',
+    grade: 'good',
   },
   {
     name: '크루',
@@ -284,6 +293,7 @@ export const SMOKE: SmokeResult[] = [
     p50: 39,
     max: 535,
     verdict: '통과',
+    grade: 'good',
   },
   {
     name: '회원',
@@ -294,8 +304,15 @@ export const SMOKE: SmokeResult[] = [
     p50: 57,
     max: 650,
     verdict: '조회 p95 기준 초과',
+    grade: 'ok',
   },
-  { name: '문의', requests: 439, failed: '439 (503)', verdict: '배포되지 않아 측정 못 함' },
+  {
+    name: '문의',
+    requests: 439,
+    failed: '439 (503)',
+    verdict: '배포되지 않아 측정 못 함',
+    grade: 'none',
+  },
 ]
 
 export const CLUES = [

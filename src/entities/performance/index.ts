@@ -6,6 +6,7 @@ export {
   MEASURED_AT,
   SMOKE,
   type Endpoint,
+  type Grade,
   type LoadResult,
   type ServiceId,
   type SmokeResult,

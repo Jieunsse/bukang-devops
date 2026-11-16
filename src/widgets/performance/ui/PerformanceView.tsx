@@ -1,7 +1,5 @@
 'use client'
 
-import { Card, Table } from '@heroui/react'
-import { cardVariants } from '@heroui/styles'
 import { useState } from 'react'
 
 import {
@@ -14,264 +12,294 @@ import {
   type LoadResult,
   type ServiceId,
 } from '@/entities/performance'
-import { CollapseButton, PageToolbar } from '@/shared/ui'
+import {
+  Fact,
+  GradeChip,
+  report as s,
+  ReportHeader,
+  ReportLayout,
+  type ReportTocGroup,
+} from '@/shared/ui'
 
 const READ_LIMIT = 300
 const WRITE_LIMIT = 1000
 const FAIL_LIMIT = 1
 
+type Section = 'overview' | ServiceId | 'clues' | 'conditions'
+
 export function formatMs(ms: number) {
   return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`
 }
 
-/** 기준을 넘은 값은 굵게만 표시한다. 상태 색은 기한에만 쓴다. */
-function Value({ text, over }: { text: string; over: boolean }) {
-  return <span className={over ? 'font-semibold' : 'text-muted'}>{text}</span>
+/** 기준을 넘은 값만 굵게 표시한다 */
+function Num({ text, over }: { text: string; over: boolean }) {
+  return <span className={over ? s.over : undefined}>{text}</span>
 }
 
-/** 운영 서버 부하 테스트 결과. 결론을 먼저 보고, 서비스 카드를 눌러 그 서비스의 상세를 본다. */
+const TOC: ReportTocGroup<Section>[] = [
+  { group: '요약', items: [{ id: 'overview', label: '개요' }] },
+  {
+    group: '서비스',
+    items: LOAD.map((r) => ({ id: r.id, label: r.name, note: formatMs(r.readP95) })),
+  },
+  {
+    group: '참고',
+    items: [
+      { id: 'clues', label: '개선 단서', note: `${CLUES.length}개` },
+      { id: 'conditions', label: '측정 조건' },
+    ],
+  },
+]
+
+/** 운영 서버 부하 테스트 결과. 크루런 리포트 아티팩트와 같은 모양(왼쪽 목차 + 본문)으로 보여 준다. */
 export function PerformanceView() {
-  const [selected, setSelected] = useState<ServiceId>('board')
-  const result = LOAD.find((r) => r.id === selected)
+  const [section, setSection] = useState<Section>('overview')
+  const service = LOAD.find((r) => r.id === section)
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageToolbar title="성능 측정" summary={`${MEASURED_AT} 운영 서버 · 목표 부하 5분`} />
-
-      <Card>
-        <Card.Header>
-          <Card.Title className="text-base font-semibold">결론</Card.Title>
-        </Card.Header>
-        <Card.Content>
-          <ul className="flex list-disc flex-col gap-1.5 pl-5">
-            {CONCLUSIONS.map((c) => (
-              <li key={c}>{c}</li>
-            ))}
-          </ul>
-        </Card.Content>
-      </Card>
-
-      <ServiceCards selected={selected} onSelect={setSelected} />
-
-      {result && (
-        <section aria-label={`${result.name} 상세`} className="flex flex-col gap-4">
-          <h3 className="text-base font-semibold">{result.name} 상세</h3>
-          <ServiceDetail result={result} />
-        </section>
-      )}
-
-      <Card>
-        <Card.Header>
-          <Card.Title className="text-base font-semibold">개선 논의 때 확인할 것</Card.Title>
-        </Card.Header>
-        <Card.Content>
-          <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
-            {CLUES.map((c) => (
-              <li key={c}>{c}</li>
-            ))}
-          </ul>
-        </Card.Content>
-      </Card>
-
-      <Folded title="측정 조건" hint={`대상·기준 등 ${CONDITIONS.length}가지`}>
-        <Card>
-          <Card.Content>
-            <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-[8rem_1fr]">
-              {CONDITIONS.map(([k, v]) => (
-                <div key={k} className="contents">
-                  <dt className="text-muted">{k}</dt>
-                  <dd>{v}</dd>
-                </div>
-              ))}
-            </dl>
-          </Card.Content>
-        </Card>
-      </Folded>
-
-      <Folded title="스크립트 확인 (smoke)" hint="초당 1번 30초, 성능 판단에는 쓰지 않아요">
-        <SmokeTable />
-      </Folded>
-    </div>
+    <ReportLayout label="성능 측정 목차" toc={TOC} current={section} onSelect={setSection}>
+      {section === 'overview' && <Overview onSelect={setSection} />}
+      {service && <ServicePage result={service} />}
+      {section === 'clues' && <Clues />}
+      {section === 'conditions' && <Conditions />}
+    </ReportLayout>
   )
 }
 
-function Folded({
-  title,
-  hint,
-  children,
-}: {
-  title: string
-  hint: string
-  children: React.ReactNode
-}) {
-  const [isOpen, setOpen] = useState(false)
-  return (
-    <section aria-label={title} className="flex flex-col gap-2">
-      <h3>
-        <CollapseButton isOpen={isOpen} onToggle={() => setOpen(!isOpen)}>
-          {title}
-          <span className="text-sm font-normal text-muted">{hint}</span>
-        </CollapseButton>
-      </h3>
-      {isOpen && children}
-    </section>
-  )
-}
-
-/** 서비스마다 조회 p95를 크게 보여 준다. 누르면 아래 상세가 그 서비스로 바뀐다. */
-function ServiceCards({
-  selected,
-  onSelect,
-}: {
-  selected: ServiceId
-  onSelect: (id: ServiceId) => void
-}) {
-  const card = cardVariants()
-  return (
-    <div role="group" aria-label="서비스별 결과" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      {LOAD.map((r) => {
-        const isSelected = r.id === selected
-        return (
-          <button
-            key={r.id}
-            type="button"
-            aria-pressed={isSelected}
-            onClick={() => onSelect(r.id)}
-            className={card.base({
-              className: `gap-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset ${isSelected ? 'ring-2 ring-accent ring-inset' : 'hover:bg-default'}`,
-            })}
-          >
-            <span className="font-semibold">{r.name}</span>
-            <span className="text-sm text-muted">조회 p95</span>
-            <span
-              className={`text-3xl tabular-nums ${r.readP95 > READ_LIMIT ? 'font-semibold' : ''}`}
-            >
-              {formatMs(r.readP95)}
-            </span>
-            <span className="text-sm text-muted tabular-nums">
-              실패 {r.failRate}% · 초당 {r.targetRps} → {r.actualRps}번
-            </span>
-            <span className="mt-1 text-sm">{r.verdict}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-function ServiceDetail({ result }: { result: LoadResult }) {
-  const hasP99 = result.endpoints.some((e) => e.p99 !== undefined)
+function Overview({ onSelect }: { onSelect: (id: Section) => void }) {
   return (
     <>
-      <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
-        {result.notes.map((n) => (
-          <li key={n}>{n}</li>
+      <ReportHeader
+        title={'성능 측정'}
+        sub={<>{MEASURED_AT} 운영 서버 · 회원 · 크루 · 게시판 · 목표 부하 5분</>}
+      />
+      <div className={s.lead}>
+        {CONCLUSIONS.map((c) => (
+          <p key={c}>{c}</p>
         ))}
-      </ul>
-      {result.timeline && (
-        <Table>
-          <Table.ScrollContainer>
-            <Table.Content aria-label={`${result.name} 시간 순서`} className="min-w-[36rem]">
-              <Table.Header>
-                <Table.Column isRowHeader className="w-32">
-                  시각
-                </Table.Column>
-                <Table.Column>일어난 일</Table.Column>
-              </Table.Header>
-              <Table.Body>
-                {result.timeline.map(([t, what]) => (
-                  <Table.Row key={t} id={t}>
-                    <Table.Cell className="text-muted tabular-nums">{t}</Table.Cell>
-                    <Table.Cell>{what}</Table.Cell>
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table.Content>
-          </Table.ScrollContainer>
-        </Table>
-      )}
-      <Table>
-        <Table.ScrollContainer>
-          <Table.Content aria-label={`${result.name} 주소별 응답 시간`} className="min-w-[44rem]">
-            <Table.Header>
-              <Table.Column isRowHeader>주소</Table.Column>
-              <Table.Column>요청</Table.Column>
-              <Table.Column>실패율</Table.Column>
-              <Table.Column>중앙값</Table.Column>
-              <Table.Column>p95</Table.Column>
-              {hasP99 ? <Table.Column>p99</Table.Column> : null}
-              <Table.Column>최대</Table.Column>
-            </Table.Header>
-            <Table.Body>
-              {result.endpoints.map((e) => {
-                const limit = e.path.startsWith('GET') ? READ_LIMIT : WRITE_LIMIT
-                return (
-                  <Table.Row key={e.path} id={e.path}>
-                    <Table.Cell className="text-sm break-all">{e.path}</Table.Cell>
-                    <Table.Cell className="tabular-nums">{e.requests.toLocaleString()}</Table.Cell>
-                    <Table.Cell className="tabular-nums">
-                      <Value text={`${e.failRate}%`} over={e.failRate >= FAIL_LIMIT} />
-                    </Table.Cell>
-                    <Table.Cell className="tabular-nums">{formatMs(e.p50)}</Table.Cell>
-                    <Table.Cell className="tabular-nums">
-                      <Value text={formatMs(e.p95)} over={e.p95 > limit} />
-                    </Table.Cell>
-                    {hasP99 ? (
-                      <Table.Cell className="tabular-nums">
-                        {e.p99 === undefined ? '-' : formatMs(e.p99)}
-                      </Table.Cell>
-                    ) : null}
-                    <Table.Cell className="tabular-nums">{formatMs(e.max)}</Table.Cell>
-                  </Table.Row>
-                )
-              })}
-            </Table.Body>
-          </Table.Content>
-        </Table.ScrollContainer>
-      </Table>
+      </div>
+      <div role="group" aria-label="서비스별 결과" className={s.facts}>
+        {LOAD.map((r) => (
+          <button key={r.id} type="button" className={s.fact} onClick={() => onSelect(r.id)}>
+            <span className={s.factLabel}>{r.name} 조회 p95</span>
+            <span className={s.big}>{formatMs(r.readP95)}</span>
+            <span>
+              <GradeChip grade={r.grade}>{r.verdict}</GradeChip>
+            </span>
+          </button>
+        ))}
+      </div>
+      <section>
+        <h3 className={s.h2}>한눈에 보기</h3>
+        <div className={s.tbl}>
+          <table aria-label="서비스별 결과 표">
+            <thead>
+              <tr>
+                <th>서비스</th>
+                <th>판정</th>
+                <th>초당 반복 (목표 → 실제)</th>
+                <th>요청</th>
+                <th>실패율</th>
+                <th>조회 p95</th>
+                <th>쓰기 p95</th>
+              </tr>
+            </thead>
+            <tbody>
+              {LOAD.map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    <b>{r.name}</b>
+                  </td>
+                  <td>
+                    <GradeChip grade={r.grade}>{r.verdict}</GradeChip>
+                  </td>
+                  <td className={s.num}>
+                    {r.targetRps} → {r.actualRps}
+                  </td>
+                  <td className={s.num}>{r.requests.toLocaleString()}</td>
+                  <td className={s.num}>
+                    <Num text={`${r.failRate}%`} over={r.failRate >= FAIL_LIMIT} />
+                  </td>
+                  <td className={s.num}>
+                    <Num text={formatMs(r.readP95)} over={r.readP95 > READ_LIMIT} />
+                  </td>
+                  <td className={s.num}>
+                    <Num text={formatMs(r.writeP95)} over={r.writeP95 > WRITE_LIMIT} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <div className={s.take}>
+        <b>통과 기준</b>
+        조회 p95 300ms, 쓰기 p95 1초, 실패율 1% 미만이에요. 기준을 넘은 숫자는 굵게 표시했어요.
+      </div>
     </>
   )
 }
 
-function SmokeTable() {
+function ServicePage({ result }: { result: LoadResult }) {
+  const hasP99 = result.endpoints.some((e) => e.p99 !== undefined)
   return (
-    <Table>
-      <Table.ScrollContainer>
-        <Table.Content aria-label="스크립트 확인 결과" className="min-w-[40rem]">
-          <Table.Header>
-            <Table.Column isRowHeader>서비스</Table.Column>
-            <Table.Column>요청</Table.Column>
-            <Table.Column>실패</Table.Column>
-            <Table.Column>조회 p95</Table.Column>
-            <Table.Column>쓰기 p95</Table.Column>
-            <Table.Column>중앙값</Table.Column>
-            <Table.Column>판정</Table.Column>
-          </Table.Header>
-          <Table.Body>
-            {SMOKE.map((s) => (
-              <Table.Row key={s.name} id={s.name}>
-                <Table.Cell className="font-medium">{s.name}</Table.Cell>
-                <Table.Cell className="tabular-nums">{s.requests}</Table.Cell>
-                <Table.Cell className="tabular-nums">{s.failed}</Table.Cell>
-                <Table.Cell className="tabular-nums">
-                  {s.readP95 === undefined ? (
-                    '-'
-                  ) : (
-                    <Value text={formatMs(s.readP95)} over={s.readP95 > READ_LIMIT} />
-                  )}
-                </Table.Cell>
-                <Table.Cell className="tabular-nums">
-                  {s.writeP95 === undefined ? '-' : formatMs(s.writeP95)}
-                </Table.Cell>
-                <Table.Cell className="tabular-nums">
-                  {s.p50 === undefined ? '-' : formatMs(s.p50)}
-                </Table.Cell>
-                <Table.Cell>{s.verdict}</Table.Cell>
-              </Table.Row>
+    <>
+      <ReportHeader
+        title={result.name}
+        sub={
+          <>
+            <GradeChip grade={result.grade}>{result.verdict}</GradeChip> · 목표 부하 5분
+          </>
+        }
+      />
+      <dl className={s.facts}>
+        <Fact label="조회 p95" value={formatMs(result.readP95)} />
+        <Fact label="쓰기 p95" value={formatMs(result.writeP95)} />
+        <Fact label="실패율" value={`${result.failRate}%`} />
+        <Fact label="초당 반복 (목표 → 실제)" value={`${result.targetRps} → ${result.actualRps}`} />
+      </dl>
+      <div className={s.lead}>
+        <ul className={s.pts}>
+          {result.notes.map((n) => (
+            <li key={n}>{n}</li>
+          ))}
+        </ul>
+      </div>
+      {result.timeline && (
+        <section>
+          <h3 className={s.h2}>무너진 순서</h3>
+          <ol className={s.steps} aria-label={`${result.name} 시간 순서`}>
+            {result.timeline.map(([t, what], i) => (
+              <li key={t} className={s.step}>
+                <span className={s.n}>{i + 1}</span>
+                <h4 className={s.stepTitle}>{t}</h4>
+                <p>{what}</p>
+              </li>
             ))}
-          </Table.Body>
-        </Table.Content>
-      </Table.ScrollContainer>
-    </Table>
+          </ol>
+        </section>
+      )}
+      <section>
+        <h3 className={s.h2}>주소별 응답 시간</h3>
+        <div className={s.tbl}>
+          <table aria-label={`${result.name} 주소별 응답 시간`}>
+            <thead>
+              <tr>
+                <th>주소</th>
+                <th>요청</th>
+                <th>실패율</th>
+                <th>중앙값</th>
+                <th>p95</th>
+                {hasP99 && <th>p99</th>}
+                <th>최대</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.endpoints.map((e) => {
+                const limit = e.path.startsWith('GET') ? READ_LIMIT : WRITE_LIMIT
+                return (
+                  <tr key={e.path}>
+                    <td className={s.code}>{e.path}</td>
+                    <td className={s.num}>{e.requests.toLocaleString()}</td>
+                    <td className={s.num}>
+                      <Num text={`${e.failRate}%`} over={e.failRate >= FAIL_LIMIT} />
+                    </td>
+                    <td className={s.num}>{formatMs(e.p50)}</td>
+                    <td className={s.num}>
+                      <Num text={formatMs(e.p95)} over={e.p95 > limit} />
+                    </td>
+                    {hasP99 && (
+                      <td className={s.num}>{e.p99 === undefined ? '-' : formatMs(e.p99)}</td>
+                    )}
+                    <td className={s.num}>{formatMs(e.max)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </>
+  )
+}
+
+function Clues() {
+  return (
+    <>
+      <ReportHeader
+        title={'개선 단서'}
+        sub={<>기록에서 나온 단서예요. 원인은 아직 단정하지 않았어요.</>}
+      />
+      <ol className={s.steps} aria-label="개선 단서">
+        {CLUES.map((c, i) => {
+          const [head, ...rest] = c.split(': ')
+          return (
+            <li key={c} className={s.step}>
+              <span className={s.n}>{i + 1}</span>
+              <h4 className={s.stepTitle}>{rest.length ? head : '앱 서버'}</h4>
+              <p>{rest.length ? rest.join(': ') : c}</p>
+            </li>
+          )
+        })}
+      </ol>
+    </>
+  )
+}
+
+function Conditions() {
+  return (
+    <>
+      <ReportHeader title={'측정 조건'} sub={<>{MEASURED_AT} 운영 서버에서 잰 조건이에요.</>} />
+      <dl className={s.facts}>
+        {CONDITIONS.map(([k, v]) => (
+          <div key={k} className={s.fact}>
+            <dt>{k}</dt>
+            <dd>{v}</dd>
+          </div>
+        ))}
+      </dl>
+      <section>
+        <h3 className={s.h2}>스크립트 확인 (smoke, 초당 1번 30초)</h3>
+        <div className={s.tbl}>
+          <table aria-label="스크립트 확인 결과">
+            <thead>
+              <tr>
+                <th>서비스</th>
+                <th>판정</th>
+                <th>요청</th>
+                <th>실패</th>
+                <th>조회 p95</th>
+                <th>쓰기 p95</th>
+                <th>중앙값</th>
+              </tr>
+            </thead>
+            <tbody>
+              {SMOKE.map((r) => (
+                <tr key={r.name}>
+                  <td>
+                    <b>{r.name}</b>
+                  </td>
+                  <td>
+                    <GradeChip grade={r.grade}>{r.verdict}</GradeChip>
+                  </td>
+                  <td className={s.num}>{r.requests}</td>
+                  <td className={s.num}>{r.failed}</td>
+                  <td className={s.num}>
+                    {r.readP95 === undefined ? (
+                      '-'
+                    ) : (
+                      <Num text={formatMs(r.readP95)} over={r.readP95 > READ_LIMIT} />
+                    )}
+                  </td>
+                  <td className={s.num}>{r.writeP95 === undefined ? '-' : formatMs(r.writeP95)}</td>
+                  <td className={s.num}>{r.p50 === undefined ? '-' : formatMs(r.p50)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className={s.foot}>요청 수가 적어서 성능을 판단하는 값으로 쓰지 않아요.</p>
+      </section>
+    </>
   )
 }
