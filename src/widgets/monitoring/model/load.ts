@@ -5,9 +5,11 @@ import {
   queryPrometheusRange,
   readGrafanaConfig,
   type GrafanaConfig,
+  type Sample,
 } from '@/shared/api/grafana/server'
 import type { Series } from '@/shared/lib/chart'
 
+import { BRIEF_FORMAT } from './format'
 import { buildBrief, nameOf, type BriefCard, type BriefKey } from './brief'
 import {
   toServiceRows,
@@ -27,6 +29,11 @@ const QUERIES = {
   errors: 'sum by (job) (rate(http_server_requests_seconds_count{status=~"5.."}[5m]))',
   p95: 'histogram_quantile(0.95, sum by (job, le) (rate(http_server_requests_seconds_bucket[5m])))',
   heap: 'sum by (job) (jvm_memory_used_bytes{area="heap"})',
+  // 서버 자원. 그라파나 서버 대시보드의 메모리·디스크·스왑 사용률과 같은 식이다.
+  // instance로 묶어 job 라벨을 지운다(job이 두 서버 모두 node라 이름이 겹친다). 디스크가 여러 개면 가장 찬 것
+  memory: 'max by (instance) (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)',
+  disk: 'max by (instance) (1 - node_filesystem_avail_bytes{mountpoint="/",fstype!="rootfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!="rootfs"})',
+  swap: 'max by (instance) (1 - node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes)',
 } as const
 
 /** 추이 그래프는 최근 1시간을 1분 간격으로 받는다 */
@@ -53,6 +60,13 @@ const BRIEF_QUERIES: Record<BriefKey, string> = {
   lock: 'rate(mysql_global_status_innodb_row_lock_waits[2m])',
 }
 
+export type ServerResource = {
+  name: string
+  memory: number | null
+  disk: number | null
+  swap: number | null
+}
+
 export type MonitoringData =
   | { status: 'notConfigured' }
   | { status: 'failed' }
@@ -62,6 +76,8 @@ export type MonitoringData =
       services: ServiceRow[]
       trends: Trends
       brief: BriefCard[]
+      /** 서버별 메모리·디스크·스왑 사용률(0~1). 못 받으면 null */
+      resources: ServerResource[]
       partial: boolean
       fetchedAt: string
     }
@@ -72,12 +88,15 @@ export async function loadMonitoring(
   const config = readGrafanaConfig(env)
   if (!config) return { status: 'notConfigured' }
 
-  const [up, rps, errors, p95, heap] = await Promise.all([
+  const [up, rps, errors, p95, heap, memory, disk, swap] = await Promise.all([
     settle(config, 'up'),
     settle(config, 'rps'),
     settle(config, 'errors'),
     settle(config, 'p95'),
     settle(config, 'heap'),
+    settle(config, 'memory'),
+    settle(config, 'disk'),
+    settle(config, 'swap'),
   ])
   // 끝 시각을 1분 단위로 맞춰야 1분 동안 질의 주소가 같아 fetch 캐시를 다시 쓴다
   const end = Math.floor(Date.now() / 1000 / TREND_STEP_SECONDS) * TREND_STEP_SECONDS
@@ -94,12 +113,7 @@ export async function loadMonitoring(
       BriefKey,
       Series[] | null
     >,
-    {
-      reqps: (v) => v.toFixed(v < 10 ? 2 : 1),
-      percentunit: (v) => `${Math.round(v * 100)}%`,
-      s: (v) => (v < 1 ? `${Math.round(v * 1000)}ms` : `${v.toFixed(1)}초`),
-      short: (v) => (Number.isInteger(v) ? String(v) : v.toFixed(v < 10 ? 2 : 1)),
-    },
+    BRIEF_FORMAT,
   )
   if (!up) return { status: 'failed' }
   const targets = toTargets(up)
@@ -114,6 +128,7 @@ export async function loadMonitoring(
       heap: heapTrend ?? null,
     },
     brief,
+    resources: toResources({ memory, disk, swap }),
     partial: [rps, errors, p95, heap, errorsTrend, rpsTrend, p95Trend, heapTrend].some(
       (r) => r === null,
     ),
@@ -163,4 +178,20 @@ async function settleBrief(
     )
     return null
   }
+}
+
+/** 서버(instance)별로 메모리·디스크·스왑 사용률을 묶는다. 스왑이 없는 서버는 0/0이라 null이다 */
+export function toResources(
+  m: Record<'memory' | 'disk' | 'swap', Sample[] | null>,
+): ServerResource[] {
+  const by = new Map<string, ServerResource>()
+  for (const key of ['memory', 'disk', 'swap'] as const) {
+    for (const s of m[key] ?? []) {
+      const name = nameOf(s.labels)
+      const row = by.get(name) ?? { name, memory: null, disk: null, swap: null }
+      row[key] = Number.isFinite(s.value) ? s.value : null
+      by.set(name, row)
+    }
+  }
+  return [...by.values()].sort((a, b) => a.name.localeCompare(b.name, 'ko'))
 }

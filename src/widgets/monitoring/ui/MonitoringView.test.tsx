@@ -19,6 +19,7 @@ describe('모니터링', () => {
           partial: true,
           trends: { errors: null, rps: null, p95: null, heap: null },
           brief: [],
+          resources: [],
           targets: [
             { job: 'order-service', name: '주문', instance: 'a', up: false },
             { job: 'member-service', name: '회원', instance: 'b', up: true },
@@ -78,6 +79,7 @@ describe('모니터링', () => {
             heap: null,
           },
           brief: [],
+          resources: [],
         }}
       />,
     )

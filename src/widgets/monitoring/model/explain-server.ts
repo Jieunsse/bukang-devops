@@ -19,6 +19,13 @@ import { loadMonitoring } from './load'
 export const EXPLAIN_TAG = 'monitoring-explain'
 /** 새로고침은 서버 전체에서 1분에 한 번만 AI를 부른다 */
 const ONE_MINUTE_MS = 60_000
+/**
+ * 리포트는 여섯 칸이라 길고, 원인 추정에 지표끼리 비교가 필요하다.
+ * 비용: Opus 5.5 출력 100만 토큰당 20달러. 한 번에 출력 약 2천 토큰이면 약 0.04달러이고, 생각 토큰만큼 더 든다.
+ * 새로고침이 서버 전체 1분에 한 번이라 최악이어도 시간당 60번이다.
+ */
+// Opus 5.5는 생각을 끌 수 없고 생각 토큰도 출력 한도에 들어가서 넉넉히 잡는다. 길게 쓰므로 시간 제한도 늘린다
+const REPORT_OPTIONS = { maxTokens: 8000, effort: 'medium', timeoutMs: 90_000 } as const
 
 export type Explanation = ExplanationText & { createdAt: string }
 export type ExplanationResult =
@@ -35,11 +42,16 @@ async function generate(env: Env): Promise<Explanation> {
   if (!config) throw new ExplainFailed('키 없음')
   const data = await loadMonitoring(env)
   if (data.status !== 'ok') throw new ExplainFailed('지표 없음')
-  const result = await askClaude(createClaudeClient(config), config, {
-    system: EXPLAIN_SYSTEM,
-    user: JSON.stringify(buildExplainInput(data)),
-    schema: ExplanationSchema,
-  })
+  const result = await askClaude(
+    createClaudeClient(config),
+    config,
+    {
+      system: EXPLAIN_SYSTEM,
+      user: JSON.stringify(buildExplainInput(data)),
+      schema: ExplanationSchema,
+    },
+    REPORT_OPTIONS,
+  )
   if (!result.ok) throw new ExplainFailed(result.reason)
   return { ...result.value, createdAt: new Date().toISOString() }
 }
@@ -79,7 +91,8 @@ const readCache = unstable_cache(
     primed = null
     return next ?? attempt(null)
   },
-  ['monitoring-explain-v2'],
+  // 응답 모양(여섯 칸 리포트)이 바뀌면 키를 올려 옛 캐시 값을 읽지 않게 한다
+  ['monitoring-explain-v3'],
   // revalidate를 두지 않는다: 새로고침(updateTag) 전까지 같은 해석을 쓴다
   { tags: [EXPLAIN_TAG] },
 )
