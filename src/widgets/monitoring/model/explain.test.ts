@@ -163,4 +163,37 @@ describe('해석 캐시', () => {
     expect(await refreshMonitoring(env)).toMatchObject({ status: 'refreshed' })
     expect(await getExplanation(env)).toMatchObject({ explanation: { status: '다음 해석' } })
   })
+
+  it('새로고침이 실패한 직후 다시 눌러도 1분 동안은 AI를 부르지 않는다(실패해도 시도 시각을 남긴다)', async () => {
+    askClaude
+      .mockResolvedValueOnce(answer('첫 해석'))
+      .mockResolvedValue({ ok: false, reason: 'invalid' })
+    await getExplanation(env)
+    vi.setSystemTime(new Date('2026-11-18T10:01:00Z'))
+    expect(await refreshMonitoring(env)).toMatchObject({ status: 'failed' })
+    vi.setSystemTime(new Date('2026-11-18T10:01:10Z'))
+    expect(await refreshMonitoring(env)).toMatchObject({ status: 'tooSoon', secondsAgo: 10 })
+    expect(askClaude).toHaveBeenCalledTimes(2)
+    // 직전 해석은 그대로다
+    expect(await getExplanation(env)).toMatchObject({ explanation: { status: '첫 해석' } })
+  })
+
+  it('새로고침이 동시에 여러 번 와도 AI는 한 번만 부른다', async () => {
+    askClaude.mockResolvedValueOnce(answer('첫 해석')).mockResolvedValue(answer('새 해석'))
+    await getExplanation(env)
+    vi.setSystemTime(new Date('2026-11-18T10:01:00Z'))
+    const results = await Promise.all([
+      refreshMonitoring(env),
+      refreshMonitoring(env),
+      refreshMonitoring(env),
+    ])
+    expect(askClaude).toHaveBeenCalledTimes(2)
+    expect(results.filter((r) => r.status === 'refreshed')).toHaveLength(1)
+  })
+
+  it('캐시가 빈 상태에서 동시에 여러 명이 들어와도 AI는 한 번만 부른다', async () => {
+    askClaude.mockResolvedValue(answer('첫 해석'))
+    await Promise.all([getExplanation(env), getExplanation(env), getExplanation(env)])
+    expect(askClaude).toHaveBeenCalledTimes(1)
+  })
 })

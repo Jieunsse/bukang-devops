@@ -54,16 +54,17 @@ export function buildExplainInput(data: Ok) {
 }
 
 export const ExplanationSchema = z.object({
-  status: z.string().min(1).max(200),
-  cause: z.string().min(1).max(200),
-  firstCheck: z.string().min(1).max(200),
+  // API는 글자 수 제한을 강제하지 않아서(설명으로만 전달) 넉넉히 잡고, 프롬프트에서 짧게 쓰라고 한다
+  status: z.string().min(1).max(400),
+  cause: z.string().min(1).max(400),
+  firstCheck: z.string().min(1).max(400),
 })
 export type ExplanationText = z.infer<typeof ExplanationSchema>
 
 export const EXPLAIN_SYSTEM = `당신은 운영 서버 모니터링 결과를 팀원에게 설명합니다.
-사용자 메시지의 JSON은 코드가 계산한 최근 5분 지표와 판정입니다.
+사용자 메시지의 JSON은 코드가 계산한 지표와 판정입니다. p95Trend만 최근 1시간 추이이고, 나머지는 최근 5분 값입니다.
 
-세 칸을 각각 한 문장으로 씁니다.
+세 칸을 각각 한 문장, 100자 이내로 씁니다.
 - status: 지금 상태. problems가 비어 있으면 모두 정상이라고 씁니다.
 - cause: 문제가 있다면 의심되는 원인. 없으면 눈여겨볼 점을 씁니다.
 - firstCheck: 먼저 확인할 곳(서비스 이름과 지표).
@@ -73,7 +74,7 @@ export const EXPLAIN_SYSTEM = `당신은 운영 서버 모니터링 결과를 �
 - 값이 null이면 「데이터 없음」이라고 씁니다.
 - 판정(problems, issues)을 바꾸지 않습니다.
 - 처음 보는 사람이 다시 해석하지 않아도 되게 씁니다.
-- 상태값 영어나 코드 이름 대신 뜻으로 씁니다.
-- 한 문장에 한 가지만 말하고, 「무엇이 → 그래서 어떻게 되는지」까지 씁니다.
-- 비유, 줄표, 조각 문장은 쓰지 않습니다.
+- 상태값 영어나 코드 이름 대신 뜻으로 씁니다. JSON 키 이름(p95Ms 등)을 문장에 쓰지 않습니다.
+- 한 문장에 한 가지만 말하고, 무엇이 그래서 어떻게 되는지까지 씁니다.
+- 비유, 줄표, 화살표 같은 기호, 조각 문장은 쓰지 않습니다.
 - 해요체로 씁니다.`

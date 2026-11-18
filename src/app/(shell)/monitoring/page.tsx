@@ -20,14 +20,18 @@ export default async function MonitoringPage() {
         .then(toDashboardLinks)
         .catch(() => [])
     : []
+  const data = await loadMonitoring()
   return (
     <MonitoringView
-      data={await loadMonitoring()}
+      data={data}
       tabs={links.length ? <MonitoringTabs links={links} current={null} /> : undefined}
+      // 지표를 못 받으면 해석도 만들지 않는다(실패가 해석 캐시에 남지 않게)
       explain={
-        <Suspense fallback={<p className="text-sm text-muted">AI 해석을 불러오는 중이에요</p>}>
-          <ExplainPanel />
-        </Suspense>
+        data.status === 'ok' ? (
+          <Suspense fallback={<p className="text-sm text-muted">AI 해석을 불러오는 중이에요</p>}>
+            <ExplainPanel />
+          </Suspense>
+        ) : undefined
       }
     />
   )
