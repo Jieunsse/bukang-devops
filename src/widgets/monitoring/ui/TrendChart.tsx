@@ -45,8 +45,8 @@ export function TrendChart({
   if (!first || !last || values.length === 0) {
     return (
       <figure className="m-0">
-        <figcaption className="text-sm font-medium">{title}</figcaption>
-        <p className="py-8 text-center text-sm text-muted">최근 1시간 기록이 없어요</p>
+        <figcaption className="text-base font-medium">{title}</figcaption>
+        <p className="py-8 text-center text-base text-muted">최근 1시간 기록이 없어요</p>
       </figure>
     )
   }
@@ -98,10 +98,10 @@ export function TrendChart({
     <figure className="m-0 flex flex-col gap-2">
       <figcaption className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-col gap-1">
-          <span className={hero ? 'text-sm text-muted' : 'text-sm font-medium'}>{title}</span>
+          <span className={hero ? 'text-base text-muted' : 'text-base font-medium'}>{title}</span>
           {hero && latest !== null && (
             <div className="flex items-center gap-2">
-              <span className="text-4xl font-bold tracking-tight tabular-nums">
+              <span className="text-[32px] leading-10 font-bold tracking-tight tabular-nums">
                 {format(latest)}
               </span>
               {delta !== null && (
@@ -118,7 +118,7 @@ export function TrendChart({
           )}
         </div>
         {!hero && (
-          <span className="text-sm text-muted tabular-nums">
+          <span className="text-base text-muted tabular-nums">
             {latest === null ? '-' : `지금 ${format(latest)}`}
           </span>
         )}
@@ -202,7 +202,7 @@ export function TrendChart({
                 <text
                   x={tx}
                   y={H - 7}
-                  fontSize="10"
+                  fontSize="12"
                   textAnchor={anchor}
                   fill={active ? 'var(--accent)' : 'var(--muted)'}
                   fontWeight={active ? 600 : 400}

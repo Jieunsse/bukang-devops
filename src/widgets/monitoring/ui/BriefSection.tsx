@@ -22,13 +22,13 @@ export function BriefSection({ cards }: { cards: BriefCard[] }) {
               {c.series.length ? (
                 <MultiLineChart title={c.title} series={c.series} format={FORMAT[c.unit]} />
               ) : (
-                <p className="m-0 py-10 text-center text-sm text-muted">그래프가 없어요</p>
+                <p className="m-0 py-10 text-center text-base text-muted">그래프가 없어요</p>
               )}
               <h4 className="m-0 text-base font-bold">
                 {NUMBERS[i]} {c.title}
-                {c.alert && <span className="ml-2 text-sm text-danger">· 주의</span>}
+                {c.alert && <span className="ml-2 text-base text-danger">· 주의</span>}
               </h4>
-              <p className={`m-0 text-sm ${c.alert ? 'font-semibold' : 'text-muted'}`}>
+              <p className={`m-0 text-base ${c.alert ? 'font-semibold' : 'text-muted'}`}>
                 {c.caption}
               </p>
             </section>

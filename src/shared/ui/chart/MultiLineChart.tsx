@@ -112,7 +112,7 @@ export function MultiLineChart({
               <text
                 x={PAD.left - 6}
                 y={y(v) + 3}
-                fontSize="10"
+                fontSize="12"
                 textAnchor="end"
                 fill="var(--muted)"
               >
@@ -125,7 +125,7 @@ export function MultiLineChart({
               key={i}
               x={x(t)}
               y={H - 6}
-              fontSize="10"
+              fontSize="12"
               textAnchor={i === 0 ? 'start' : i === TICKS - 1 ? 'end' : 'middle'}
               fill="var(--muted)"
             >
