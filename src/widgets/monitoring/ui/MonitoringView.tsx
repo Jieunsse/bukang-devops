@@ -76,13 +76,6 @@ function Dashboard({
     data.trends.errors && data.trends.rps
       ? totalErrorTrend(data.trends.errors, data.trends.rps)
       : null
-  const verdict = verdictOf(data.services, data.targets)
-  const problems = verdict.problemServices
-  const alerts = data.brief.map((c) => c.alert).filter((a): a is string => a !== null)
-  // 요청 수를 하나도 못 받았으면 0이 아니라 「-」로 보인다
-  const rpsKnown = data.services.filter((r) => r.rps !== null)
-  const totalRps = rpsKnown.length ? rpsKnown.reduce((sum, r) => sum + (r.rps ?? 0), 0) : null
-
   // 영역이 몇 개 안 돼서 왼쪽 목차 없이 한 줄로 쌓는다
   return (
     <div className={`${s.report} ${s.solo}`}>
@@ -90,48 +83,7 @@ function Dashboard({
         {tabs}
         <ReportHeader title="상세 지표" sub={`${timeText(data.fetchedAt)} 기준 · 1분마다 갱신`} />
 
-        <div id="monitoring-summary" className="grid scroll-mt-4 grid-cols-2 gap-3 lg:grid-cols-4">
-          <section aria-label="판정" className={`${s.fact} col-span-2 gap-3 p-5 lg:row-span-2`}>
-            <span className="text-sm text-muted">판정</span>
-            {problems.length ? (
-              <p className="m-0 text-3xl font-bold text-danger">주의 · 문제 {problems.length}곳</p>
-            ) : (
-              <p className="m-0 text-3xl font-bold">
-                {data.partial ? '일부 지표 모름' : '모두 정상'}
-              </p>
-            )}
-            {problems.length > 0 && (
-              <p className="m-0 font-medium text-danger">{problems.join(', ')}</p>
-            )}
-            {alerts.length > 0 && (
-              <ul
-                className="m-0 flex list-none flex-col gap-1 p-0 text-sm"
-                aria-label="최근 1시간 주의"
-              >
-                {alerts.map((a, i) => (
-                  <li key={i}>
-                    <strong className="text-danger">주의</strong> {a}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-          <Tile label="전체 서버 오류 비율" danger={isHighError(verdict.totalErrorRatio)}>
-            {percentText(verdict.totalErrorRatio)}
-          </Tile>
-          <Tile
-            label={verdict.slowest ? `가장 느린 곳 · ${verdict.slowest.name}` : '가장 느린 곳'}
-            danger={isSlow(verdict.slowest?.p95Seconds ?? null)}
-          >
-            {msText(verdict.slowest?.p95Seconds ?? null)}
-          </Tile>
-          <Tile label="응답 없는 대상" danger={verdict.downCount > 0}>
-            {verdict.downCount}곳
-          </Tile>
-          <Tile label="전체 초당 요청" danger={false}>
-            {rpsText(totalRps)}
-          </Tile>
-        </div>
+        <SummaryTiles data={data} />
 
         <div id="monitoring-brief" className="scroll-mt-4">
           <BriefSection cards={data.brief} />
@@ -264,5 +216,57 @@ function Tile({
         {danger && <span className="ml-1.5 text-xs font-semibold">주의</span>}
       </span>
     </section>
+  )
+}
+
+/** 판정 큰 칸과 숫자 4칸. 요약 탭과 상세 지표 탭이 함께 쓴다 */
+export function SummaryTiles({ data }: { data: Extract<MonitoringData, { status: 'ok' }> }) {
+  const verdict = verdictOf(data.services, data.targets)
+  const problems = verdict.problemServices
+  const alerts = data.brief.map((c) => c.alert).filter((a): a is string => a !== null)
+  // 요청 수를 하나도 못 받았으면 0이 아니라 「-」로 보인다
+  const rpsKnown = data.services.filter((r) => r.rps !== null)
+  const totalRps = rpsKnown.length ? rpsKnown.reduce((sum, r) => sum + (r.rps ?? 0), 0) : null
+  return (
+    <div id="monitoring-summary" className="grid scroll-mt-4 grid-cols-2 gap-3 lg:grid-cols-4">
+      <section aria-label="판정" className={`${s.fact} col-span-2 gap-3 p-5 lg:row-span-2`}>
+        <span className="text-sm text-muted">판정</span>
+        {problems.length ? (
+          <p className="m-0 text-3xl font-bold text-danger">주의 · 문제 {problems.length}곳</p>
+        ) : (
+          <p className="m-0 text-3xl font-bold">{data.partial ? '일부 지표 모름' : '모두 정상'}</p>
+        )}
+        {problems.length > 0 && (
+          <p className="m-0 font-medium text-danger">{problems.join(', ')}</p>
+        )}
+        {alerts.length > 0 && (
+          <ul
+            className="m-0 flex list-none flex-col gap-1 p-0 text-sm"
+            aria-label="최근 1시간 주의"
+          >
+            {alerts.map((a, i) => (
+              <li key={i}>
+                <strong className="text-danger">주의</strong> {a}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <Tile label="전체 서버 오류 비율" danger={isHighError(verdict.totalErrorRatio)}>
+        {percentText(verdict.totalErrorRatio)}
+      </Tile>
+      <Tile
+        label={verdict.slowest ? `가장 느린 곳 · ${verdict.slowest.name}` : '가장 느린 곳'}
+        danger={isSlow(verdict.slowest?.p95Seconds ?? null)}
+      >
+        {msText(verdict.slowest?.p95Seconds ?? null)}
+      </Tile>
+      <Tile label="응답 없는 대상" danger={verdict.downCount > 0}>
+        {verdict.downCount}곳
+      </Tile>
+      <Tile label="전체 초당 요청" danger={false}>
+        {rpsText(totalRps)}
+      </Tile>
+    </div>
   )
 }

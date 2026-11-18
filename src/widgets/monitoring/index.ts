@@ -1,1 +1,2 @@
-export { MonitoringView } from './ui/MonitoringView'
+export { MonitoringView, SummaryTiles } from './ui/MonitoringView'
+export { BriefSection } from './ui/BriefSection'
