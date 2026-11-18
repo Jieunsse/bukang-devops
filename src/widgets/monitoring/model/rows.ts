@@ -1,4 +1,4 @@
-import type { Sample } from '@/shared/api/grafana/server'
+import type { RangeSeries, Sample } from '@/shared/api/grafana/server'
 
 // 프로메테우스 질의 결과를 화면의 상태판·서비스 표 행으로 바꾼다. 서버·테스트 어디서나 쓰는 순수 함수다.
 
@@ -92,4 +92,36 @@ export function toServiceRows(targets: Target[], m: MetricSamples): ServiceRow[]
         heapBytes: heap(t.job),
       }
     })
+}
+
+export type TrendSeries = { job: string; name: string; points: [number, number | null][] }
+
+/** 기간 질의 결과를 서비스별 추이로 바꾼다. 숫자가 아닌 값(NaN)은 선을 끊는다 */
+export function toTrends(series: RangeSeries[]): TrendSeries[] {
+  return series
+    .filter((s) => isService(s.labels.job ?? ''))
+    .map((s) => {
+      const job = s.labels.job ?? ''
+      return {
+        job,
+        name: JOB_NAMES[job] ?? job,
+        points: s.points.map(([t, v]): [number, number | null] => [
+          t,
+          Number.isFinite(v) ? v : null,
+        ]),
+      }
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+}
+
+/** 서비스별 초당 요청을 시각마다 더한다. 한 서비스라도 값이 있으면 그 시각의 합을 낸다 */
+export function sumTrends(trends: TrendSeries[]): [number, number | null][] {
+  const sums = new Map<number, number | null>()
+  for (const s of trends) {
+    for (const [t, v] of s.points) {
+      const prev = sums.get(t) ?? null
+      sums.set(t, v === null ? prev : (prev ?? 0) + v)
+    }
+  }
+  return [...sums.entries()].sort((a, b) => a[0] - b[0])
 }

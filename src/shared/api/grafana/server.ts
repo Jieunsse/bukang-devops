@@ -31,3 +31,35 @@ export async function queryPrometheus(config: GrafanaConfig, promql: string): Pr
   if (body.status !== 'success') throw new Error('프로메테우스 질의 실패')
   return (body.data?.result ?? []).map((r) => ({ labels: r.metric, value: Number(r.value[1]) }))
 }
+
+export type RangeSeries = { labels: Record<string, string>; points: [number, number][] }
+
+/** 기간 값(range vector)을 받는다. 시각은 유닉스 초다 */
+export async function queryPrometheusRange(
+  config: GrafanaConfig,
+  promql: string,
+  range: { start: number; end: number; step: number },
+): Promise<RangeSeries[]> {
+  const params = new URLSearchParams({
+    query: promql,
+    start: String(range.start),
+    end: String(range.end),
+    step: String(range.step),
+  })
+  const url = `${config.url}/api/datasources/proxy/uid/${DATASOURCE_UID}/api/v1/query_range?${params}`
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${config.token}` },
+    signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
+    next: { revalidate: REVALIDATE_SECONDS },
+  })
+  if (!res.ok) throw new Error(`그라파나 응답 ${res.status}`)
+  const body = (await res.json()) as {
+    status: string
+    data?: { result?: { metric: Record<string, string>; values: [number, string][] }[] }
+  }
+  if (body.status !== 'success') throw new Error('프로메테우스 질의 실패')
+  return (body.data?.result ?? []).map((r) => ({
+    labels: r.metric,
+    points: r.values.map(([t, v]) => [t, Number(v)]),
+  }))
+}
