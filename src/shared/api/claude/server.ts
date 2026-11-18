@@ -36,7 +36,7 @@ export function createClaudeClient(config: ClaudeConfig, fetchImpl?: typeof fetc
   })
 }
 
-export type ClaudeFailure = 'refusal' | 'invalid' | 'rateLimit' | 'connection' | 'api'
+export type ClaudeFailure = 'refusal' | 'truncated' | 'invalid' | 'rateLimit' | 'connection' | 'api'
 export type ClaudeResult<T> = { ok: true; value: T } | { ok: false; reason: ClaudeFailure }
 
 /** 대체 모델 기능은 Opus 계열에서만 켠다(Haiku에는 없다) */
@@ -51,27 +51,32 @@ export async function askClaude<S extends z.ZodType>(
   config: ClaudeConfig,
   prompt: { system: string; user: string; schema: S },
   /** 호출마다 바꿀 값. 길게 쓰거나 비교가 필요하면 늘린다 */
-  options: { maxTokens?: number; effort?: 'low' | 'medium' | 'high' } = {},
+  options: { maxTokens?: number; effort?: 'low' | 'medium' | 'high'; timeoutMs?: number } = {},
 ): Promise<ClaudeResult<z.infer<S>>> {
   try {
     const fallback = usesFallback(config.model)
     // parse()는 거절로 본문이 비면 stop_reason을 보기 전에 실패한다. 그래서 create()로 받고 직접 검사한다(SDK 문서 방식)
-    const response = await client.beta.messages.create({
-      model: config.model,
-      max_tokens: options.maxTokens ?? MAX_TOKENS,
-      system: prompt.system,
-      messages: [{ role: 'user', content: prompt.user }],
-      output_config: {
-        effort: options.effort ?? 'low',
-        format: betaZodOutputFormat(prompt.schema),
+    const response = await client.beta.messages.create(
+      {
+        model: config.model,
+        max_tokens: options.maxTokens ?? MAX_TOKENS,
+        system: prompt.system,
+        messages: [{ role: 'user', content: prompt.user }],
+        output_config: {
+          effort: options.effort ?? 'low',
+          format: betaZodOutputFormat(prompt.schema),
+        },
+        ...(fallback ? { betas: [FALLBACK_BETA], fallbacks: 'default' as const } : {}),
       },
-      ...(fallback ? { betas: [FALLBACK_BETA], fallbacks: 'default' as const } : {}),
-    })
+      options.timeoutMs ? { timeout: options.timeoutMs } : undefined,
+    )
     // 비용을 재려고 출력 토큰 수만 남긴다(생각 토큰 포함). 응답 원문은 남기지 않는다
     console.info(
       `[claude] 출력 토큰 ${response.usage.output_tokens}, 멈춘 이유 ${response.stop_reason}`,
     )
     if (response.stop_reason === 'refusal') return fail('refusal')
+    // 출력 한도에 닿아 잘리면 JSON이 깨진다. 한도를 늘려야 한다는 신호라 따로 남긴다
+    if (response.stop_reason === 'max_tokens') return fail('truncated')
     const text = response.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('')
     const parsed = prompt.schema.safeParse(safeJson(text))
     if (!parsed.success) return fail('invalid')

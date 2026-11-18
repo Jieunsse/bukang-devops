@@ -151,6 +151,25 @@ describe('AI에 보낼 입력', () => {
   })
 })
 
+describe('리포트 스키마', () => {
+  it('개수가 프롬프트보다 많아도 리포트 전체를 버리지 않는다(화면에서 자른다)', async () => {
+    const { ExplanationSchema } = await import('./explain')
+    const many = Array.from({ length: 5 }, (_, i) => ({
+      guess: `추정 ${i}`,
+      evidence: '근거 지표 없음',
+    }))
+    const r = ExplanationSchema.safeParse({
+      summary: '요약',
+      watch: [],
+      causes: many,
+      services: Array.from({ length: 12 }, (_, i) => `서비스 ${i}`),
+      resources: [],
+      nextSteps: [],
+    })
+    expect(r.success).toBe(true)
+  })
+})
+
 describe('해석 캐시', () => {
   it('키가 없으면 AI를 부르지 않는다', async () => {
     expect(await getExplanation({})).toEqual({ status: 'notConfigured' })

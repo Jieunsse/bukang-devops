@@ -84,7 +84,9 @@ function Dashboard({
   const verdict = verdictOf(data.services, data.targets)
   const problems = verdict.problemServices
   const alerts = data.brief.map((c) => c.alert).filter((a): a is string => a !== null)
-  const totalRps = data.services.reduce((sum, r) => sum + (r.rps ?? 0), 0)
+  // 요청 수를 하나도 못 받았으면 0이 아니라 「-」로 보인다
+  const rpsKnown = data.services.filter((r) => r.rps !== null)
+  const totalRps = rpsKnown.length ? rpsKnown.reduce((sum, r) => sum + (r.rps ?? 0), 0) : null
 
   // 영역이 몇 개 안 돼서 왼쪽 목차 없이 한 줄로 쌓는다
   return (
@@ -94,10 +96,7 @@ function Dashboard({
         <ReportHeader title="모니터링" sub={`${timeText(data.fetchedAt)} 기준 · 1분마다 갱신`} />
 
         <div id="monitoring-summary" className="grid scroll-mt-4 grid-cols-2 gap-3 lg:grid-cols-4">
-          <section
-            aria-label="판정"
-            className={`${s.fact} col-span-2 gap-3 p-5 lg:row-span-2 ${problems.length ? 'ring-1 ring-danger' : ''}`}
-          >
+          <section aria-label="판정" className={`${s.fact} col-span-2 gap-3 p-5 lg:row-span-2`}>
             <span className="text-sm text-muted">판정</span>
             {problems.length ? (
               <p className="m-0 text-3xl font-bold text-danger">주의 · 문제 {problems.length}곳</p>

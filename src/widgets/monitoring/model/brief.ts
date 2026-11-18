@@ -205,16 +205,19 @@ export function buildBrief(
 /** 카드 아래 한 줄 요약에 쓰는 지금 값 */
 export const latestOf = (s: Series) => seriesStats(s.points).latest
 
-/** AI 입력용 시계열 요약. 숫자는 화면 표기 그대로의 문자열이다 */
-export function summarizeSeries(s: Series, f: Fmt) {
+/** AI 입력용 시계열 요약. 숫자는 화면 표기 그대로의 문자열이고, unit은 카드 문장과 같은 단위(건·회)다 */
+export function summarizeSeries(s: Series, f: Fmt, unit = '') {
   const values = s.points.filter(([, v]) => v !== null)
   const peak = peakOf(s)
   const latest = seriesStats(s.points).latest
   return {
     name: s.name,
-    first: values[0]?.[1] == null ? null : f(values[0][1]),
-    latest: latest === null ? null : f(latest),
-    peak: peak ? f(peak.value) : null,
+    first: values[0]?.[1] == null ? null : f(values[0][1]) + unit,
+    latest: latest === null ? null : f(latest) + unit,
+    peak: peak ? f(peak.value) + unit : null,
     peakAt: peak ? hhmm(peak.at) : null,
   }
 }
+
+/** 카드 문장에서 숫자 뒤에 붙는 단위. AI 입력의 숫자에도 똑같이 붙인다 */
+export const BRIEF_SUFFIX: Partial<Record<BriefKey, string>> = { pending: '건', lock: '회' }

@@ -29,10 +29,11 @@ const QUERIES = {
   errors: 'sum by (job) (rate(http_server_requests_seconds_count{status=~"5.."}[5m]))',
   p95: 'histogram_quantile(0.95, sum by (job, le) (rate(http_server_requests_seconds_bucket[5m])))',
   heap: 'sum by (job) (jvm_memory_used_bytes{area="heap"})',
-  // 서버 자원. 그라파나 서버 대시보드의 메모리·디스크·스왑 사용률과 같은 식이다
-  memory: '1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes',
-  disk: '1 - node_filesystem_avail_bytes{mountpoint="/",fstype!="rootfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!="rootfs"}',
-  swap: '1 - node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes',
+  // 서버 자원. 그라파나 서버 대시보드의 메모리·디스크·스왑 사용률과 같은 식이다.
+  // instance로 묶어 job 라벨을 지운다(job이 두 서버 모두 node라 이름이 겹친다). 디스크가 여러 개면 가장 찬 것
+  memory: 'max by (instance) (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)',
+  disk: 'max by (instance) (1 - node_filesystem_avail_bytes{mountpoint="/",fstype!="rootfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!="rootfs"})',
+  swap: 'max by (instance) (1 - node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes)',
 } as const
 
 /** 추이 그래프는 최근 1시간을 1분 간격으로 받는다 */

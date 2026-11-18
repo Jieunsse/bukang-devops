@@ -96,6 +96,14 @@ describe('Claude 호출', () => {
     })
   })
 
+  it('출력 한도에 닿아 잘리면 truncated로 돌려준다', async () => {
+    const { fetchImpl } = fakeFetch(() => message('{"status":"a"', 'max_tokens'))
+    expect(await askClaude(createClaudeClient(config, fetchImpl), config, prompt)).toEqual({
+      ok: false,
+      reason: 'truncated',
+    })
+  })
+
   it('응답이 스키마와 다르면 실패로 돌려준다', async () => {
     const { fetchImpl } = fakeFetch(() => message('{"status":1}'))
     const r = await askClaude(createClaudeClient(config, fetchImpl), config, prompt)

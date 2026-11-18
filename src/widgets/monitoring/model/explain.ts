@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { BRIEF_FORMAT, mbText, msText, percentText, rpsText } from './format'
-import { summarizeSeries, THRESHOLDS } from './brief'
+import { BRIEF_SUFFIX, summarizeSeries, THRESHOLDS } from './brief'
 import type { MonitoringData } from './load'
 import { isService } from './rows'
 import { issuesOf, verdictOf, type Issue } from './verdict'
@@ -47,7 +47,7 @@ export function buildExplainInput(data: Ok) {
       title: c.title,
       caption: c.caption,
       alert: c.alert,
-      series: c.series.map((s) => summarizeSeries(s, BRIEF_FORMAT[c.unit])),
+      series: c.series.map((s) => summarizeSeries(s, BRIEF_FORMAT[c.unit], BRIEF_SUFFIX[c.key])),
     })),
     // 서비스별 지표 표. 최근 5분
     services: data.services.map((r) => ({
@@ -69,17 +69,29 @@ export function buildExplainInput(data: Ok) {
   }
 }
 
-const line = z.string().min(1).max(400)
+const line = z.string().min(1)
 
-/** 리포트 여섯 칸. 칸마다 개수를 묶어 화면이 넘치지 않게 한다 */
+/**
+ * 리포트 여섯 칸. API는 개수·길이 제한을 강제하지 않아서, 스키마에서 막으면 리포트 전체가 실패한다.
+ * 그래서 스키마는 모양만 검사하고, 개수는 프롬프트로 부탁하고 화면에서 자른다(REPORT_LIMITS).
+ */
 export const ExplanationSchema = z.object({
-  summary: z.string().min(1).max(600),
-  watch: z.array(z.object({ what: line, when: line, howMuch: line, impact: line })).max(3),
-  causes: z.array(z.object({ guess: line, evidence: line })).max(3),
-  services: z.array(line).min(1).max(8),
-  resources: z.array(line).min(1).max(8),
-  nextSteps: z.array(z.object({ tab: line, action: line })).max(3),
+  summary: line,
+  watch: z.array(z.object({ what: line, when: line, howMuch: line, impact: line })),
+  causes: z.array(z.object({ guess: line, evidence: line })),
+  services: z.array(line),
+  resources: z.array(line),
+  nextSteps: z.array(z.object({ tab: line, action: line })),
 })
+
+/** 화면에 보여 줄 최대 개수 */
+export const REPORT_LIMITS = {
+  watch: 3,
+  causes: 3,
+  services: 12,
+  resources: 8,
+  nextSteps: 3,
+} as const
 export type ExplanationText = z.infer<typeof ExplanationSchema>
 
 export const EXPLAIN_SYSTEM = `당신은 운영 서버 모니터링 결과를 팀원에게 보고하는 리포트를 씁니다.
@@ -89,9 +101,9 @@ thresholds는 문제로 보는 기준입니다.
 칸마다 이렇게 씁니다.
 - summary: 두세 문장. 판정과 지금 가장 중요한 한 가지.
 - watch: 눈여겨볼 것 최대 3개. what(무엇이), when(언제), howMuch(얼마나), impact(그래서 어떤 일이 생기는지).
-- causes: 원인 추정. guess에 추정을, evidence에 근거가 된 지표 이름과 값을 씁니다. 근거 지표가 없으면 evidence에 「근거 지표 없음」이라고 씁니다.
+- causes: 원인 추정 최대 3개. guess에 추정을, evidence에 근거가 된 지표 이름과 값을 씁니다. 근거 지표가 없으면 evidence에 「근거 지표 없음」이라고 씁니다.
 - services: 문제가 있거나 변화가 큰 서비스만 한 줄씩. 모두 평소와 같으면 「특이 사항 없음」 한 줄만.
-- resources: CPU, 메모리, 디스크, DB 연결이 기준까지 얼마나 남았는지 한 줄씩. 예: 앱 서버 메모리 80.4%로 기준 90%까지 여유가 있어요.
+- resources: 서버마다 한 줄, 그리고 DB 연결 한 줄. CPU, 메모리, 디스크, DB 연결이 기준까지 얼마나 남았는지 씁니다. 예: 앱 서버 메모리 80.4%로 기준 90%까지 여유가 있어요.
 - nextSteps: 다음에 할 일 최대 3개. tab에는 서버, JVM, MySQL, Elasticsearch, 부하 테스트 중 볼 탭을, action에는 무엇을 볼지 씁니다.
 
 규칙

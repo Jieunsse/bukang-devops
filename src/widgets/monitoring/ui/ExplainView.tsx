@@ -8,6 +8,7 @@ import { useTransition, type ReactNode } from 'react'
 import { report as s } from '@/shared/ui'
 
 import { refreshMonitoringAction } from '../api/actions'
+import { REPORT_LIMITS } from '../model/explain'
 import type { Explanation, ExplanationResult } from '../model/explain-server'
 
 // AI 리포트. 요약과 눈여겨볼 것은 위에, 나머지 네 칸은 넓은 화면에서 2열로 처음부터 모두 보여 준다.
@@ -65,7 +66,16 @@ export function ExplainView({ result }: { result: ExplanationResult }) {
   )
 }
 
-function Report({ report }: { report: Explanation }) {
+function Report({ report: full }: { report: Explanation }) {
+  // 개수는 프롬프트로 부탁하지만 지키지 않을 수 있어서 화면에서 자른다
+  const report = {
+    ...full,
+    watch: full.watch.slice(0, REPORT_LIMITS.watch),
+    causes: full.causes.slice(0, REPORT_LIMITS.causes),
+    services: full.services.slice(0, REPORT_LIMITS.services),
+    resources: full.resources.slice(0, REPORT_LIMITS.resources),
+    nextSteps: full.nextSteps.slice(0, REPORT_LIMITS.nextSteps),
+  }
   return (
     <div className="flex flex-col gap-4 text-sm">
       <p className="m-0 text-base">{report.summary}</p>
@@ -99,10 +109,18 @@ function Report({ report }: { report: Explanation }) {
           )}
         </Block>
         <Block title="서비스별 상태">
-          <Lines items={report.services} />
+          {report.services.length ? (
+            <Lines items={report.services} />
+          ) : (
+            <p className="m-0 text-muted">특이 사항 없음</p>
+          )}
         </Block>
         <Block title="자원 여유">
-          <Lines items={report.resources} />
+          {report.resources.length ? (
+            <Lines items={report.resources} />
+          ) : (
+            <p className="m-0 text-muted">데이터 없음</p>
+          )}
         </Block>
         <Block title="다음에 할 일">
           {report.nextSteps.length ? (
