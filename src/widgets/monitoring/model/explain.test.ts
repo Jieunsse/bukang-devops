@@ -1,3 +1,5 @@
+// @vitest-environment node
+// 서버 코드 테스트다. SDK는 브라우저 같은 환경(jsdom)에서 키를 쓰지 않게 막는다.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ServiceRow, Target } from './rows'
@@ -5,17 +7,19 @@ import type { ServiceRow, Target } from './rows'
 // 점검표: 비용(캐시가 있으면 AI를 부르지 않음, 1분 안 새로고침은 부르지 않음), 실패 격리(실패하면 직전 해석 유지),
 // 숫자는 코드가 계산(판정·추이 요약은 코드, AI에는 결과만), 키가 없으면 부르지 않음.
 
-// next/cache: 키마다 값을 기억하고, updateTag로 비운다(실제 Next 데이터 캐시와 같은 동작만 흉내 낸다)
-const store = new Map<string, unknown>()
+// next/cache: 키마다 값을 기억하고, updateTag는 그 태그가 붙은 값만 비운다(실제 Next 데이터 캐시와 같은 동작만 흉내 낸다)
+const store = new Map<string, { value: unknown; tags: string[] }>()
 vi.mock('next/cache', () => ({
   unstable_cache:
-    <T>(fn: () => Promise<T>, keys: string[]) =>
+    <T>(fn: () => Promise<T>, keys: string[], opts?: { tags?: string[] }) =>
     async () => {
       const k = keys.join('|')
-      if (!store.has(k)) store.set(k, await fn())
-      return store.get(k) as T
+      if (!store.has(k)) store.set(k, { value: await fn(), tags: opts?.tags ?? [] })
+      return store.get(k)!.value as T
     },
-  updateTag: () => store.clear(),
+  updateTag: (tag: string) => {
+    for (const [k, v] of store) if (v.tags.includes(tag)) store.delete(k)
+  },
 }))
 
 const askClaude = vi.fn()
@@ -66,6 +70,7 @@ const monitoring = {
 }
 const loadMonitoring = vi.fn(async () => monitoring)
 vi.mock('./load', () => ({ loadMonitoring: () => loadMonitoring() }))
+vi.mock('@/shared/api/grafana/server', () => ({ GRAFANA_METRICS_TAG: 'grafana-metrics' }))
 
 const { buildExplainInput } = await import('./explain')
 const { getExplanation, refreshMonitoring } = await import('./explain-server')
@@ -146,11 +151,16 @@ describe('해석 캐시', () => {
     expect(await getExplanation(env)).toMatchObject({ explanation: { status: '첫 해석' } })
   })
 
-  it('처음부터 AI 호출이 실패하면 실패로 보여 주고, 캐시에 실패를 넣지 않는다', async () => {
+  it('처음 호출이 실패하면 실패로 보여 주고, 1분 동안은 다시 들어와도 AI를 부르지 않는다', async () => {
     askClaude
       .mockResolvedValueOnce({ ok: false, reason: 'refusal' })
       .mockResolvedValueOnce(answer('다음 해석'))
     expect(await getExplanation(env)).toEqual({ status: 'failed' })
+    expect(await getExplanation(env)).toEqual({ status: 'failed' })
+    expect(await refreshMonitoring(env)).toMatchObject({ status: 'tooSoon' })
+    expect(askClaude).toHaveBeenCalledTimes(1)
+    vi.setSystemTime(new Date('2026-11-18T10:01:00Z'))
+    expect(await refreshMonitoring(env)).toMatchObject({ status: 'refreshed' })
     expect(await getExplanation(env)).toMatchObject({ explanation: { status: '다음 해석' } })
   })
 })

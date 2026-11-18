@@ -1,3 +1,5 @@
+// @vitest-environment node
+// 서버 코드 테스트다. SDK는 브라우저 같은 환경(jsdom)에서 키를 쓰지 않게 막는다.
 import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 

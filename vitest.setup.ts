@@ -16,4 +16,5 @@ globalThis.ResizeObserver ??= class {
 }
 
 // jsdom에는 Web Animations API가 없다. HeroUI 탭 표시선이 움직일 때 쓴다.
-Element.prototype.getAnimations ??= () => []
+// 서버 코드 테스트(@vitest-environment node)에는 Element가 없어서 건너뛴다.
+if (typeof Element !== 'undefined') Element.prototype.getAnimations ??= () => []

@@ -12,6 +12,8 @@ const DATASOURCE_UID = 'prometheus'
 const CALL_TIMEOUT_MS = 10_000
 /** 같은 질의는 1분 동안 다시 부르지 않는다 */
 const REVALIDATE_SECONDS = 60
+/** 모니터링 새로고침 버튼이 지표 캐시를 비울 때 쓰는 태그 */
+export const GRAFANA_METRICS_TAG = 'grafana-metrics'
 
 export type Sample = { labels: Record<string, string>; value: number }
 
@@ -21,7 +23,7 @@ export async function queryPrometheus(config: GrafanaConfig, promql: string): Pr
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${config.token}` },
     signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
-    next: { revalidate: REVALIDATE_SECONDS },
+    next: { revalidate: REVALIDATE_SECONDS, tags: [GRAFANA_METRICS_TAG] },
   })
   if (!res.ok) throw new Error(`그라파나 응답 ${res.status}`)
   const body = (await res.json()) as {
@@ -50,7 +52,7 @@ export async function queryPrometheusRange(
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${config.token}` },
     signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
-    next: { revalidate: REVALIDATE_SECONDS },
+    next: { revalidate: REVALIDATE_SECONDS, tags: [GRAFANA_METRICS_TAG] },
   })
   if (!res.ok) throw new Error(`그라파나 응답 ${res.status}`)
   const body = (await res.json()) as {
