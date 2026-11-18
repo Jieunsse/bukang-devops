@@ -35,3 +35,25 @@ describe('메뉴', () => {
     expect(NAV_ITEMS.some((i) => i.href === '/monitoring' && i.label === '모니터링')).toBe(true)
   })
 })
+
+describe('메뉴 묶음', () => {
+  it('맨 위는 대시보드·달력·모니터링, 그룹 세 개가 정한 순서이고 메뉴 13개가 모두 있다', async () => {
+    const { NAV_TOP, NAV_GROUPS } = await import('./nav')
+    expect(NAV_TOP.map((i) => i.label)).toEqual(['대시보드', '달력', '모니터링'])
+    expect(NAV_GROUPS.map((g) => [g.label, g.items.map((i) => i.label)])).toEqual([
+      ['일정·작업', ['사이클', '타임라인', '완료·취소', '작업 요청']],
+      ['설계 문서', ['API 명세', 'DB 구조', '아키텍처']],
+      ['측정·기타', ['이용 통계', '성능 측정', '링크 모음']],
+    ])
+    expect(new Set(NAV_ITEMS.map((i) => i.href)).size).toBe(13)
+  })
+
+  it('하위 주소도 그 메뉴로 본다(대시보드는 맨 앞 주소만)', async () => {
+    const { isCurrentPath } = await import('./nav')
+    expect(isCurrentPath('/monitoring/rYdddlPWk', '/monitoring')).toBe(true)
+    expect(isCurrentPath('/monitoring', '/monitoring')).toBe(true)
+    expect(isCurrentPath('/monitoring', '/')).toBe(false)
+    expect(isCurrentPath('/', '/')).toBe(true)
+    expect(isCurrentPath('/db', '/done')).toBe(false)
+  })
+})
