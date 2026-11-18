@@ -32,7 +32,13 @@ const QUERIES = {
 /** 추이 그래프는 최근 1시간을 1분 간격으로 받는다 */
 const TREND_WINDOW_SECONDS = 60 * 60
 const TREND_STEP_SECONDS = 60
-const TREND_QUERIES = { rps: QUERIES.rps, p95: QUERIES.p95, heap: QUERIES.heap } as const
+const TREND_QUERIES = {
+  // 5xx가 한 번도 없는 서비스는 분자 시계열이 없어서, 요청 수 × 0 으로 0을 채운다
+  errors: `(${QUERIES.errors} or ${QUERIES.rps} * 0) / ${QUERIES.rps}`,
+  rps: QUERIES.rps,
+  p95: QUERIES.p95,
+  heap: QUERIES.heap,
+} as const
 export type TrendKind = keyof typeof TREND_QUERIES
 export type Trends = Record<TrendKind, TrendSeries[] | null>
 
@@ -77,8 +83,10 @@ export async function loadMonitoring(
   const end = Math.floor(Date.now() / 1000 / TREND_STEP_SECONDS) * TREND_STEP_SECONDS
   const range = { start: end - TREND_WINDOW_SECONDS, end, step: TREND_STEP_SECONDS }
   const keys = Object.keys(BRIEF_QUERIES) as BriefKey[]
-  const [[rpsTrend, p95Trend, heapTrend], briefSeries] = await Promise.all([
-    Promise.all((['rps', 'p95', 'heap'] as const).map((kind) => settleTrend(config, kind, range))),
+  const [[errorsTrend, rpsTrend, p95Trend, heapTrend], briefSeries] = await Promise.all([
+    Promise.all(
+      (['errors', 'rps', 'p95', 'heap'] as const).map((kind) => settleTrend(config, kind, range)),
+    ),
     Promise.all(keys.map((key) => settleBrief(config, key, range))),
   ])
   const brief = buildBrief(
@@ -99,9 +107,16 @@ export async function loadMonitoring(
     status: 'ok',
     targets,
     services: toServiceRows(targets, { rps, errors, p95, heap }),
-    trends: { rps: rpsTrend ?? null, p95: p95Trend ?? null, heap: heapTrend ?? null },
+    trends: {
+      errors: errorsTrend ?? null,
+      rps: rpsTrend ?? null,
+      p95: p95Trend ?? null,
+      heap: heapTrend ?? null,
+    },
     brief,
-    partial: [rps, errors, p95, heap, rpsTrend, p95Trend, heapTrend].some((r) => r === null),
+    partial: [rps, errors, p95, heap, errorsTrend, rpsTrend, p95Trend, heapTrend].some(
+      (r) => r === null,
+    ),
     fetchedAt: new Date().toISOString(),
   }
 }

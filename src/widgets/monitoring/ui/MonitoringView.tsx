@@ -6,12 +6,13 @@ import { useState, type ReactNode } from 'react'
 import { Fact, report as s, ReportHeader, ReportSection } from '@/shared/ui'
 
 import type { MonitoringData, TrendKind } from '../model/load'
-import { isService, sumTrends, type ServiceRow, type Target } from '../model/rows'
+import type { ServiceRow } from '../model/rows'
+import { isHighError, isSlow, sortByIssues, totalErrorTrend, verdictOf } from '../model/verdict'
 import { BriefSection } from './BriefSection'
 import { TrendChart } from './TrendChart'
 
-// 운영 서버 모니터링. 서비스·인프라가 살아 있는지와 서비스별 최근 5분 지표를 보여 준다.
-// 상태 색은 기한 표시에만 쓰는 규칙이라, 멈춘 대상은 글자와 맨 위 정렬로 알린다.
+// 운영 서버 모니터링. 「지금 문제 있는 곳이 있나」를 맨 위에 판정으로 보여 주고,
+// 서비스 표 → 추이 → 상태판 순서로 내려간다. 기준(THRESHOLDS)을 넘은 값만 빨간 글자로 쓴다(CLAUDE.md 예외).
 
 const UNKNOWN = '-'
 const timeText = (iso: string) =>
@@ -25,9 +26,12 @@ const percentText = (n: number | null) => (n === null ? UNKNOWN : `${(n * 100).t
 const msText = (sec: number | null) => (sec === null ? UNKNOWN : `${Math.round(sec * 1000)}ms`)
 const mbText = (b: number | null) => (b === null ? UNKNOWN : `${Math.round(b / 1024 / 1024)}MB`)
 const upText = (up: boolean) => (up ? '정상' : '응답 없음')
+/** 기준을 넘은 값만 빨간 굵은 글자 */
+const bad = (on: boolean) => (on ? 'font-semibold text-danger' : undefined)
 
 /** 추이에서 고를 수 있는 지표. 지표마다 단위가 달라 그래프를 따로 그린다 */
 const TREND_ITEMS: { kind: TrendKind; label: string; format: (v: number) => string }[] = [
+  { kind: 'errors', label: '서버 오류 비율', format: (v) => percentText(v) },
   { kind: 'rps', label: '초당 요청', format: (v) => rpsText(v) },
   { kind: 'p95', label: '응답 시간(95%)', format: (v) => msText(v) },
   { kind: 'heap', label: '힙 메모리', format: (v) => mbText(v) },
@@ -74,29 +78,59 @@ function Dashboard({
   data: Extract<MonitoringData, { status: 'ok' }>
   tabs?: ReactNode
 }) {
-  const [kind, setKind] = useState<TrendKind>('rps')
+  const [kind, setKind] = useState<TrendKind>('errors')
   const trendItem = TREND_ITEMS.find((i) => i.kind === kind) ?? TREND_ITEMS[0]!
   const trends = data.trends[kind]
-  const totalTrend = data.trends.rps ? sumTrends(data.trends.rps) : null
-  const services = data.targets.filter((t) => isService(t.job))
-  const infra = data.targets.filter((t) => !isService(t.job))
-  const count = (list: Target[]) => `${list.filter((t) => t.up).length} / ${list.length}`
-  const totalRps = data.services.reduce((sum, r) => sum + (r.rps ?? 0), 0)
+  const totalTrend =
+    data.trends.errors && data.trends.rps
+      ? totalErrorTrend(data.trends.errors, data.trends.rps)
+      : null
+  const verdict = verdictOf(data.services, data.targets)
+  const problems = verdict.problemServices
 
   // 영역이 몇 개 안 돼서 왼쪽 목차 없이 한 줄로 쌓는다
   return (
     <div className={`${s.report} ${s.solo}`}>
       <div className={s.page}>
         {tabs}
-        <ReportHeader
-          title="모니터링"
-          sub={`운영 서버 프로메테우스 기준이에요. ${timeText(data.fetchedAt)}에 받았고, 1분마다 새로 받아요.`}
-        />
+        <ReportHeader title="모니터링" sub={`${timeText(data.fetchedAt)} 기준 · 1분마다 갱신`} />
 
         <dl id="monitoring-summary" className={`${s.facts} scroll-mt-4`}>
-          <Fact label="서비스 정상" value={count(services)} />
-          <Fact label="인프라 정상" value={count(infra)} />
-          <Fact label="전체 초당 요청" value={rpsText(totalRps)} />
+          <Fact
+            label="판정"
+            value={
+              problems.length ? (
+                <span className="text-danger">
+                  주의 · 문제 {problems.length}곳
+                  <small className="block text-sm font-medium">{problems.join(', ')}</small>
+                </span>
+              ) : data.partial ? (
+                '일부 지표 모름'
+              ) : (
+                '모두 정상'
+              )
+            }
+          />
+          <Fact
+            label="전체 서버 오류 비율"
+            value={
+              <span className={bad(isHighError(verdict.totalErrorRatio))}>
+                {percentText(verdict.totalErrorRatio)}
+              </span>
+            }
+          />
+          <Fact
+            label={verdict.slowest ? `가장 느린 곳 · ${verdict.slowest.name}` : '가장 느린 곳'}
+            value={
+              <span className={bad(isSlow(verdict.slowest?.p95Seconds ?? null))}>
+                {msText(verdict.slowest?.p95Seconds ?? null)}
+              </span>
+            }
+          />
+          <Fact
+            label="응답 없는 대상"
+            value={<span className={bad(verdict.downCount > 0)}>{verdict.downCount}곳</span>}
+          />
         </dl>
 
         <div id="monitoring-brief" className="scroll-mt-4">
@@ -104,22 +138,59 @@ function Dashboard({
         </div>
 
         <ReportSection
-          title="추이"
-          description="최근 1시간을 1분 간격으로 보여 줘요. 서비스마다 그래프 높이 기준이 달라요."
+          title="서비스별 지표"
+          description={
+            data.partial
+              ? '최근 5분 · 일부 지표 받지 못함(-)'
+              : '최근 5분 · 문제 있는 서비스가 위로'
+          }
         >
+          <div id="monitoring-services" className={`${s.tbl} scroll-mt-4`}>
+            <table aria-label="서비스별 지표">
+              <thead>
+                <tr>
+                  <th>서비스</th>
+                  <th>상태</th>
+                  <th className={s.num}>초당 요청</th>
+                  <th className={s.num}>서버 오류 비율</th>
+                  <th className={s.num}>응답 시간(95%)</th>
+                  <th className={s.num}>힙 메모리</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortByIssues(data.services).map((r: ServiceRow) => (
+                  <tr key={r.job}>
+                    <td>{r.name}</td>
+                    <td className={bad(!r.up)}>{upText(r.up)}</td>
+                    <td className={s.num}>{rpsText(r.rps)}</td>
+                    <td className={`${s.num} ${bad(isHighError(r.errorRatio)) ?? ''}`}>
+                      {percentText(r.errorRatio)}
+                    </td>
+                    <td className={`${s.num} ${bad(isSlow(r.p95Seconds)) ?? ''}`}>
+                      {msText(r.p95Seconds)}
+                    </td>
+                    <td className={s.num}>{mbText(r.heapBytes)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </ReportSection>
+
+        <ReportSection title="추이" description="최근 1시간 · 1분 간격">
           <div id="monitoring-trends" className="flex scroll-mt-4 flex-col gap-4">
             <div className={`${s.fact} p-4`}>
               {totalTrend ? (
                 <TrendChart
-                  title="전체 초당 요청"
+                  title="전체 서버 오류 비율"
                   points={totalTrend}
-                  format={(v) => rpsText(v)}
+                  format={(v) => percentText(v)}
                   hero
                   width={960}
                   height={240}
                 />
               ) : (
-                <p className="text-sm text-muted">전체 초당 요청 추이를 받지 못했어요</p>
+                <p className="text-sm text-muted">전체 서버 오류 비율 추이를 받지 못했어요</p>
               )}
             </div>
             <div role="group" aria-label="추이 지표" className={`${s.seg} self-start`}>
@@ -148,7 +219,7 @@ function Dashboard({
           </div>
         </ReportSection>
 
-        <ReportSection title="상태판" description="응답 없는 대상이 맨 위에 와요.">
+        <ReportSection title="상태판" description="응답 없는 대상이 위로">
           <div id="monitoring-targets" className={`${s.tbl} scroll-mt-4`}>
             <table aria-label="상태판">
               <thead>
@@ -163,43 +234,7 @@ function Dashboard({
                   <tr key={`${t.job}|${t.instance}`}>
                     <td>{t.name}</td>
                     <td className="text-muted">{t.instance}</td>
-                    <td>{t.up ? upText(true) : <b>{upText(false)}</b>}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </ReportSection>
-
-        <ReportSection
-          title="서비스별 지표"
-          description={
-            data.partial
-              ? '최근 5분 기준이에요. 일부 지표를 받지 못해 「-」로 보여요.'
-              : '최근 5분 기준이에요.'
-          }
-        >
-          <div id="monitoring-services" className={`${s.tbl} scroll-mt-4`}>
-            <table aria-label="서비스별 지표">
-              <thead>
-                <tr>
-                  <th>서비스</th>
-                  <th>상태</th>
-                  <th className={s.num}>초당 요청</th>
-                  <th className={s.num}>서버 오류 비율</th>
-                  <th className={s.num}>응답 시간(95%)</th>
-                  <th className={s.num}>힙 메모리</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.services.map((r: ServiceRow) => (
-                  <tr key={r.job}>
-                    <td>{r.name}</td>
-                    <td>{r.up ? upText(true) : <b>{upText(false)}</b>}</td>
-                    <td className={s.num}>{rpsText(r.rps)}</td>
-                    <td className={s.num}>{percentText(r.errorRatio)}</td>
-                    <td className={s.num}>{msText(r.p95Seconds)}</td>
-                    <td className={s.num}>{mbText(r.heapBytes)}</td>
+                    <td className={bad(!t.up)}>{upText(t.up)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -5,9 +5,18 @@ export type PanelKind = 'timeseries' | 'stat' | 'table' | 'unsupported'
 
 export type PanelTarget = { refId: string; expr: string; legend: string }
 
+/** 그라파나 기준값 한 칸. value 이상이면 이 단계다(null은 가장 아래) */
+export type ThresholdLevel = 'ok' | 'warn' | 'bad'
+export type ThresholdStep = { value: number | null; level: ThresholdLevel }
+
 export type Panel = {
   id: number
+  /** 그라파나 원래 제목. 없으면 빈 문자열 */
   title: string
+  /** 그라파나 패널 설명(영어). 없으면 빈 문자열 */
+  description: string
+  /** 그라파나 대시보드가 정한 기준값. 없으면 빈 배열 */
+  steps: ThresholdStep[]
   kind: PanelKind
   /** 그라파나 단위 이름(bytes, percent, s …). 없으면 숫자 그대로 */
   unit: string | null
@@ -40,7 +49,20 @@ type RawPanel = {
   panels?: RawPanel[]
   collapsed?: boolean
   targets?: { refId?: string; expr?: string; legendFormat?: string; hide?: boolean }[]
-  fieldConfig?: { defaults?: { unit?: string; decimals?: number } }
+  description?: string
+  fieldConfig?: {
+    defaults?: {
+      unit?: string
+      decimals?: number
+      thresholds?: { steps?: { color?: string; value?: number | null }[] }
+      color?: { mode?: string }
+      custom?: { thresholdsStyle?: { mode?: string } }
+    }
+  }
+  options?: { colorMode?: string }
+  /** 옛 singlestat 기준값 "70,90" 과 그 세 칸의 색 */
+  thresholds?: unknown
+  colors?: string[]
   yaxes?: { format?: string; decimals?: number }[]
   format?: string
   decimals?: number
@@ -70,12 +92,69 @@ function toPanel(p: RawPanel): Panel | null {
   const decimals = p.fieldConfig?.defaults?.decimals ?? p.decimals ?? p.yaxes?.[0]?.decimals ?? null
   return {
     id: p.id,
-    title: p.title?.trim() || '이름 없는 그래프',
+    title: p.title?.trim() ?? '',
+    description: p.description?.trim() ?? '',
+    steps: thresholdSteps(p),
     kind: KIND[p.type ?? ''] ?? 'unsupported',
     unit: unit && unit !== 'none' ? unit : null,
     decimals: typeof decimals === 'number' ? decimals : null,
     targets,
   }
+}
+
+/** 색 이름·hex·rgba를 단계로 바꾼다. 빨강 계열은 bad, 주황·노랑 계열은 warn */
+export function colorLevel(color: string | undefined): ThresholdLevel {
+  const c = (color ?? '').toLowerCase()
+  if (c.includes('red')) return 'bad'
+  if (c.includes('orange') || c.includes('yellow')) return 'warn'
+  const rgb = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c)
+  const hex = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/.exec(c)
+  const [r, g, b] = rgb
+    ? rgb.slice(1, 4).map(Number)
+    : hex
+      ? hex.slice(1, 4).map((h) => parseInt(h, 16))
+      : [0, 0, 0]
+  if (r! > 180 && g! < 110) return 'bad'
+  if (r! > 180 && b! < 120) return 'warn'
+  return 'ok'
+}
+
+/** 그라파나 화면에서 기준값이 실제로 쓰이는지. 새 패널에 자동으로 들어간 [초록, 빨강 80]을 걸러 낸다 */
+function usesThresholds(p: RawPanel): boolean {
+  const d = p.fieldConfig?.defaults
+  if (p.type === 'timeseries' || p.type === 'graph') {
+    const style = d?.custom?.thresholdsStyle?.mode
+    return d?.color?.mode === 'thresholds' || (style !== undefined && style !== 'off')
+  }
+  if (p.type === 'stat') return p.options?.colorMode !== 'none'
+  return true
+}
+
+function thresholdSteps(p: RawPanel): ThresholdStep[] {
+  const steps = p.fieldConfig?.defaults?.thresholds?.steps
+  if (steps?.length) {
+    if (!usesThresholds(p)) return []
+    return steps.map((st) => ({ value: st.value ?? null, level: colorLevel(st.color) }))
+  }
+  // 옛 형식: "a,b" 와 색 세 개(a 미만, a 이상, b 이상)
+  if (typeof p.thresholds === 'string' && p.thresholds.trim() && p.colors?.length === 3) {
+    const [a, b] = p.thresholds.split(',').map((x) => Number(x.trim()))
+    if (Number.isFinite(a) && Number.isFinite(b)) {
+      return [
+        { value: null, level: colorLevel(p.colors[0]) },
+        { value: a!, level: colorLevel(p.colors[1]) },
+        { value: b!, level: colorLevel(p.colors[2]) },
+      ]
+    }
+  }
+  return []
+}
+
+/** 값이 속한 기준 단계. 기준이 없으면 ok */
+export function levelOf(steps: ThresholdStep[], v: number): ThresholdLevel {
+  let level: ThresholdLevel = 'ok'
+  for (const st of steps) if (st.value === null || v >= st.value) level = st.level
+  return level
 }
 
 function parseVariableQuery(raw: unknown): VariableQuery | null {

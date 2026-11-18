@@ -10,14 +10,14 @@ describe('모니터링', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 
-  it('정상 수와 서비스 지표를 보여 주고, 받지 못한 지표는 - 로 보인다', () => {
+  it('판정에 문제 있는 서비스 이름을 보이고, 표는 문제 순으로 정렬하며 기준을 넘은 값만 빨강이다', () => {
     render(
       <MonitoringView
         data={{
           status: 'ok',
           fetchedAt: '2026-11-18T01:00:00Z',
           partial: true,
-          trends: { rps: null, p95: null, heap: null },
+          trends: { errors: null, rps: null, p95: null, heap: null },
           brief: [],
           targets: [
             { job: 'order-service', name: '주문', instance: 'a', up: false },
@@ -47,15 +47,18 @@ describe('모니터링', () => {
         }}
       />,
     )
-    expect(screen.getByText('1 / 2')).toBeInTheDocument()
-    expect(screen.getByText('1 / 1')).toBeInTheDocument()
+    expect(screen.getByText(/문제 2곳/)).toBeInTheDocument()
+    expect(screen.getByText('주문, 회원')).toBeInTheDocument()
+    expect(screen.getByText('1곳')).toHaveClass('text-danger')
+    const rows = within(screen.getByRole('table', { name: '서비스별 지표' })).getAllByRole('row')
+    expect(rows[1]).toHaveTextContent('주문')
     const member = within(screen.getByRole('table', { name: '서비스별 지표' }))
       .getByText('회원')
       .closest('tr')!
-    expect(within(member).getByText('2.0%')).toBeInTheDocument()
-    expect(within(member).getByText('376ms')).toBeInTheDocument()
+    expect(within(member).getByText('2.0%')).toHaveClass('text-danger')
+    expect(within(member).getByText('376ms')).not.toHaveClass('text-danger')
     expect(within(member).getByText('89MB')).toBeInTheDocument()
-    expect(screen.getByText(/일부 지표를 받지 못해/)).toBeInTheDocument()
+    expect(screen.getByText(/일부 지표 받지 못함/)).toBeInTheDocument()
   })
 
   it('추이 지표를 바꾸면 서비스 그래프가 그 지표로 바뀐다', () => {
@@ -69,6 +72,7 @@ describe('모니터링', () => {
           targets: [{ job: 'member-service', name: '회원', instance: 'b', up: true }],
           services: [],
           trends: {
+            errors: [{ job: 'member-service', name: '회원', points: series([0, 0.03]) }],
             rps: [{ job: 'member-service', name: '회원', points: series([1, 2]) }],
             p95: [{ job: 'member-service', name: '회원', points: series([0.1, 0.25]) }],
             heap: null,
@@ -77,6 +81,12 @@ describe('모니터링', () => {
         }}
       />,
     )
+    // 지표를 다 받았고 문제가 없으면 「모두 정상」
+    expect(screen.getByText('모두 정상')).toBeInTheDocument()
+    // 기본은 서버 오류 비율이고, 맨 위 큰 그래프는 요청 수로 가중한 전체 오류 비율이다
+    expect(screen.getByText('지금 3.0%')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /^전체 서버 오류 비율 최근 1시간/ })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '초당 요청' }))
     expect(screen.getByText('지금 2.00')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '응답 시간(95%)' }))
     expect(screen.getByText('지금 250ms')).toBeInTheDocument()
