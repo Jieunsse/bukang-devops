@@ -1,5 +1,7 @@
 'use client'
 
+import { CircleQuestion } from '@gravity-ui/icons'
+import { Tooltip } from '@heroui/react'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 
@@ -17,8 +19,8 @@ import { MAX_LINES, MultiLineChart, seriesColor } from '@/shared/ui/chart/MultiL
 import type { SeriesData } from '../model/types'
 
 // 그라파나 패널 하나. 화면에 보일 때 처음 불러온다(대시보드 하나에 패널이 100개가 넘는다).
-// 그래프 아래에 시계열마다 지금·평균·최대를 표로 붙인다. 숫자 패널(stat)은 큰 숫자로 보여 준다.
-// 영어 이름은 뜻으로 바꾸고 읽는 법 한 줄을 붙인다. 그라파나 기준값의 빨강 단계를 넘은 지금 값은
+// 숫자 패널은 작은 카드(이름 + 값), 그래프 패널은 그래프 + 지금·평균·최대 표, 사양 값은 맨 위 한 줄로 보여 준다.
+// 영어 원래 이름과 읽는 법은 이름 옆 도움말 툴팁에 둔다(화면 안 설명 문장을 줄이는 결정). 그라파나 기준값의 빨강 단계를 넘은 지금 값은
 // 요약 화면과 같은 말로 빨간 「주의」, 그 아래 단계는 색 없는 「기준 가까움」으로 알린다.
 
 /** 기준 단계 → 글자 표시. 빨강은 기준을 넘은 값(bad)에만 쓴다(CLAUDE.md 모니터링 예외) */
@@ -47,9 +49,10 @@ function useSeen<T extends Element>() {
   return { ref, seen }
 }
 
-export function PanelCard({ uid, panel, query }: { uid: string; panel: Panel; query: string }) {
-  const { ref, seen } = useSeen<HTMLElement>()
-  const { data, isPending, isError } = useQuery({
+/** 패널 값. 화면에 보일 때 처음 불러오고 1분마다 다시 받는다 */
+function usePanelData<T extends Element>(uid: string, panel: Panel, query: string) {
+  const { ref, seen } = useSeen<T>()
+  const result = useQuery({
     queryKey: ['grafana-panel', uid, panel.id, query],
     queryFn: async (): Promise<SeriesData> => {
       const res = await fetch(`/api/monitoring/panel?uid=${uid}&panel=${panel.id}&${query}`)
@@ -60,38 +63,100 @@ export function PanelCard({ uid, panel, query }: { uid: string; panel: Panel; qu
     staleTime: 30_000,
     refetchInterval: 60_000,
   })
-  const format = (v: number) => formatUnit(v, panel.unit, panel.decimals)
   const label = panelLabel(panel)
   const steps = label.ignoreThresholds ? [] : panel.steps
   const level = (v: number | null): ThresholdLevel =>
     v === null || !steps.length ? 'ok' : levelOf(steps, v)
-  const wide = panel.kind !== 'stat'
-  // 패널 머리에 붙일 가장 나쁜 단계(지금 값 기준)
+  const format = (v: number) => formatUnit(v, panel.unit, panel.decimals)
+  return { ref, seen, ...result, label, level, format }
+}
+
+/** 이름 옆 도움말. 읽는 법과 그라파나 원래 이름을 툴팁으로 보여 준다 */
+function HelpTip({
+  name,
+  help,
+  original,
+}: {
+  name: string
+  help: string | null
+  original: string | null
+}) {
+  if (!help && !original) return null
+  return (
+    <Tooltip delay={200} closeDelay={0}>
+      <Tooltip.Trigger aria-label={`${name} 도움말`} className="inline-flex text-muted">
+        <CircleQuestion aria-hidden className="size-3.5" />
+      </Tooltip.Trigger>
+      <Tooltip.Content className="max-w-72 text-xs">
+        {help && <p className="m-0">{help}</p>}
+        {original && <p className="m-0 text-muted">그라파나 이름: {original}</p>}
+      </Tooltip.Content>
+    </Tooltip>
+  )
+}
+
+const Status = ({ text }: { text: string }) => <p className="m-0 text-sm text-muted">{text}</p>
+
+/** 숫자 패널. 높이 약 96px, 이름 + 값만 둔다. 값이 여러 개면 가로로 나란히 놓는다 */
+export function StatCard({ uid, panel, query }: { uid: string; panel: Panel; query: string }) {
+  const { ref, seen, data, isPending, isError, label, level, format } = usePanelData<HTMLElement>(
+    uid,
+    panel,
+    query,
+  )
+  return (
+    <section ref={ref} aria-label={label.name} className={`${s.fact} min-h-24 gap-1 p-3`}>
+      <h4 className="m-0 flex items-center gap-1 text-xs font-medium text-muted">
+        <span className="truncate">{label.name}</span>
+        <HelpTip name={label.name} help={label.help} original={label.original} />
+      </h4>
+      {!seen || isPending ? (
+        <Status text="불러오는 중" />
+      ) : isError || data.failed ? (
+        <Status text="불러오지 못했어요" />
+      ) : data.series.length === 0 ? (
+        <Status text="기록 없음" />
+      ) : (
+        <StatValues data={data} format={format} level={level} />
+      )}
+    </section>
+  )
+}
+
+/** 사양 값 하나(「코어 2」). 맨 위 사양 한 줄 안에 들어간다 */
+export function SpecItem({ uid, panel, query }: { uid: string; panel: Panel; query: string }) {
+  const { ref, data, label, format } = usePanelData<HTMLSpanElement>(uid, panel, query)
+  const v = data && !data.failed ? (seriesStats(data.series[0]?.points ?? []).latest ?? null) : null
+  return (
+    <span ref={ref} className="whitespace-nowrap">
+      {label.spec ?? label.name} <b className="tabular-nums">{v === null ? '-' : format(v)}</b>
+    </span>
+  )
+}
+
+/** 그래프 패널. 그래프 아래에 시계열마다 지금·평균·최대 표를 붙인다 */
+export function ChartCard({ uid, panel, query }: { uid: string; panel: Panel; query: string }) {
+  const { ref, seen, data, isPending, isError, label, level, format } = usePanelData<HTMLElement>(
+    uid,
+    panel,
+    query,
+  )
+  // 머리에 붙일 가장 나쁜 단계(지금 값 기준)
   const worst = (data?.series ?? [])
     .map((x) => level(seriesStats(x.points).latest))
     .reduce<ThresholdLevel>(
       (a, b) => (a === 'bad' || b === 'bad' ? 'bad' : a === 'warn' || b === 'warn' ? 'warn' : 'ok'),
       'ok',
     )
-
   return (
-    <section
-      ref={ref}
-      aria-label={panel.title}
-      className={`${s.fact} min-h-40 gap-3 p-4 ${wide ? 'lg:col-span-2' : ''}`}
-    >
-      <header className="flex flex-col gap-0.5">
-        <h4 className="m-0 flex flex-wrap items-baseline gap-x-2 text-sm font-semibold">
-          {label.name}
-          {label.original && <small className="font-normal text-muted">{label.original}</small>}
-          {LEVEL_TEXT[worst] && (
-            <span className={levelClass(worst) ?? 'font-normal text-muted'}>
-              {LEVEL_TEXT[worst]}
-            </span>
-          )}
-        </h4>
-        {label.help && <p className="m-0 text-xs text-muted">{label.help}</p>}
-      </header>
+    <section ref={ref} aria-label={label.name} className={`${s.fact} min-h-40 min-w-0 gap-3 p-4`}>
+      <h4 className="m-0 flex flex-wrap items-center gap-x-2 text-sm font-semibold">
+        {label.name}
+        <HelpTip name={label.name} help={label.help} original={label.original} />
+        {LEVEL_TEXT[worst] && (
+          <span className={levelClass(worst) ?? 'font-normal text-muted'}>{LEVEL_TEXT[worst]}</span>
+        )}
+      </h4>
       {!seen || isPending ? (
         <p className="m-0 py-10 text-center text-sm text-muted">불러오는 중이에요</p>
       ) : isError || data.failed ? (
@@ -120,7 +185,7 @@ function StatValues({
   level: (v: number | null) => ThresholdLevel
 }) {
   return (
-    <dl className="m-0 grid gap-2">
+    <dl className="m-0 flex flex-wrap gap-x-4 gap-y-1">
       {data.series.slice(0, 6).map((x, i) => (
         <div key={i} className="min-w-0">
           {data.series.length > 1 && <dt className="truncate text-xs text-muted">{x.name}</dt>}
@@ -129,11 +194,15 @@ function StatValues({
             const l = level(v)
             return (
               <dd
-                className={`m-0 text-3xl font-bold tracking-tight tabular-nums ${levelClass(l) ?? ''}`}
+                className={`m-0 ${data.series.length > 1 ? 'text-lg' : 'text-2xl'} font-bold tracking-tight tabular-nums ${levelClass(l) ?? ''}`}
               >
                 {v === null ? '-' : format(v)}
                 {LEVEL_TEXT[l] && (
-                  <span className="ml-2 text-sm font-semibold">{LEVEL_TEXT[l]}</span>
+                  <span
+                    className={`ml-1.5 text-xs font-semibold ${l === 'warn' ? 'text-muted' : ''}`}
+                  >
+                    {LEVEL_TEXT[l]}
+                  </span>
                 )}
               </dd>
             )

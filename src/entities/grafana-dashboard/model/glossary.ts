@@ -4,7 +4,8 @@ import type { Panel } from './parse'
 // 사전에 없는 패널은 원래 영어 이름을 그대로 쓴다. 이름이 없는 패널은 질의의 지표 이름으로 이름을 붙인다.
 
 /** ignoreThresholds: 그라파나 원본 기준값이 이 서버에 맞지 않아 판정에 쓰지 않는다 */
-type Entry = { name: string; help?: string; ignoreThresholds?: boolean }
+/** spec: 바뀌지 않는 사양 값이라 카드 대신 맨 위 한 줄에 「spec 값」으로 모은다 */
+type Entry = { name: string; help?: string; ignoreThresholds?: boolean; spec?: string }
 
 const PANELS: Record<string, Entry> = {
   // 서버(Node Exporter)
@@ -173,11 +174,11 @@ const PANELS: Record<string, Entry> = {
 
 /** 이름이 없는 패널은 질의에 나오는 지표로 뜻을 정한다 */
 const BY_METRIC: [RegExp, Entry][] = [
-  [/count\(.*node_cpu_seconds_total/, { name: 'CPU 코어 수' }],
-  [/node_memory_MemTotal_bytes/, { name: '전체 메모리' }],
-  [/node_memory_SwapTotal_bytes/, { name: '전체 스왑' }],
-  [/node_filesystem_size_bytes/, { name: '디스크 크기' }],
-  [/node_boot_time_seconds/, { name: '켜진 지 지난 시간' }],
+  [/count\(.*node_cpu_seconds_total/, { name: 'CPU 코어 수', spec: '코어' }],
+  [/node_memory_MemTotal_bytes/, { name: '전체 메모리', spec: '메모리' }],
+  [/node_memory_SwapTotal_bytes/, { name: '전체 스왑', spec: '스왑' }],
+  [/node_filesystem_size_bytes/, { name: '디스크 크기', spec: '디스크' }],
+  [/node_boot_time_seconds/, { name: '켜진 지 지난 시간', spec: '켜진 지' }],
 ]
 
 const SECTIONS: Record<string, string> = {
@@ -221,6 +222,8 @@ export type PanelLabel = {
   original: string | null
   help: string | null
   ignoreThresholds: boolean
+  /** 사양 한 줄에 쓸 짧은 이름. 사양 값이 아니면 null */
+  spec: string | null
 }
 
 /** 화면에 쓸 패널 이름. original은 뜻으로 바꿨을 때만 원래 영어 이름 */
@@ -232,9 +235,12 @@ export function panelLabel(panel: Pick<Panel, 'title' | 'targets'>): PanelLabel 
       original: panel.title,
       help: known.help ?? null,
       ignoreThresholds: Boolean(known.ignoreThresholds),
+      spec: null,
     }
   }
-  if (panel.title) return { name: panel.title, original: null, help: null, ignoreThresholds: false }
+  if (panel.title) {
+    return { name: panel.title, original: null, help: null, ignoreThresholds: false, spec: null }
+  }
   const exprs = panel.targets.map((t) => t.expr).join(' ')
   const byMetric = BY_METRIC.find(([re]) => re.test(exprs))?.[1]
   return {
@@ -242,6 +248,7 @@ export function panelLabel(panel: Pick<Panel, 'title' | 'targets'>): PanelLabel 
     original: null,
     help: byMetric?.help ?? null,
     ignoreThresholds: false,
+    spec: byMetric?.spec ?? null,
   }
 }
 

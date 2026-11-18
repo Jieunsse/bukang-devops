@@ -493,3 +493,8 @@ button.fact:focus-visible {
 .solo {
   grid-template-columns: minmax(0, 1fr);
 }
+
+/* 모니터링처럼 넓은 화면을 다 쓰는 본문. 바깥 AppShell 폭(96rem) 안에서 980px 제한만 푼다 */
+.wide {
+  max-width: none;
+}

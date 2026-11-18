@@ -20,6 +20,7 @@ describe('읽기 쉬운 이름', () => {
       original: null,
       help: null,
       ignoreThresholds: false,
+      spec: null,
     })
     expect(
       panelLabel({ title: '', targets: t('node_memory_MemTotal_bytes{instance="a"}') }).name,
@@ -132,5 +133,6 @@ describe('그라파나 기준값', () => {
   it('원본 기준값이 맞지 않는 패널은 판정에 쓰지 않는다고 표시한다', () => {
     expect(panelLabel({ title: 'Current QPS', targets: t('x') }).ignoreThresholds).toBe(true)
     expect(panelLabel({ title: 'RAM Used', targets: t('x') }).ignoreThresholds).toBe(false)
+    expect(panelLabel({ title: '', targets: t('node_memory_SwapTotal_bytes') }).spec).toBe('스왑')
   })
 })
