@@ -48,7 +48,7 @@ export function DashboardView({ data }: { data: DashboardViewData }) {
   }
 
   return (
-    <div className={`${s.report} ${s.solo}`}>
+    <div className={`${s.report} ${s.solo} ${s.mon}`}>
       <div className={`${s.page} ${s.wide}`}>
         <MonitoringTabs links={data.links} current={dashboard.uid} />
         <ReportHeader
@@ -74,7 +74,7 @@ export function DashboardView({ data }: { data: DashboardViewData }) {
             {variables.map((v) => (
               <Select
                 key={v.name}
-                className="w-56"
+                className="w-56 text-base"
                 value={v.selected[0] ?? null}
                 onChange={(value) => value !== null && choose(v.name, String(value))}
               >
@@ -114,7 +114,7 @@ export function DashboardView({ data }: { data: DashboardViewData }) {
             <h3 className={`${s.h2} flex items-baseline gap-2`}>
               {sectionLabel(sec.title).name}
               {sectionLabel(sec.title).original && (
-                <small className="text-sm font-normal text-muted">
+                <small className="text-base font-normal text-muted">
                   {sectionLabel(sec.title).original}
                 </small>
               )}
@@ -138,7 +138,7 @@ function SectionPanels({ uid, panels, query }: { uid: string; panels: Panel[]; q
   return (
     <div className="flex flex-col gap-3">
       {specs.length > 0 && (
-        <p className="m-0 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted" aria-label="사양">
+        <p className="m-0 flex flex-wrap gap-x-3 gap-y-1 text-base text-muted" aria-label="사양">
           <span className="font-medium text-foreground">사양</span>
           {specs.map((p) => (
             <SpecItem key={p.id} uid={uid} panel={p} query={query} />

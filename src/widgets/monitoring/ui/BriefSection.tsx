@@ -16,19 +16,19 @@ export function BriefSection({ cards }: { cards: BriefCard[] }) {
   return (
     <ReportSection title="병목 흐름" description="최근 1시간 · 요청에서 DB까지 번지는 순서">
       <div className="flex flex-col gap-3">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {cards.map((c, i) => (
-            <section key={c.key} aria-label={c.title} className={`${s.fact} gap-2 p-4`}>
+            <section key={c.key} aria-label={c.title} className={s.card}>
               {c.series.length ? (
                 <MultiLineChart title={c.title} series={c.series} format={FORMAT[c.unit]} />
               ) : (
-                <p className="m-0 py-10 text-center text-sm text-muted">그래프가 없어요</p>
+                <p className="m-0 py-10 text-center text-base text-muted">그래프가 없어요</p>
               )}
               <h4 className="m-0 text-base font-bold">
                 {NUMBERS[i]} {c.title}
-                {c.alert && <span className="ml-2 text-sm text-danger">· 주의</span>}
+                {c.alert && <span className="ml-2 text-base text-danger">· 주의</span>}
               </h4>
-              <p className={`m-0 text-sm ${c.alert ? 'font-semibold' : 'text-muted'}`}>
+              <p className={`m-0 text-base ${c.alert ? 'font-semibold' : 'text-muted'}`}>
                 {c.caption}
               </p>
             </section>

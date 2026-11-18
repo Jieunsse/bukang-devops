@@ -39,19 +39,19 @@ export function MonitoringView({
   if (data.status !== 'ok') {
     return (
       <div className="flex flex-col gap-6">
-        <h2 className="text-lg font-semibold">모니터링</h2>
+        <h2 className="text-xl font-semibold">모니터링</h2>
         <EmptyState className="py-24">
           {data.status === 'notConfigured' ? (
             <>
               <p className="font-medium text-foreground">그라파나 연결 정보가 없어요</p>
-              <p className="text-sm text-muted">
+              <p className="text-base text-muted">
                 Vercel 환경변수에 GRAFANA_URL과 GRAFANA_TOKEN을 넣으면 지표가 보여요.
               </p>
             </>
           ) : (
             <>
               <p className="font-medium text-foreground">그라파나에서 지표를 받지 못했어요</p>
-              <p className="text-sm text-muted">잠시 뒤 새로고침해 주세요.</p>
+              <p className="text-base text-muted">잠시 뒤 새로고침해 주세요.</p>
             </>
           )}
         </EmptyState>
@@ -78,8 +78,8 @@ function Dashboard({
       : null
   // 영역이 몇 개 안 돼서 왼쪽 목차 없이 한 줄로 쌓는다
   return (
-    <div className={`${s.report} ${s.solo}`}>
-      <div className={`${s.page} ${s.wide}`}>
+    <div className={`${s.report} ${s.solo} ${s.mon}`}>
+      <div className={`${s.page} ${s.wide} gap-8`}>
         {tabs}
         <ReportHeader title="상세 지표" sub={`${timeText(data.fetchedAt)} 기준 · 1분마다 갱신`} />
 
@@ -131,7 +131,7 @@ function Dashboard({
 
         <ReportSection title="추이" description="최근 1시간 · 1분 간격">
           <div id="monitoring-trends" className="flex scroll-mt-4 flex-col gap-4">
-            <div className={`${s.fact} p-4`}>
+            <div className={s.card}>
               {totalTrend ? (
                 <TrendChart
                   title="전체 서버 오류 비율"
@@ -142,7 +142,7 @@ function Dashboard({
                   height={240}
                 />
               ) : (
-                <p className="text-sm text-muted">전체 서버 오류 비율 추이를 받지 못했어요</p>
+                <p className="text-base text-muted">전체 서버 오류 비율 추이를 받지 못했어요</p>
               )}
             </div>
             <div role="group" aria-label="추이 지표" className={`${s.seg} self-start`}>
@@ -158,15 +158,15 @@ function Dashboard({
               ))}
             </div>
             {trends ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {trends.map((t) => (
-                  <div key={t.job} className={`${s.fact} p-4`}>
+                  <div key={t.job} className={s.card}>
                     <TrendChart title={t.name} points={t.points} format={trendItem.format} />
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted">{trendItem.label} 추이를 받지 못했어요</p>
+              <p className="text-base text-muted">{trendItem.label} 추이를 받지 못했어요</p>
             )}
           </div>
         </ReportSection>
@@ -209,18 +209,24 @@ function Tile({
   children: ReactNode
 }) {
   return (
-    <section aria-label={label} className={`${s.fact} min-h-24 justify-between gap-1 p-4`}>
-      <span className="truncate text-xs text-muted">{label}</span>
-      <span className={`text-2xl font-bold tabular-nums ${danger ? 'text-danger' : ''}`}>
+    <section aria-label={label} className={`${s.card} justify-between gap-2`}>
+      <span className={`${s.tLabel} truncate`}>{label}</span>
+      <span className={`${s.tNum} ${danger ? 'text-danger' : ''}`}>
         {children}
-        {danger && <span className="ml-1.5 text-xs font-semibold">주의</span>}
+        {danger && <span className={`${s.tLabel} ml-2 text-danger`}>주의</span>}
       </span>
     </section>
   )
 }
 
-/** 판정 큰 칸과 숫자 4칸. 요약 탭과 상세 지표 탭이 함께 쓴다 */
-export function SummaryTiles({ data }: { data: Extract<MonitoringData, { status: 'ok' }> }) {
+/** 판정 큰 칸과 숫자 4칸. 요약 탭과 상세 지표 탭이 함께 쓴다. summary는 판정 아래 한 줄 요약(요약 탭의 AI 문장) */
+export function SummaryTiles({
+  data,
+  summary,
+}: {
+  data: Extract<MonitoringData, { status: 'ok' }>
+  summary?: ReactNode
+}) {
   const verdict = verdictOf(data.services, data.targets)
   const problems = verdict.problemServices
   const alerts = data.brief.map((c) => c.alert).filter((a): a is string => a !== null)
@@ -228,20 +234,26 @@ export function SummaryTiles({ data }: { data: Extract<MonitoringData, { status:
   const rpsKnown = data.services.filter((r) => r.rps !== null)
   const totalRps = rpsKnown.length ? rpsKnown.reduce((sum, r) => sum + (r.rps ?? 0), 0) : null
   return (
-    <div id="monitoring-summary" className="grid scroll-mt-4 grid-cols-2 gap-3 lg:grid-cols-4">
-      <section aria-label="판정" className={`${s.fact} col-span-2 gap-3 p-5 lg:row-span-2`}>
-        <span className="text-sm text-muted">판정</span>
-        {problems.length ? (
-          <p className="m-0 text-3xl font-bold text-danger">주의 · 문제 {problems.length}곳</p>
-        ) : (
-          <p className="m-0 text-3xl font-bold">{data.partial ? '일부 지표 모름' : '모두 정상'}</p>
-        )}
+    <div
+      id="monitoring-summary"
+      className="grid scroll-mt-4 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+    >
+      <section aria-label="판정" className={`${s.card} gap-2 sm:col-span-2 lg:row-span-2`}>
+        <span className={s.tLabel}>판정</span>
+        <p className={`${s.tVerdict} ${problems.length ? 'text-danger' : ''}`}>
+          {problems.length
+            ? `주의 · 문제 ${problems.length}곳`
+            : data.partial
+              ? '일부 지표 모름'
+              : '모두 정상'}
+        </p>
         {problems.length > 0 && (
-          <p className="m-0 font-medium text-danger">{problems.join(', ')}</p>
+          <p className={`${s.tBody} m-0 text-danger`}>{problems.join(', ')}</p>
         )}
+        {summary}
         {alerts.length > 0 && (
           <ul
-            className="m-0 flex list-none flex-col gap-1 p-0 text-sm"
+            className={`${s.tSmall} m-0 flex list-none flex-col gap-1 p-0`}
             aria-label="최근 1시간 주의"
           >
             {alerts.map((a, i) => (

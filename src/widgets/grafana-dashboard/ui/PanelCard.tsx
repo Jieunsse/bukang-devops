@@ -95,7 +95,7 @@ function HelpTip({
   )
 }
 
-const Status = ({ text }: { text: string }) => <p className="m-0 text-sm text-muted">{text}</p>
+const Status = ({ text }: { text: string }) => <p className="m-0 text-base text-muted">{text}</p>
 
 /** 숫자 패널. 높이 약 96px, 이름 + 값만 둔다. 값이 여러 개면 가로로 나란히 놓는다 */
 export function StatCard({ uid, panel, query }: { uid: string; panel: Panel; query: string }) {
@@ -150,7 +150,7 @@ export function ChartCard({ uid, panel, query }: { uid: string; panel: Panel; qu
     )
   return (
     <section ref={ref} aria-label={label.name} className={`${s.fact} min-h-40 min-w-0 gap-3 p-4`}>
-      <h4 className="m-0 flex flex-wrap items-center gap-x-2 text-sm font-semibold">
+      <h4 className="m-0 flex flex-wrap items-center gap-x-2 text-base font-semibold">
         {label.name}
         <HelpTip name={label.name} help={label.help} original={label.original} />
         {LEVEL_TEXT[worst] && (
@@ -158,11 +158,11 @@ export function ChartCard({ uid, panel, query }: { uid: string; panel: Panel; qu
         )}
       </h4>
       {!seen || isPending ? (
-        <p className="m-0 py-10 text-center text-sm text-muted">불러오는 중이에요</p>
+        <p className="m-0 py-10 text-center text-base text-muted">불러오는 중이에요</p>
       ) : isError || data.failed ? (
-        <p className="m-0 py-10 text-center text-sm text-muted">이 그래프를 불러오지 못했어요</p>
+        <p className="m-0 py-10 text-center text-base text-muted">이 그래프를 불러오지 못했어요</p>
       ) : data.series.length === 0 ? (
-        <p className="m-0 py-10 text-center text-sm text-muted">이 기간에 기록이 없어요</p>
+        <p className="m-0 py-10 text-center text-base text-muted">이 기간에 기록이 없어요</p>
       ) : panel.kind === 'stat' ? (
         <StatValues data={data} format={format} level={level} />
       ) : (
@@ -194,12 +194,12 @@ function StatValues({
             const l = level(v)
             return (
               <dd
-                className={`m-0 ${data.series.length > 1 ? 'text-lg' : 'text-2xl'} font-bold tracking-tight tabular-nums ${levelClass(l) ?? ''}`}
+                className={`m-0 ${data.series.length > 1 ? 'text-2xl' : 'text-[32px] leading-10'} font-bold tracking-tight tabular-nums ${levelClass(l) ?? ''}`}
               >
                 {v === null ? '-' : format(v)}
                 {LEVEL_TEXT[l] && (
                   <span
-                    className={`ml-1.5 text-xs font-semibold ${l === 'warn' ? 'text-muted' : ''}`}
+                    className={`ml-1.5 text-xs font-medium ${l === 'warn' ? 'text-muted' : ''}`}
                   >
                     {LEVEL_TEXT[l]}
                   </span>

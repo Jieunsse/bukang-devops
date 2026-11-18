@@ -6,7 +6,7 @@ import type { MonitoringData } from '../model/load'
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 vi.mock('../api/actions', () => ({ refreshMonitoringAction: vi.fn() }))
 
-const { ExplainView } = await import('./ExplainView')
+const { AiSummaryLine, ExplainView, RefreshReport, ReportTime } = await import('./ExplainView')
 
 const T = (m: number) => Date.UTC(2026, 10, 18, 11, 54 + m) / 1000 // 20:54 KST부터
 const data = {
@@ -53,7 +53,15 @@ async function renderView(
   result: Parameters<typeof ExplainView>[0]['explanation'] extends Promise<infer R> ? R : never,
 ) {
   await act(async () => {
-    render(<ExplainView data={data} links={links} explanation={Promise.resolve(result)} />)
+    const explanation = Promise.resolve(result)
+    render(
+      <>
+        <ReportTime explanation={explanation} />
+        <RefreshReport />
+        <AiSummaryLine explanation={explanation} />
+        <ExplainView data={data} links={links} explanation={explanation} />
+      </>,
+    )
   })
 }
 
@@ -89,7 +97,7 @@ describe('AI 리포트', () => {
     expect(within(card).getByText('1.2초').closest('span')).toHaveClass('text-danger')
     expect(within(card).getByRole('img', { name: /그래프/ })).toBeInTheDocument()
     expect(screen.getByText('대기 0건')).toBeInTheDocument()
-    expect(screen.getByText('95.0%').closest('span')).toHaveClass('text-danger')
+    expect(screen.getByText('95.0%')).toHaveClass('text-danger')
     expect(screen.getByRole('img', { name: '앱 서버 메모리 95.0%, 기준 90%' })).toBeInTheDocument()
     expect(screen.getByText('78.0%')).not.toHaveClass('text-danger')
     expect(screen.getByText('특이 사항 없음 · 1곳 정상')).toBeInTheDocument()
@@ -99,12 +107,12 @@ describe('AI 리포트', () => {
     )
   })
 
-  it('AI 연결이 없어도 코드가 그리는 자원 막대와 서비스 줄은 보이고, 새로고침 버튼은 없다', async () => {
+  it('AI 연결이 없어도 코드가 그리는 자원 막대와 서비스 줄은 보이고, 새로고침은 기다리지 않고 보인다', async () => {
     await renderView({ status: 'notConfigured' })
     expect(screen.getByText('AI 연결 정보가 없어요')).toBeInTheDocument()
     expect(screen.getByText('특이 사항 없음 · 1곳 정상')).toBeInTheDocument()
     expect(screen.getByRole('list', { name: '기준까지 남은 양' })).toBeInTheDocument()
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '지표와 AI 리포트 새로 받기' })).toBeInTheDocument()
   })
 
   it('실패하면 받지 못했다고 보이고 다시 시도할 수 있다', async () => {

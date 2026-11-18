@@ -3,6 +3,7 @@
 import { useId, useState, type PointerEvent } from 'react'
 
 import { monotonePath, type Pt } from '@/shared/lib/chart'
+import { useWidth } from '@/shared/lib/use-width'
 
 // 선 그래프 하나. 색은 리포트 강조색 하나만 쓴다(서비스 구분은 그래프를 나눠서 한다).
 // 곡선은 값이 튀어 보이지 않게 단조 보간(monotone cubic)으로 그리고, 아래 면은 강조색이 옅어지게 칠한다.
@@ -25,7 +26,7 @@ export function TrendChart({
   points,
   format,
   hero = false,
-  width: W = 320,
+  width: initialWidth = 320,
   height: H = 140,
 }: {
   title: string
@@ -39,14 +40,16 @@ export function TrendChart({
 }) {
   const id = useId().replace(/:/g, '')
   const [hover, setHover] = useState<number | null>(null)
+  // 칸 폭을 재서 viewBox로 쓴다. 그래야 축 글자가 늘거나 줄지 않고 12px로 보인다
+  const { ref: boxRef, width: W } = useWidth<HTMLDivElement>(initialWidth)
   const values = points.map(([, v]) => v).filter((v): v is number => v !== null)
   const first = points[0]
   const last = points[points.length - 1]
   if (!first || !last || values.length === 0) {
     return (
       <figure className="m-0">
-        <figcaption className="text-sm font-medium">{title}</figcaption>
-        <p className="py-8 text-center text-sm text-muted">최근 1시간 기록이 없어요</p>
+        <figcaption className="text-base font-medium">{title}</figcaption>
+        <p className="py-8 text-center text-base text-muted">최근 1시간 기록이 없어요</p>
       </figure>
     )
   }
@@ -98,10 +101,10 @@ export function TrendChart({
     <figure className="m-0 flex flex-col gap-2">
       <figcaption className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-col gap-1">
-          <span className={hero ? 'text-sm text-muted' : 'text-sm font-medium'}>{title}</span>
+          <span className={hero ? 'text-base text-muted' : 'text-base font-medium'}>{title}</span>
           {hero && latest !== null && (
             <div className="flex items-center gap-2">
-              <span className="text-4xl font-bold tracking-tight tabular-nums">
+              <span className="text-[32px] leading-10 font-bold tracking-tight tabular-nums">
                 {format(latest)}
               </span>
               {delta !== null && (
@@ -118,16 +121,17 @@ export function TrendChart({
           )}
         </div>
         {!hero && (
-          <span className="text-sm text-muted tabular-nums">
+          <span className="text-base text-muted tabular-nums">
             {latest === null ? '-' : `지금 ${format(latest)}`}
           </span>
         )}
       </figcaption>
 
-      <div className="relative">
+      <div ref={boxRef} className="relative">
         <svg
           viewBox={`0 0 ${W} ${H}`}
-          className="block h-auto w-full touch-none overflow-visible"
+          className="block w-full touch-none overflow-visible"
+          style={{ height: H }}
           role="img"
           aria-label={`${title} 최근 1시간 추이. 가장 높을 때 ${format(peak)}, 지금 ${latest === null ? '기록 없음' : format(latest)}`}
           onPointerMove={onMove}
@@ -202,7 +206,7 @@ export function TrendChart({
                 <text
                   x={tx}
                   y={H - 7}
-                  fontSize="10"
+                  fontSize="12"
                   textAnchor={anchor}
                   fill={active ? 'var(--accent)' : 'var(--muted)'}
                   fontWeight={active ? 600 : 400}
