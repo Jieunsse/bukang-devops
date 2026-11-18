@@ -488,3 +488,8 @@ button.fact:focus-visible {
   --series-7: #9085e9;
   --series-8: #e66767;
 }
+
+/* 왼쪽 목차 없이 본문만 쓰는 화면 */
+.solo {
+  grid-template-columns: minmax(0, 1fr);
+}
