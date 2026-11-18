@@ -1,5 +1,6 @@
 import { seriesStats, type Series } from '@/shared/lib/chart'
 
+import { hhmm } from './format'
 import { JOB_NAMES } from './rows'
 
 // 자동 브리핑. 최근 1시간 지표로 카드마다 한 줄 설명과 주의 문장을 숫자로 만든다.
@@ -28,6 +29,10 @@ export const THRESHOLDS = {
   dbConnRatio: 1,
   pending: 1,
   lockPerSecond: 1,
+  /** 서버 자원. 그라파나 서버 대시보드의 빨강 단계와 같다 */
+  memory: 0.9,
+  disk: 0.9,
+  swap: 0.25,
 } as const
 
 /** 서버 이름(node exporter instance) → 화면 이름 */
@@ -42,14 +47,6 @@ export const nameOf = (labels: Record<string, string>) =>
   labels.job ||
   labels.instance ||
   '전체'
-
-const hhmm = (t: number) =>
-  new Date(t * 1000).toLocaleTimeString('ko-KR', {
-    timeZone: 'Asia/Seoul',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
 
 type Fmt = (v: number) => string
 
@@ -207,3 +204,17 @@ export function buildBrief(
 
 /** 카드 아래 한 줄 요약에 쓰는 지금 값 */
 export const latestOf = (s: Series) => seriesStats(s.points).latest
+
+/** AI 입력용 시계열 요약. 숫자는 화면 표기 그대로의 문자열이다 */
+export function summarizeSeries(s: Series, f: Fmt) {
+  const values = s.points.filter(([, v]) => v !== null)
+  const peak = peakOf(s)
+  const latest = seriesStats(s.points).latest
+  return {
+    name: s.name,
+    first: values[0]?.[1] == null ? null : f(values[0][1]),
+    latest: latest === null ? null : f(latest),
+    peak: peak ? f(peak.value) : null,
+    peakAt: peak ? hhmm(peak.at) : null,
+  }
+}

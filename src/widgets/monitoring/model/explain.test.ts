@@ -66,19 +66,47 @@ const monitoring = {
       },
     ],
   },
-  brief: [],
+  brief: [
+    {
+      key: 'latency' as const,
+      title: '응답 시간(95%)',
+      unit: 's' as const,
+      // 2026-11-18 19:42 KST부터 1분 간격
+      series: [
+        {
+          name: '게이트웨이',
+          points: [
+            [Date.UTC(2026, 10, 18, 10, 42) / 1000, 0.12],
+            [Date.UTC(2026, 10, 18, 10, 43) / 1000, 1.1],
+            [Date.UTC(2026, 10, 18, 10, 44) / 1000, 0.3],
+          ] as [number, number | null][],
+        },
+      ],
+      caption: '가장 느린 곳 게이트웨이: 120ms → 최대 1.1초(19:43)',
+      alert: '게이트웨이 응답 시간이 19:43에 1.1초까지 늘었어요.',
+    },
+  ],
+  resources: [{ name: '앱 서버', memory: 0.804, disk: 0.78, swap: null }],
 }
 const loadMonitoring = vi.fn(async () => monitoring)
 vi.mock('./load', () => ({ loadMonitoring: () => loadMonitoring() }))
 vi.mock('@/shared/api/grafana/server', () => ({ GRAFANA_METRICS_TAG: 'grafana-metrics' }))
 
 const { buildExplainInput } = await import('./explain')
+const { BRIEF_FORMAT, percentText } = await import('./format')
 const { getExplanation, refreshMonitoring } = await import('./explain-server')
 
 const env = { ANTHROPIC_API_KEY: 'k' }
-const answer = (status: string) => ({
+const answer = (summary: string) => ({
   ok: true,
-  value: { status, cause: '원인', firstCheck: '먼저 볼 곳' },
+  value: {
+    summary,
+    watch: [],
+    causes: [],
+    services: ['특이 사항 없음'],
+    resources: ['여유 있음'],
+    nextSteps: [],
+  },
 })
 
 beforeEach(() => {
@@ -89,18 +117,35 @@ beforeEach(() => {
 })
 
 describe('AI에 보낼 입력', () => {
-  it('판정은 코드가 계산하고, 값이 없으면 null 그대로, p95 추이는 처음·마지막·최대만 보낸다', () => {
+  it('자동 브리핑과 같은 계산 결과를 화면 표기 그대로 보낸다', () => {
     const input = buildExplainInput(monitoring)
-    expect(input.problems).toEqual(['주문', 'MySQL'])
+    // 브리핑 카드 문장은 글자 하나 다르지 않게 그대로 들어간다
+    expect(input.brief[0]).toMatchObject({
+      title: '응답 시간(95%)',
+      caption: '가장 느린 곳 게이트웨이: 120ms → 최대 1.1초(19:43)',
+      alert: '게이트웨이 응답 시간이 19:43에 1.1초까지 늘었어요.',
+    })
+    // 시계열 요약도 브리핑과 같은 표기 함수로 만든 문자열이다
+    expect(input.brief[0]!.series[0]).toEqual({
+      name: '게이트웨이',
+      first: BRIEF_FORMAT.s(0.12),
+      latest: BRIEF_FORMAT.s(0.3),
+      peak: BRIEF_FORMAT.s(1.1),
+      peakAt: '19:43',
+    })
+    // 서비스 표·판정·자원·기준값도 화면과 같은 문자열이다
     expect(input.services[0]).toMatchObject({
       name: '주문',
       status: '정상',
-      errorRatioPercent: 5,
-      p95Ms: null,
+      errorRatio: percentText(0.05),
+      p95: '-',
       issues: ['서버 오류 비율 1% 초과'],
     })
-    expect(input.p95Trend[0]).toEqual({ name: '주문', firstMs: 100, lastMs: 300, maxMs: 2000 })
-    expect(input.infraDown).toEqual(['MySQL'])
+    expect(input.verdict).toMatchObject({ problems: ['주문', 'MySQL'], downCount: '1곳' })
+    expect(input.resources).toEqual([
+      { server: '앱 서버', memory: '80.4%', disk: '78.0%', swap: '-' },
+    ])
+    expect(input.thresholds).toMatchObject({ memory: '90%', latency: '1초', errorRatio: '1%' })
     // 주소·토큰 같은 값은 보내지 않는다
     expect(JSON.stringify(input)).not.toMatch(/instance|http|token/i)
   })
@@ -120,7 +165,7 @@ describe('해석 캐시', () => {
     expect(second).toEqual(first)
     expect(first).toMatchObject({
       status: 'ok',
-      explanation: { status: '첫 해석', createdAt: '2026-11-18T10:00:00.000Z' },
+      explanation: { summary: '첫 해석', createdAt: '2026-11-18T10:00:00.000Z' },
     })
   })
 
@@ -138,7 +183,7 @@ describe('해석 캐시', () => {
     await getExplanation(env)
     vi.setSystemTime(new Date('2026-11-18T10:01:00Z'))
     expect(await refreshMonitoring(env)).toMatchObject({ status: 'refreshed' })
-    expect(await getExplanation(env)).toMatchObject({ explanation: { status: '새 해석' } })
+    expect(await getExplanation(env)).toMatchObject({ explanation: { summary: '새 해석' } })
   })
 
   it('AI 호출이 실패하면 직전 해석이 그대로 남는다', async () => {
@@ -148,7 +193,7 @@ describe('해석 캐시', () => {
     await getExplanation(env)
     vi.setSystemTime(new Date('2026-11-18T10:02:00Z'))
     expect(await refreshMonitoring(env)).toMatchObject({ status: 'failed' })
-    expect(await getExplanation(env)).toMatchObject({ explanation: { status: '첫 해석' } })
+    expect(await getExplanation(env)).toMatchObject({ explanation: { summary: '첫 해석' } })
   })
 
   it('처음 호출이 실패하면 실패로 보여 주고, 1분 동안은 다시 들어와도 AI를 부르지 않는다', async () => {
@@ -161,7 +206,7 @@ describe('해석 캐시', () => {
     expect(askClaude).toHaveBeenCalledTimes(1)
     vi.setSystemTime(new Date('2026-11-18T10:01:00Z'))
     expect(await refreshMonitoring(env)).toMatchObject({ status: 'refreshed' })
-    expect(await getExplanation(env)).toMatchObject({ explanation: { status: '다음 해석' } })
+    expect(await getExplanation(env)).toMatchObject({ explanation: { summary: '다음 해석' } })
   })
 
   it('새로고침이 실패한 직후 다시 눌러도 1분 동안은 AI를 부르지 않는다(실패해도 시도 시각을 남긴다)', async () => {
@@ -175,7 +220,7 @@ describe('해석 캐시', () => {
     expect(await refreshMonitoring(env)).toMatchObject({ status: 'tooSoon', secondsAgo: 10 })
     expect(askClaude).toHaveBeenCalledTimes(2)
     // 직전 해석은 그대로다
-    expect(await getExplanation(env)).toMatchObject({ explanation: { status: '첫 해석' } })
+    expect(await getExplanation(env)).toMatchObject({ explanation: { summary: '첫 해석' } })
   })
 
   it('새로고침이 동시에 여러 번 와도 AI는 한 번만 부른다', async () => {

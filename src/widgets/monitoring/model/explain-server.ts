@@ -19,6 +19,12 @@ import { loadMonitoring } from './load'
 export const EXPLAIN_TAG = 'monitoring-explain'
 /** 새로고침은 서버 전체에서 1분에 한 번만 AI를 부른다 */
 const ONE_MINUTE_MS = 60_000
+/**
+ * 리포트는 여섯 칸이라 길고, 원인 추정에 지표끼리 비교가 필요하다.
+ * 비용: Opus 5.5 출력 100만 토큰당 20달러. 한 번에 출력 약 2천 토큰이면 약 0.04달러이고, 생각 토큰만큼 더 든다.
+ * 새로고침이 서버 전체 1분에 한 번이라 최악이어도 시간당 60번이다.
+ */
+const REPORT_OPTIONS = { maxTokens: 3000, effort: 'medium' } as const
 
 export type Explanation = ExplanationText & { createdAt: string }
 export type ExplanationResult =
@@ -35,11 +41,16 @@ async function generate(env: Env): Promise<Explanation> {
   if (!config) throw new ExplainFailed('키 없음')
   const data = await loadMonitoring(env)
   if (data.status !== 'ok') throw new ExplainFailed('지표 없음')
-  const result = await askClaude(createClaudeClient(config), config, {
-    system: EXPLAIN_SYSTEM,
-    user: JSON.stringify(buildExplainInput(data)),
-    schema: ExplanationSchema,
-  })
+  const result = await askClaude(
+    createClaudeClient(config),
+    config,
+    {
+      system: EXPLAIN_SYSTEM,
+      user: JSON.stringify(buildExplainInput(data)),
+      schema: ExplanationSchema,
+    },
+    REPORT_OPTIONS,
+  )
   if (!result.ok) throw new ExplainFailed(result.reason)
   return { ...result.value, createdAt: new Date().toISOString() }
 }

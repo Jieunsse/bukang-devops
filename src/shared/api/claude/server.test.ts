@@ -69,6 +69,17 @@ describe('Claude 호출', () => {
     expect(body.messages).toEqual([{ role: 'user', content: '{"a":1}' }])
   })
 
+  it('호출마다 출력 한도와 effort를 바꿀 수 있다', async () => {
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    const { fetchImpl, calls } = fakeFetch(() => message('{"status":"a","cause":"b"}'))
+    await askClaude(createClaudeClient(config, fetchImpl), config, prompt, {
+      maxTokens: 3000,
+      effort: 'medium',
+    })
+    expect(calls[0]!.body.max_tokens).toBe(3000)
+    expect(calls[0]!.body.output_config).toMatchObject({ effort: 'medium' })
+  })
+
   it('Haiku로 바꾸면 대체 모델 옵션을 보내지 않는다', async () => {
     const haiku = { apiKey: KEY, model: 'claude-haiku-5-5' }
     const { fetchImpl, calls } = fakeFetch(() => message('{"status":"a","cause":"b"}'))

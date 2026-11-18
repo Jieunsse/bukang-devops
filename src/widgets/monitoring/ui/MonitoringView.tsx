@@ -3,29 +3,20 @@
 import { EmptyState } from '@heroui/react'
 import { useState, type ReactNode } from 'react'
 
-import { Fact, report as s, ReportHeader, ReportSection } from '@/shared/ui'
+import { report as s, ReportHeader, ReportSection } from '@/shared/ui'
 
+import { hhmm, mbText, msText, percentText, rpsText } from '../model/format'
 import type { MonitoringData, TrendKind } from '../model/load'
 import type { ServiceRow } from '../model/rows'
 import { isHighError, isSlow, sortByIssues, totalErrorTrend, verdictOf } from '../model/verdict'
 import { BriefSection } from './BriefSection'
 import { TrendChart } from './TrendChart'
 
-// 운영 서버 모니터링. 「지금 문제 있는 곳이 있나」를 맨 위에 판정으로 보여 주고,
-// 서비스 표 → 추이 → 상태판 순서로 내려간다. 기준(THRESHOLDS)을 넘은 값만 빨간 글자로 쓴다(CLAUDE.md 예외).
+// 운영 서버 모니터링. 벤토 그리드로 가장 중요한 판정을 왼쪽 위 큰 칸에 두고, 옆에 숫자 4칸,
+// 아래에 AI 리포트(전체 폭)와 같은 크기의 병목 카드 6장을 둔다. 그 아래로 서비스 표 → 추이 → 상태판. 기준(THRESHOLDS)을 넘은 값만 빨간 글자로 쓴다(CLAUDE.md 예외).
 
-const UNKNOWN = '-'
-const timeText = (iso: string) =>
-  new Date(iso).toLocaleTimeString('ko-KR', {
-    timeZone: 'Asia/Seoul',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-const rpsText = (n: number | null) => (n === null ? UNKNOWN : n.toFixed(n < 10 ? 2 : 1))
-const percentText = (n: number | null) => (n === null ? UNKNOWN : `${(n * 100).toFixed(1)}%`)
-const msText = (sec: number | null) => (sec === null ? UNKNOWN : `${Math.round(sec * 1000)}ms`)
-const mbText = (b: number | null) => (b === null ? UNKNOWN : `${Math.round(b / 1024 / 1024)}MB`)
 const upText = (up: boolean) => (up ? '정상' : '응답 없음')
+const timeText = (iso: string) => hhmm(Date.parse(iso) / 1000)
 /** 기준을 넘은 값만 빨간 굵은 글자 */
 const bad = (on: boolean) => (on ? 'font-semibold text-danger' : undefined)
 
@@ -92,6 +83,8 @@ function Dashboard({
       : null
   const verdict = verdictOf(data.services, data.targets)
   const problems = verdict.problemServices
+  const alerts = data.brief.map((c) => c.alert).filter((a): a is string => a !== null)
+  const totalRps = data.services.reduce((sum, r) => sum + (r.rps ?? 0), 0)
 
   // 영역이 몇 개 안 돼서 왼쪽 목차 없이 한 줄로 쌓는다
   return (
@@ -100,43 +93,51 @@ function Dashboard({
         {tabs}
         <ReportHeader title="모니터링" sub={`${timeText(data.fetchedAt)} 기준 · 1분마다 갱신`} />
 
-        <dl id="monitoring-summary" className={`${s.facts} scroll-mt-4`}>
-          <Fact
-            label="판정"
-            value={
-              problems.length ? (
-                <span className="text-danger">
-                  주의 · 문제 {problems.length}곳
-                  <small className="block text-sm font-medium">{problems.join(', ')}</small>
-                </span>
-              ) : data.partial ? (
-                '일부 지표 모름'
-              ) : (
-                '모두 정상'
-              )
-            }
-          />
-          <Fact
-            label="전체 서버 오류 비율"
-            value={
-              <span className={bad(isHighError(verdict.totalErrorRatio))}>
-                {percentText(verdict.totalErrorRatio)}
-              </span>
-            }
-          />
-          <Fact
+        <div id="monitoring-summary" className="grid scroll-mt-4 grid-cols-2 gap-3 lg:grid-cols-4">
+          <section
+            aria-label="판정"
+            className={`${s.fact} col-span-2 gap-3 p-5 lg:row-span-2 ${problems.length ? 'ring-1 ring-danger' : ''}`}
+          >
+            <span className="text-sm text-muted">판정</span>
+            {problems.length ? (
+              <p className="m-0 text-3xl font-bold text-danger">주의 · 문제 {problems.length}곳</p>
+            ) : (
+              <p className="m-0 text-3xl font-bold">
+                {data.partial ? '일부 지표 모름' : '모두 정상'}
+              </p>
+            )}
+            {problems.length > 0 && (
+              <p className="m-0 font-medium text-danger">{problems.join(', ')}</p>
+            )}
+            {alerts.length > 0 && (
+              <ul
+                className="m-0 flex list-none flex-col gap-1 p-0 text-sm"
+                aria-label="최근 1시간 주의"
+              >
+                {alerts.map((a, i) => (
+                  <li key={i}>
+                    <strong className="text-danger">주의</strong> {a}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <Tile label="전체 서버 오류 비율" danger={isHighError(verdict.totalErrorRatio)}>
+            {percentText(verdict.totalErrorRatio)}
+          </Tile>
+          <Tile
             label={verdict.slowest ? `가장 느린 곳 · ${verdict.slowest.name}` : '가장 느린 곳'}
-            value={
-              <span className={bad(isSlow(verdict.slowest?.p95Seconds ?? null))}>
-                {msText(verdict.slowest?.p95Seconds ?? null)}
-              </span>
-            }
-          />
-          <Fact
-            label="응답 없는 대상"
-            value={<span className={bad(verdict.downCount > 0)}>{verdict.downCount}곳</span>}
-          />
-        </dl>
+            danger={isSlow(verdict.slowest?.p95Seconds ?? null)}
+          >
+            {msText(verdict.slowest?.p95Seconds ?? null)}
+          </Tile>
+          <Tile label="응답 없는 대상" danger={verdict.downCount > 0}>
+            {verdict.downCount}곳
+          </Tile>
+          <Tile label="전체 초당 요청" danger={false}>
+            {rpsText(totalRps)}
+          </Tile>
+        </div>
 
         {explain}
 
@@ -250,5 +251,26 @@ function Dashboard({
         </ReportSection>
       </div>
     </div>
+  )
+}
+
+/** 숫자 한 칸. 기준을 넘으면 값만 빨간 글자와 「주의」 */
+function Tile({
+  label,
+  danger,
+  children,
+}: {
+  label: string
+  danger: boolean
+  children: ReactNode
+}) {
+  return (
+    <section aria-label={label} className={`${s.fact} min-h-24 justify-between gap-1 p-4`}>
+      <span className="truncate text-xs text-muted">{label}</span>
+      <span className={`text-2xl font-bold tabular-nums ${danger ? 'text-danger' : ''}`}>
+        {children}
+        {danger && <span className="ml-1.5 text-xs font-semibold">주의</span>}
+      </span>
+    </section>
   )
 }
