@@ -1,2 +1,2 @@
-export { MonitoringView, SummaryTiles } from './ui/MonitoringView'
+export { MonitoringView, SummaryTiles, TrendsSection } from './ui/MonitoringView'
 export { BriefSection } from './ui/BriefSection'

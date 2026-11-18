@@ -69,13 +69,6 @@ function Dashboard({
   data: Extract<MonitoringData, { status: 'ok' }>
   tabs?: ReactNode
 }) {
-  const [kind, setKind] = useState<TrendKind>('errors')
-  const trendItem = TREND_ITEMS.find((i) => i.kind === kind) ?? TREND_ITEMS[0]!
-  const trends = data.trends[kind]
-  const totalTrend =
-    data.trends.errors && data.trends.rps
-      ? totalErrorTrend(data.trends.errors, data.trends.rps)
-      : null
   // 영역이 몇 개 안 돼서 왼쪽 목차 없이 한 줄로 쌓는다
   return (
     <div className={`${s.report} ${s.solo} ${s.mon}`}>
@@ -129,47 +122,7 @@ function Dashboard({
           </div>
         </ReportSection>
 
-        <ReportSection title="추이" description="최근 1시간 · 1분 간격">
-          <div id="monitoring-trends" className="flex scroll-mt-4 flex-col gap-4">
-            <div className={s.card}>
-              {totalTrend ? (
-                <TrendChart
-                  title="전체 서버 오류 비율"
-                  points={totalTrend}
-                  format={(v) => percentText(v)}
-                  hero
-                  width={960}
-                  height={240}
-                />
-              ) : (
-                <p className="text-base text-muted">전체 서버 오류 비율 추이를 받지 못했어요</p>
-              )}
-            </div>
-            <div role="group" aria-label="추이 지표" className={`${s.seg} self-start`}>
-              {TREND_ITEMS.map((item) => (
-                <button
-                  key={item.kind}
-                  type="button"
-                  aria-pressed={kind === item.kind}
-                  onClick={() => setKind(item.kind)}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-            {trends ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {trends.map((t) => (
-                  <div key={t.job} className={s.card}>
-                    <TrendChart title={t.name} points={t.points} format={trendItem.format} />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-base text-muted">{trendItem.label} 추이를 받지 못했어요</p>
-            )}
-          </div>
-        </ReportSection>
+        <TrendsSection data={data} />
 
         <ReportSection title="상태판" description="응답 없는 대상이 위로">
           <div id="monitoring-targets" className={`${s.tbl} scroll-mt-4`}>
@@ -280,5 +233,59 @@ export function SummaryTiles({
         {rpsText(totalRps)}
       </Tile>
     </div>
+  )
+}
+
+/** 추이: 전체 서버 오류 비율 큰 그래프와 서비스(모듈)별 그래프. 요약 탭과 상세 지표 탭이 함께 쓴다 */
+export function TrendsSection({ data }: { data: Extract<MonitoringData, { status: 'ok' }> }) {
+  const [kind, setKind] = useState<TrendKind>('errors')
+  const trendItem = TREND_ITEMS.find((i) => i.kind === kind) ?? TREND_ITEMS[0]!
+  const trends = data.trends[kind]
+  const totalTrend =
+    data.trends.errors && data.trends.rps
+      ? totalErrorTrend(data.trends.errors, data.trends.rps)
+      : null
+  return (
+    <ReportSection title="추이" description="최근 1시간 · 1분 간격">
+      <div id="monitoring-trends" className="flex scroll-mt-4 flex-col gap-4">
+        <div className={s.card}>
+          {totalTrend ? (
+            <TrendChart
+              title="전체 서버 오류 비율"
+              points={totalTrend}
+              format={(v) => percentText(v)}
+              hero
+              width={960}
+              height={240}
+            />
+          ) : (
+            <p className="text-base text-muted">전체 서버 오류 비율 추이를 받지 못했어요</p>
+          )}
+        </div>
+        <div role="group" aria-label="추이 지표" className={`${s.seg} self-start`}>
+          {TREND_ITEMS.map((item) => (
+            <button
+              key={item.kind}
+              type="button"
+              aria-pressed={kind === item.kind}
+              onClick={() => setKind(item.kind)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        {trends ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {trends.map((t) => (
+              <div key={t.job} className={s.card}>
+                <TrendChart title={t.name} points={t.points} format={trendItem.format} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-base text-muted">{trendItem.label} 추이를 받지 못했어요</p>
+        )}
+      </div>
+    </ReportSection>
   )
 }

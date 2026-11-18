@@ -218,11 +218,16 @@ function ResourceBars({ data }: { data: Ok }) {
         const near = !over && b.ratio >= b.limit * 0.9
         const limitText = `${Math.round(b.limit * 100)}%`
         return (
-          <li key={b.label} className="grid grid-cols-[8rem_minmax(0,1fr)_auto] items-center gap-3">
-            <span className={`${s.tLabel} truncate`} title={b.label}>
-              {b.label}
+          // 이름 칸·숫자 칸 폭을 고정해 모든 줄의 막대 길이가 같다. 「주의」·「기준 가까움」은 이름 아래에 둔다
+          <li key={b.label} className="grid grid-cols-[7rem_minmax(0,1fr)_4rem] items-center gap-3">
+            <span className="flex min-w-0 flex-col">
+              <span className={`${s.tLabel} truncate`} title={b.label}>
+                {b.label}
+              </span>
+              {over && <span className={`${s.tLabel} text-danger`}>주의 · 기준 {limitText}</span>}
+              {near && <span className={s.tSmall}>기준 가까움 · {limitText}</span>}
             </span>
-            {/* 빈 막대 틀은 0%여도 보인다. 막대는 회색, 기준을 넘으면 빨강. 세로선이 기준 위치다 */}
+            {/* 빈 막대 틀은 0%여도 보인다. 막대는 회색, 기준을 넘으면 빨강. 기준 값은 글 설명(aria-label)과 「기준 가까움」으로 알린다 */}
             <span
               role="img"
               aria-label={`${b.label} ${b.text}, 기준 ${limitText}`}
@@ -236,17 +241,11 @@ function ResourceBars({ data }: { data: Ok }) {
                   background: over ? undefined : 'var(--muted)',
                 }}
               />
-              <span
-                className="absolute -inset-y-1 w-0.5"
-                style={{ left: `${Math.min(99, b.limit * 100)}%`, background: 'var(--fg)' }}
-              />
             </span>
             <span
               className={`${s.tBody} text-right tabular-nums ${over ? 'font-semibold text-danger' : ''}`}
             >
               {b.text}
-              {over && <span className={`${s.tLabel} ml-1 text-danger`}>주의</span>}
-              {near && <span className={`${s.tSmall} ml-1`}>기준 가까움</span>}
             </span>
           </li>
         )

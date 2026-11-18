@@ -5,13 +5,14 @@ import { useId, useState, type PointerEvent } from 'react'
 import { monotonePath, type Pt, type Series } from '@/shared/lib/chart'
 import { useWidth } from '@/shared/lib/use-width'
 
-// 여러 시계열 선 그래프. 색은 --series-1 … 8 을 시계열 순서대로 쓴다(순위가 아니라 이름 순서라 새로 받아도 색이 바뀌지 않는다).
-// 시계열이 하나면 선 아래를 강조색 그라데이션으로 칠한다. 마우스를 올리면 그 시각의 값들을 툴팁 카드로 보여 준다.
+// 여러 시계열 선 그래프. 모양은 레퍼런스(이용 통계 시안)와 같다: 곡선, 아래로 옅어지는 면, 왼쪽이 옅은 선,
+// 세로 보조선, 강조되는 시각 눈금, 속이 빈 점, 툴팁 카드. 세로축 글자는 두지 않고 값은 툴팁과 표로 본다.
+// 색은 --series-1 … 8 을 시계열 순서대로 쓴다(순위가 아니라 이름 순서라 새로 받아도 색이 바뀌지 않는다).
 
 /** 재기 전 폭. 실제로는 칸 폭을 재서 viewBox로 쓴다(축 글자가 12px로 보이게) */
 const DEFAULT_W = 640
 const H = 220
-const PAD = { top: 12, right: 12, bottom: 24, left: 56 }
+const PAD = { top: 16, right: 12, bottom: 32, left: 12 }
 /** 선으로 그리는 시계열 수. 나머지는 표에만 남긴다(9번째 색을 만들지 않는다) */
 export const MAX_LINES = 8
 const TICKS = 5
@@ -69,12 +70,21 @@ export function MultiLineChart({
     return out
   }
 
-  const yTicks = [hi, (hi + bottom) / 2, bottom]
   const xTicks = Array.from(
     { length: TICKS },
     (_, i) => times[Math.round((i * (times.length - 1)) / (TICKS - 1))]!,
   )
   const hoverT = hover === null ? null : times[hover]
+  // 마우스를 올린 시각에 가장 가까운 눈금
+  const tickIndex = xTicks.map((t) => times.indexOf(t))
+  const nearestTick =
+    hover === null
+      ? -1
+      : tickIndex.reduce(
+          (best, ti, i) =>
+            Math.abs(ti - hover) < Math.abs((tickIndex[best] ?? 0) - hover) ? i : best,
+          0,
+        )
   const at = (s: Series, t: number) => s.points.find(([pt]) => pt === t)?.[1] ?? null
 
   const onMove = (e: PointerEvent<SVGSVGElement>) => {
@@ -98,70 +108,88 @@ export function MultiLineChart({
           onPointerLeave={() => setHover(null)}
         >
           <defs>
-            <linearGradient id={`${id}-fill`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--series-1)" stopOpacity="0.28" />
-              <stop offset="100%" stopColor="var(--series-1)" stopOpacity="0" />
-            </linearGradient>
+            {lines.map((_, si) => (
+              <g key={si}>
+                {/* 선 아래 면: 아래로 갈수록 옅어진다 */}
+                <linearGradient id={`${id}-fill-${si}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor={seriesColor(si)}
+                    stopOpacity={lines.length === 1 ? 0.32 : 0.14}
+                  />
+                  <stop offset="100%" stopColor={seriesColor(si)} stopOpacity="0" />
+                </linearGradient>
+                {/* 선: 왼쪽(오래된 시각)은 옅게, 오른쪽(지금)은 진하게 */}
+                <linearGradient id={`${id}-line-${si}`} x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor={seriesColor(si)} stopOpacity="0.35" />
+                  <stop offset="100%" stopColor={seriesColor(si)} stopOpacity="1" />
+                </linearGradient>
+              </g>
+            ))}
           </defs>
-          {yTicks.map((v, i) => (
-            <g key={i}>
-              <line
-                x1={PAD.left}
-                x2={W - PAD.right}
-                y1={y(v)}
-                y2={y(v)}
-                stroke="var(--line)"
-                strokeOpacity={i === 2 ? 1 : 0.6}
-              />
-              <text
-                x={PAD.left - 6}
-                y={y(v) + 3}
-                fontSize="12"
-                textAnchor="end"
-                fill="var(--muted)"
-              >
-                {format(v)}
-              </text>
-            </g>
-          ))}
+          {/* 세로 보조선(시각 눈금마다) */}
           {xTicks.map((t, i) => (
-            <text
-              key={i}
-              x={x(t)}
-              y={H - 6}
-              fontSize="12"
-              textAnchor={i === 0 ? 'start' : i === TICKS - 1 ? 'end' : 'middle'}
-              fill="var(--muted)"
-            >
-              {hhmm(t)}
-            </text>
+            <line
+              key={`g${i}`}
+              x1={x(t)}
+              x2={x(t)}
+              y1={PAD.top}
+              y2={baseY}
+              stroke="var(--line)"
+              strokeOpacity="0.6"
+            />
           ))}
-          {lines.length === 1 &&
-            segmentsOf(lines[0]!).map((seg, i) => {
+          {lines.map((s, si) =>
+            segmentsOf(s).map((seg, i) => {
               const a = seg[0]!
               const b = seg[seg.length - 1]!
               const base = y(Math.max(bottom, 0))
               return (
                 <path
-                  key={`f${i}`}
+                  key={`f${si}-${i}`}
                   d={`${monotonePath(seg)}L${b.x.toFixed(1)},${base}L${a.x.toFixed(1)},${base}Z`}
-                  fill={`url(#${id}-fill)`}
+                  fill={`url(#${id}-fill-${si})`}
                 />
               )
-            })}
+            }),
+          )}
           {lines.map((s, si) =>
             segmentsOf(s).map((seg, i) => (
               <path
                 key={`${si}-${i}`}
                 d={monotonePath(seg)}
                 fill="none"
-                stroke={seriesColor(si)}
-                strokeWidth="2"
+                stroke={`url(#${id}-line-${si})`}
+                strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
             )),
           )}
+          {/* 시각 눈금. 마우스를 올린 시각에 가까운 눈금은 강조 배경을 깐다 */}
+          {xTicks.map((t, i) => {
+            const active = i === nearestTick
+            const anchor = i === 0 ? 'start' : i === TICKS - 1 ? 'end' : 'middle'
+            const tx = x(t)
+            const boxX = anchor === 'start' ? tx - 4 : anchor === 'end' ? tx - 44 : tx - 24
+            return (
+              <g key={`x${i}`}>
+                {active && (
+                  <rect x={boxX} y={H - 22} width="48" height="20" rx="6" fill="var(--accent-bg)" />
+                )}
+                <text
+                  x={tx}
+                  y={H - 8}
+                  fontSize="12"
+                  textAnchor={anchor}
+                  fill={active ? 'var(--accent)' : 'var(--muted)'}
+                  fontWeight={active ? 600 : 400}
+                >
+                  {hhmm(t)}
+                </text>
+              </g>
+            )
+          })}
           {hoverT !== null && hoverT !== undefined && (
             <>
               <line
@@ -169,8 +197,8 @@ export function MultiLineChart({
                 x2={x(hoverT)}
                 y1={PAD.top}
                 y2={baseY}
-                stroke="var(--muted)"
-                strokeOpacity="0.6"
+                stroke="var(--accent)"
+                strokeOpacity="0.4"
               />
               {lines.map((s, si) => {
                 const v = at(s, hoverT)
@@ -179,10 +207,10 @@ export function MultiLineChart({
                     key={si}
                     cx={x(hoverT)}
                     cy={y(v)}
-                    r="4"
-                    fill={seriesColor(si)}
-                    stroke="var(--surface)"
-                    strokeWidth="2"
+                    r="5"
+                    fill="var(--surface)"
+                    stroke={seriesColor(si)}
+                    strokeWidth="2.5"
                   />
                 )
               })}
