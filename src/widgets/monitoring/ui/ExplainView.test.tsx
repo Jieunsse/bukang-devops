@@ -1,55 +1,117 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+
+import type { MonitoringData } from '../model/load'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 vi.mock('../api/actions', () => ({ refreshMonitoringAction: vi.fn() }))
 
 const { ExplainView } = await import('./ExplainView')
 
+const T = (m: number) => Date.UTC(2026, 10, 18, 11, 54 + m) / 1000 // 20:54 KST부터
+const data = {
+  status: 'ok',
+  fetchedAt: '2026-11-18T12:00:00Z',
+  partial: false,
+  targets: [{ job: 'order-service', name: '주문', instance: 'a', up: true }],
+  services: [
+    {
+      job: 'order-service',
+      name: '주문',
+      up: true,
+      rps: 1,
+      errorRatio: 0,
+      p95Seconds: 0.02,
+      heapBytes: null,
+    },
+  ],
+  trends: { errors: null, rps: null, p95: null, heap: null },
+  brief: [
+    {
+      key: 'latency',
+      title: '응답 시간(95%)',
+      unit: 's',
+      caption: '',
+      alert: null,
+      series: [
+        {
+          name: '주문',
+          points: [
+            [T(0), 0.026],
+            [T(2), 1.2],
+            [T(4), 0.022],
+          ],
+        },
+      ],
+    },
+  ],
+  resources: [{ name: '앱 서버', memory: 0.95, disk: 0.78, swap: null }],
+} as unknown as Extract<MonitoringData, { status: 'ok' }>
+const links = [{ uid: 'jvm-uid', name: 'JVM' }]
+
+async function renderView(
+  result: Parameters<typeof ExplainView>[0]['explanation'] extends Promise<infer R> ? R : never,
+) {
+  await act(async () => {
+    render(<ExplainView data={data} links={links} explanation={Promise.resolve(result)} />)
+  })
+}
+
 describe('AI 리포트', () => {
-  it('요약·눈여겨볼 것·네 칸과 리포트를 만든 시각(한국 시간)을 모두 보여 준다', () => {
-    render(
-      <ExplainView
-        result={{
-          status: 'ok',
-          explanation: {
-            summary: '모두 정상이에요.',
-            watch: [
-              {
-                what: '게이트웨이 응답 시간',
-                when: '19:43',
-                howMuch: '1.1초',
-                impact: '예매 화면이 느렸을 수 있어요.',
-              },
-            ],
-            causes: [{ guess: 'DB 연결 대기', evidence: '근거 지표 없음' }],
-            services: ['특이 사항 없음'],
-            resources: ['앱 서버 메모리 80.4%로 기준 90%까지 여유가 있어요.'],
-            nextSteps: [{ tab: 'JVM', action: '게이트웨이 GC 멈춤 시간을 봐요.' }],
-            createdAt: '2026-11-18T01:05:00Z',
-          },
-        }}
-      />,
-    )
-    expect(screen.getByText('모두 정상이에요.')).toBeInTheDocument()
-    expect(screen.getByText(/게이트웨이 응답 시간 · 19:43 · 1.1초/)).toBeInTheDocument()
-    expect(screen.getByText('근거: 근거 지표 없음')).toBeInTheDocument()
-    expect(screen.getByText('특이 사항 없음')).toBeInTheDocument()
-    expect(screen.getByText(/기준 90%까지/)).toBeInTheDocument()
-    expect(screen.getByText('JVM 탭')).toBeInTheDocument()
-    expect(screen.getByText(/10:05 기준/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '지표와 AI 리포트 새로 받기' })).toBeInTheDocument()
+  it('AI를 기다리는 동안에도 판정·자원 막대·서비스 줄은 바로 보인다', () => {
+    render(<ExplainView data={data} links={links} explanation={new Promise(() => {})} />)
+    expect(screen.getByText('모두 정상')).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: '기준까지 남은 양' })).toBeInTheDocument()
+    expect(screen.getByText('특이 사항 없음 · 1곳 정상')).toBeInTheDocument()
+    expect(screen.getAllByText('리포트를 만드는 중이에요').length).toBeGreaterThan(0)
   })
 
-  it('키가 없으면 안내만 보이고 새로고침 버튼이 없다', () => {
-    render(<ExplainView result={{ status: 'notConfigured' }} />)
+  it('판정·요약·그래프 카드·원인 점검·자원 막대·서비스·할 일 링크를 보여 주고, 기준을 넘은 값만 빨강이다', async () => {
+    await renderView({
+      status: 'ok',
+      explanation: {
+        summary: '주문 응답 시간이 잠깐 1초를 넘었어요.',
+        watch: [
+          {
+            metric: 'latency',
+            target: '주문',
+            title: '주문 응답 시간',
+            note: '예매가 느렸을 수 있어요',
+          },
+        ],
+        causes: [{ label: 'DB 연결·락', verdict: '아님', evidence: '대기 0건' }],
+        nextSteps: [{ tab: 'JVM', action: '주문 GC 확인' }],
+        createdAt: '2026-11-18T12:05:00Z',
+      },
+    })
+    expect(screen.getByText('모두 정상')).toBeInTheDocument()
+    expect(screen.getByText('주문 응답 시간이 잠깐 1초를 넘었어요.')).toBeInTheDocument()
+    expect(screen.getByText(/21:05 기준 · \d+분 전/)).toBeInTheDocument()
+    const card = screen.getByRole('article', { name: '주문 응답 시간' })
+    expect(within(card).getByText('1.2초').closest('span')).toHaveClass('text-danger')
+    expect(within(card).getByRole('img', { name: /그래프/ })).toBeInTheDocument()
+    expect(screen.getByText('대기 0건')).toBeInTheDocument()
+    expect(screen.getByText('95.0%').closest('span')).toHaveClass('text-danger')
+    expect(screen.getByRole('img', { name: '앱 서버 메모리 95.0%, 기준 90%' })).toBeInTheDocument()
+    expect(screen.getByText('78.0%')).not.toHaveClass('text-danger')
+    expect(screen.getByText('특이 사항 없음 · 1곳 정상')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'JVM 탭' })).toHaveAttribute(
+      'href',
+      '/monitoring/jvm-uid',
+    )
+  })
+
+  it('AI 연결이 없어도 코드가 그리는 자원 막대와 서비스 줄은 보이고, 새로고침 버튼은 없다', async () => {
+    await renderView({ status: 'notConfigured' })
     expect(screen.getByText('AI 연결 정보가 없어요')).toBeInTheDocument()
+    expect(screen.getByText('특이 사항 없음 · 1곳 정상')).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: '기준까지 남은 양' })).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('실패하면 받지 못했다고 보이고 다시 시도할 수 있다', () => {
-    render(<ExplainView result={{ status: 'failed' }} />)
+  it('실패하면 받지 못했다고 보이고 다시 시도할 수 있다', async () => {
+    await renderView({ status: 'failed' })
     expect(screen.getByText('AI 리포트를 받지 못했어요')).toBeInTheDocument()
-    expect(screen.getByRole('button')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '지표와 AI 리포트 새로 받기' })).toBeInTheDocument()
   })
 })
