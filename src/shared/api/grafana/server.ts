@@ -63,3 +63,39 @@ export async function queryPrometheusRange(
     points: r.values.map(([t, v]) => [t, Number(v)]),
   }))
 }
+
+async function getJson<T>(config: GrafanaConfig, path: string, revalidate = REVALIDATE_SECONDS) {
+  const res = await fetch(`${config.url}${path}`, {
+    headers: { Authorization: `Bearer ${config.token}` },
+    signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
+    next: { revalidate },
+  })
+  if (!res.ok) throw new Error(`그라파나 응답 ${res.status}`)
+  return (await res.json()) as T
+}
+
+/** 대시보드 목록. 설정은 자주 바뀌지 않아 5분 동안 다시 쓴다 */
+export async function listDashboards(config: GrafanaConfig) {
+  return getJson<{ uid: string; title: string }[]>(config, '/api/search?type=dash-db', 300)
+}
+
+/** 대시보드 설정 JSON 원본 */
+export async function getDashboardJson(config: GrafanaConfig, uid: string): Promise<unknown> {
+  return getJson<unknown>(config, `/api/dashboards/uid/${encodeURIComponent(uid)}`, 300)
+}
+
+/** 라벨 값 목록. selector가 있으면 그 시계열에 붙은 값만 */
+export async function labelValues(
+  config: GrafanaConfig,
+  label: string,
+  selector: string | null,
+  range: { start: number; end: number },
+): Promise<string[]> {
+  const params = new URLSearchParams({ start: String(range.start), end: String(range.end) })
+  if (selector) params.append('match[]', selector)
+  const body = await getJson<{ status: string; data?: string[] }>(
+    config,
+    `/api/datasources/proxy/uid/${DATASOURCE_UID}/api/v1/label/${encodeURIComponent(label)}/values?${params}`,
+  )
+  return body.data ?? []
+}

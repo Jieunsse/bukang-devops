@@ -44,7 +44,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
         client={queryClient}
         // 스냅샷 형식은 꺼낼 때 검사한다. 값의 뜻이 바뀔 때(예: 단위)나 다른 질의(완료·취소, 요청 내역)의
         // 모양이 바뀔 때 buster를 올려 지난 저장분을 버린다.
-        persistOptions={{ persister, maxAge: ONE_DAY, buster: 'snapshot-v8' }}
+        persistOptions={{
+          persister,
+          maxAge: ONE_DAY,
+          buster: 'snapshot-v8',
+          // 그라파나 패널 값은 크고 1분마다 바뀌어서 저장하지 않는다(저장소 한도를 넘지 않게)
+          dehydrateOptions: {
+            shouldDehydrateQuery: (q) =>
+              q.state.status === 'success' && q.queryKey[0] !== 'grafana-panel',
+          },
+        }}
       >
         {children}
         <Toast.Provider />
