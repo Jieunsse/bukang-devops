@@ -1,7 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import { monotonePath, TrendChart } from './TrendChart'
+import { monotonePath } from '@/shared/lib/chart'
+
+import { TrendChart } from './TrendChart'
 
 const format = (v: number) => `${v}건`
 

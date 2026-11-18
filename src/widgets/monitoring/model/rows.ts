@@ -3,7 +3,7 @@ import type { RangeSeries, Sample } from '@/shared/api/grafana/server'
 // 프로메테우스 질의 결과를 화면의 상태판·서비스 표 행으로 바꾼다. 서버·테스트 어디서나 쓰는 순수 함수다.
 
 /** 프로메테우스 job 이름 → 화면 이름. 없는 job은 이름 그대로 보인다 */
-const JOB_NAMES: Record<string, string> = {
+export const JOB_NAMES: Record<string, string> = {
   gateway: '게이트웨이',
   'member-service': '회원',
   'cash-service': '예치금',

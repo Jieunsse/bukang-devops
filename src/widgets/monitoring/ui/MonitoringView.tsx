@@ -1,7 +1,7 @@
 'use client'
 
 import { EmptyState } from '@heroui/react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import {
   Fact,
@@ -14,6 +14,7 @@ import {
 
 import type { MonitoringData, TrendKind } from '../model/load'
 import { isService, sumTrends, type ServiceRow, type Target } from '../model/rows'
+import { BriefSection } from './BriefSection'
 import { TrendChart } from './TrendChart'
 
 // 운영 서버 모니터링. 서비스·인프라가 살아 있는지와 서비스별 최근 5분 지표를 보여 준다.
@@ -35,6 +36,7 @@ const upText = (up: boolean) => (up ? '정상' : '응답 없음')
 /** 한 화면에 모두 두고, 목차는 그 영역으로 스크롤만 한다 */
 const AREAS = [
   { id: 'summary', label: '요약' },
+  { id: 'brief', label: '자동 브리핑' },
   { id: 'trends', label: '추이' },
   { id: 'targets', label: '상태판' },
   { id: 'services', label: '서비스별 지표' },
@@ -49,7 +51,14 @@ const TREND_ITEMS: { kind: TrendKind; label: string; format: (v: number) => stri
   { kind: 'heap', label: '힙 메모리', format: (v) => mbText(v) },
 ]
 
-export function MonitoringView({ data }: { data: MonitoringData }) {
+export function MonitoringView({
+  data,
+  tabs,
+}: {
+  data: MonitoringData
+  /** 위쪽 탭(그라파나 대시보드로 옮겨 가기). 쓰는 쪽이 넣는다 */
+  tabs?: ReactNode
+}) {
   if (data.status !== 'ok') {
     return (
       <div className="flex flex-col gap-6">
@@ -73,10 +82,16 @@ export function MonitoringView({ data }: { data: MonitoringData }) {
     )
   }
 
-  return <Dashboard data={data} />
+  return <Dashboard data={data} tabs={tabs} />
 }
 
-function Dashboard({ data }: { data: Extract<MonitoringData, { status: 'ok' }> }) {
+function Dashboard({
+  data,
+  tabs,
+}: {
+  data: Extract<MonitoringData, { status: 'ok' }>
+  tabs?: ReactNode
+}) {
   const [area, setArea] = useState<Area>('summary')
   const [kind, setKind] = useState<TrendKind>('rps')
   const trendItem = TREND_ITEMS.find((i) => i.kind === kind) ?? TREND_ITEMS[0]!
@@ -95,6 +110,7 @@ function Dashboard({ data }: { data: Extract<MonitoringData, { status: 'ok' }> }
 
   return (
     <ReportLayout label="모니터링 목차" toc={TOC} current={area} onSelect={go}>
+      {tabs}
       <ReportHeader
         title="모니터링"
         sub={`운영 서버 프로메테우스 기준이에요. ${timeText(data.fetchedAt)}에 받았고, 1분마다 새로 받아요.`}
@@ -105,6 +121,10 @@ function Dashboard({ data }: { data: Extract<MonitoringData, { status: 'ok' }> }
         <Fact label="인프라 정상" value={count(infra)} />
         <Fact label="전체 초당 요청" value={rpsText(totalRps)} />
       </dl>
+
+      <div id="monitoring-brief" className="scroll-mt-4">
+        <BriefSection cards={data.brief} />
+      </div>
 
       <ReportSection
         title="추이"

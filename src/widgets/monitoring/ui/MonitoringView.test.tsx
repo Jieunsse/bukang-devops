@@ -18,6 +18,7 @@ describe('모니터링', () => {
           fetchedAt: '2026-11-18T01:00:00Z',
           partial: true,
           trends: { rps: null, p95: null, heap: null },
+          brief: [],
           targets: [
             { job: 'order-service', name: '주문', instance: 'a', up: false },
             { job: 'member-service', name: '회원', instance: 'b', up: true },
@@ -72,6 +73,7 @@ describe('모니터링', () => {
             p95: [{ job: 'member-service', name: '회원', points: series([0.1, 0.25]) }],
             heap: null,
           },
+          brief: [],
         }}
       />,
     )

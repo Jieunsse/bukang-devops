@@ -2,6 +2,8 @@
 
 import { useId, useState, type PointerEvent } from 'react'
 
+import { monotonePath, type Pt } from '@/shared/lib/chart'
+
 // 선 그래프 하나. 색은 리포트 강조색 하나만 쓴다(서비스 구분은 그래프를 나눠서 한다).
 // 곡선은 값이 튀어 보이지 않게 단조 보간(monotone cubic)으로 그리고, 아래 면은 강조색이 옅어지게 칠한다.
 // 마우스를 올리면 세로선·점·툴팁 카드가 나오고, 그 시각에 가까운 x축 눈금을 강조한다.
@@ -17,44 +19,6 @@ const hhmm = (t: number) =>
     minute: '2-digit',
     hour12: false,
   })
-
-type Pt = { x: number; y: number }
-
-/** 이어진 점들을 지나는 곡선. 점 사이에서 값이 넘치지 않는 단조 3차 보간(Fritsch–Carlson) */
-export function monotonePath(pts: Pt[]): string {
-  const n = pts.length
-  const first = pts[0]
-  if (!first) return ''
-  if (n === 1) return `M${first.x},${first.y}`
-  const dx: number[] = []
-  const slope: number[] = []
-  for (let i = 0; i < n - 1; i++) {
-    const a = pts[i]!
-    const b = pts[i + 1]!
-    dx.push(b.x - a.x)
-    slope.push((b.y - a.y) / (b.x - a.x || 1))
-  }
-  const tangent = pts.map((_, i) => {
-    if (i === 0) return slope[0]!
-    if (i === n - 1) return slope[n - 2]!
-    const s0 = slope[i - 1]!
-    const s1 = slope[i]!
-    if (s0 * s1 <= 0) return 0
-    const h0 = dx[i - 1]!
-    const h1 = dx[i]!
-    return (3 * (h0 + h1)) / ((2 * h1 + h0) / s0 + (h1 + 2 * h0) / s1)
-  })
-  let d = `M${first.x.toFixed(1)},${first.y.toFixed(1)}`
-  for (let i = 0; i < n - 1; i++) {
-    const a = pts[i]!
-    const b = pts[i + 1]!
-    const h = dx[i]! / 3
-    const c1 = `${(a.x + h).toFixed(1)},${(a.y + h * tangent[i]!).toFixed(1)}`
-    const c2 = `${(b.x - h).toFixed(1)},${(b.y - h * tangent[i + 1]!).toFixed(1)}`
-    d += `C${c1} ${c2} ${b.x.toFixed(1)},${b.y.toFixed(1)}`
-  }
-  return d
-}
 
 export function TrendChart({
   title,
