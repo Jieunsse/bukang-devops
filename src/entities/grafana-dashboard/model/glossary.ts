@@ -1,3 +1,4 @@
+import { DETAIL_PANELS, SECTION_HELP, SECTION_NAMES } from './glossary-detail'
 import type { Panel } from './parse'
 
 // 그라파나 패널·묶음의 영어 이름을 뜻으로 바꾸고, 「어떻게 보면 되는지」 한 줄을 붙인다.
@@ -238,6 +239,16 @@ export function panelLabel(panel: Pick<Panel, 'title' | 'targets'>): PanelLabel 
       spec: null,
     }
   }
+  const detail = DETAIL_PANELS[panel.title]
+  if (detail) {
+    return {
+      name: detail.name,
+      original: panel.title,
+      help: detail.help,
+      ignoreThresholds: false,
+      spec: null,
+    }
+  }
   if (panel.title) {
     return { name: panel.title, original: null, help: null, ignoreThresholds: false, spec: null }
   }
@@ -253,6 +264,10 @@ export function panelLabel(panel: Pick<Panel, 'title' | 'targets'>): PanelLabel 
 }
 
 export function sectionLabel(title: string): { name: string; original: string | null } {
-  const name = SECTIONS[title]
+  const name = SECTIONS[title] ?? SECTION_NAMES[title]
   return name ? { name, original: title } : { name: title, original: null }
+}
+
+export function sectionHelp(title: string): string | null {
+  return SECTION_HELP[title] ?? null
 }

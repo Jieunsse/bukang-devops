@@ -1,5 +1,6 @@
 export { colorLevel, levelOf, parseDashboard } from './model/parse'
-export { panelLabel, sectionLabel } from './model/glossary'
+export { panelLabel, sectionHelp, sectionLabel } from './model/glossary'
+export { seriesLabel } from './model/glossary-detail'
 export type { PanelLabel } from './model/glossary'
 export type {
   Dashboard,

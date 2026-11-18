@@ -31,15 +31,24 @@ export function MultiLineChart({
   title,
   series,
   format,
+  legend = true,
+  highlight = null,
 }: {
   title: string
   series: Series[]
   format: (v: number) => string
+  /** 그래프 아래 범례. 옆에 값 표가 있으면 표가 범례를 맡으니 끈다 */
+  legend?: boolean
+  /** 강조할 시계열 순서. 나머지 선은 옅게 그려 겹친 선 사이에서 하나를 따라 볼 수 있다 */
+  highlight?: number | null
 }) {
   const id = useId().replace(/:/g, '')
   const { ref: boxRef, width: W } = useWidth<HTMLDivElement>(DEFAULT_W)
   const [hover, setHover] = useState<number | null>(null)
   const lines = series.slice(0, MAX_LINES)
+  // 선이 많으면 아래 면이 겹쳐 탁해지므로 면은 세 줄까지만 칠한다
+  const filled = lines.length <= 3
+  const dim = (si: number) => (highlight !== null && highlight !== si ? 0.15 : 1)
   const times = [...new Set(lines.flatMap((s) => s.points.map(([t]) => t)))].sort((a, b) => a - b)
   const values = lines
     .flatMap((s) => s.points.map(([, v]) => v))
@@ -139,20 +148,22 @@ export function MultiLineChart({
               strokeOpacity="0.6"
             />
           ))}
-          {lines.map((s, si) =>
-            segmentsOf(s).map((seg, i) => {
-              const a = seg[0]!
-              const b = seg[seg.length - 1]!
-              const base = y(Math.max(bottom, 0))
-              return (
-                <path
-                  key={`f${si}-${i}`}
-                  d={`${monotonePath(seg)}L${b.x.toFixed(1)},${base}L${a.x.toFixed(1)},${base}Z`}
-                  fill={`url(#${id}-fill-${si})`}
-                />
-              )
-            }),
-          )}
+          {filled &&
+            lines.map((s, si) =>
+              segmentsOf(s).map((seg, i) => {
+                const a = seg[0]!
+                const b = seg[seg.length - 1]!
+                const base = y(Math.max(bottom, 0))
+                return (
+                  <path
+                    key={`f${si}-${i}`}
+                    d={`${monotonePath(seg)}L${b.x.toFixed(1)},${base}L${a.x.toFixed(1)},${base}Z`}
+                    fill={`url(#${id}-fill-${si})`}
+                    opacity={dim(si)}
+                  />
+                )
+              }),
+            )}
           {lines.map((s, si) =>
             segmentsOf(s).map((seg, i) => (
               <path
@@ -160,7 +171,8 @@ export function MultiLineChart({
                 d={monotonePath(seg)}
                 fill="none"
                 stroke={`url(#${id}-line-${si})`}
-                strokeWidth="2.5"
+                strokeWidth={highlight === si ? 3 : 2.5}
+                opacity={dim(si)}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -247,7 +259,7 @@ export function MultiLineChart({
           </div>
         )}
       </div>
-      {lines.length > 1 && (
+      {legend && lines.length > 1 && (
         <ul
           aria-label={`${title} 범례`}
           className="m-0 flex list-none flex-wrap gap-x-3 gap-y-1 p-0 text-xs text-muted"

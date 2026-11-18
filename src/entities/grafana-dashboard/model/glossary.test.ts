@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { panelLabel, sectionLabel } from './glossary'
+import { panelLabel, sectionHelp, sectionLabel } from './glossary'
+import { seriesLabel } from './glossary-detail'
 import { colorLevel, levelOf, parseDashboard } from './parse'
 
 const t = (expr: string) => [{ refId: 'A', expr, legend: '' }]
@@ -31,6 +32,31 @@ describe('읽기 쉬운 이름', () => {
     ).toBe('CPU 코어 수')
     expect(panelLabel({ title: '', targets: t('up') }).name).toBe('이름 없는 지표')
     expect(sectionLabel('Quick Facts')).toEqual({ name: '한눈에 보기', original: 'Quick Facts' })
+  })
+})
+
+describe('자세한 이름·묶음 설명·범례', () => {
+  it('사전에 없던 패널과 묶음도 한국어 이름과 설명을 준다', () => {
+    expect(panelLabel({ title: 'OOM Killer', targets: t('x') })).toMatchObject({
+      name: 'OOM Killer 작동',
+      original: 'OOM Killer',
+    })
+    expect(panelLabel({ title: 'OOM Killer', targets: t('x') }).help).toContain('0이어야')
+    expect(sectionLabel('Translog')).toEqual({ name: 'translog', original: 'Translog' })
+    expect(sectionHelp('Storage')).toContain('디스크')
+    expect(sectionHelp('없는 묶음')).toBeNull()
+  })
+
+  it('범례 이름은 사전·규칙으로 옮기고 모르면 그대로 둔다', () => {
+    expect(seriesLabel('Busy System')).toBe('System(커널)')
+    expect(seriesLabel('System - Processes executing in kernel mode')).toBe(
+      'System(커널 모드 실행)',
+    )
+    expect(seriesLabel('CPU - Some')).toBe('CPU 일부 멈춤')
+    expect(seriesLabel('eth0 - Rx in')).toBe('eth0 받음')
+    expect(seriesLabel('sda - Write')).toBe('sda 쓰기')
+    expect(seriesLabel('node-1: indexing')).toBe('node-1 색인')
+    expect(seriesLabel('mystery_series')).toBe('mystery_series')
   })
 })
 
