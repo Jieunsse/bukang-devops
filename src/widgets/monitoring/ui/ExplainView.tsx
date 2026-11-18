@@ -2,26 +2,37 @@
 
 import { ArrowsRotateRight } from '@gravity-ui/icons'
 import { Button, toast } from '@heroui/react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTransition, type ReactNode } from 'react'
 
 import { report as s } from '@/shared/ui'
+import type { DashboardLink } from '@/widgets/grafana-dashboard/model/dashboards'
 
 import { refreshMonitoringAction } from '../api/actions'
 import { REPORT_LIMITS } from '../model/explain'
-import type { Explanation, ExplanationResult } from '../model/explain-server'
+import type { ExplanationResult } from '../model/explain-server'
+import { hhmm } from '../model/format'
+import type { MonitoringData } from '../model/load'
+import { resolveWatch, resourceBars, serviceLine, tabHref } from '../model/report'
+import { verdictOf } from '../model/verdict'
+import { Sparkline } from './Sparkline'
 
-// AI 리포트. 요약과 눈여겨볼 것은 위에, 나머지 네 칸은 넓은 화면에서 2열로 처음부터 모두 보여 준다.
-// 지표는 1분마다 바뀌고 리포트는 새로고침 때만 바뀌므로, 만든 시각을 함께 보여 준다.
+// AI 리포트. AI는 요약 한 문장, 볼 지표 고르기, 원인 점검, 할 일만 짧게 쓴다.
+// 숫자·그래프·자원 막대·서비스 줄은 코드가 브리핑 데이터로 그려서, AI가 없어도 이 부분은 보인다.
+// 기준을 넘은 값만 빨간 글자와 「주의」로 쓴다(CLAUDE.md 모니터링 예외).
 
-const hhmm = (iso: string) =>
-  new Date(iso).toLocaleTimeString('ko-KR', {
-    timeZone: 'Asia/Seoul',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+type Ok = Extract<MonitoringData, { status: 'ok' }>
 
-export function ExplainView({ result }: { result: ExplanationResult }) {
+export function ExplainView({
+  result,
+  data,
+  links,
+}: {
+  result: ExplanationResult
+  data: Ok
+  links: DashboardLink[]
+}) {
   const router = useRouter()
   const [pending, start] = useTransition()
   const refresh = () =>
@@ -34,18 +45,41 @@ export function ExplainView({ result }: { result: ExplanationResult }) {
       router.refresh()
     })
 
+  const verdict = verdictOf(data.services, data.targets)
+  const problems = verdict.problemServices
+  const report = result.status === 'ok' ? result.explanation : null
+  const watch = (report?.watch ?? [])
+    .slice(0, REPORT_LIMITS.watch)
+    .map((w) => resolveWatch(data, w))
+    .filter((w) => w !== null)
+
   return (
-    <section aria-label="AI 리포트" className={`${s.lead} gap-4`}>
-      <div className="flex items-center gap-2">
-        <strong className="text-foreground">AI 리포트</strong>
-        {result.status === 'ok' && (
-          <span className="text-sm text-muted">{hhmm(result.explanation.createdAt)} 기준</span>
+    <section aria-label="AI 리포트" className="flex flex-col gap-4">
+      <header className={`${s.fact} flex-row flex-wrap items-center gap-x-4 gap-y-2 p-5`}>
+        <span className={`text-2xl font-bold ${problems.length ? 'text-danger' : ''}`}>
+          {problems.length
+            ? `주의 · 문제 ${problems.length}곳`
+            : data.partial
+              ? '일부 지표 모름'
+              : '모두 정상'}
+        </span>
+        <span className="min-w-0 flex-1 text-sm text-muted">
+          {report?.summary ??
+            (result.status === 'notConfigured'
+              ? 'AI 연결 정보가 없어요'
+              : result.status === 'failed'
+                ? 'AI 리포트를 받지 못했어요'
+                : '')}
+        </span>
+        {report && (
+          <span className="text-xs text-muted">
+            {hhmm(Date.parse(report.createdAt) / 1000)} 기준
+          </span>
         )}
         {result.status !== 'notConfigured' && (
           <Button
             size="sm"
             variant="tertiary"
-            className="ml-auto"
             isPending={pending}
             onPress={refresh}
             aria-label="지표와 AI 리포트 새로 받기"
@@ -54,107 +88,125 @@ export function ExplainView({ result }: { result: ExplanationResult }) {
             새로고침
           </Button>
         )}
-      </div>
-      {result.status === 'notConfigured' ? (
-        <p className="text-sm text-muted">AI 연결 정보가 없어요</p>
-      ) : result.status === 'failed' ? (
-        <p className="text-sm text-muted">AI 리포트를 받지 못했어요</p>
-      ) : (
-        <Report report={result.explanation} />
-      )}
-    </section>
-  )
-}
+      </header>
 
-function Report({ report: full }: { report: Explanation }) {
-  // 개수는 프롬프트로 부탁하지만 지키지 않을 수 있어서 화면에서 자른다
-  const report = {
-    ...full,
-    watch: full.watch.slice(0, REPORT_LIMITS.watch),
-    causes: full.causes.slice(0, REPORT_LIMITS.causes),
-    services: full.services.slice(0, REPORT_LIMITS.services),
-    resources: full.resources.slice(0, REPORT_LIMITS.resources),
-    nextSteps: full.nextSteps.slice(0, REPORT_LIMITS.nextSteps),
-  }
-  return (
-    <div className="flex flex-col gap-4 text-sm">
-      <p className="m-0 text-base">{report.summary}</p>
-      {report.watch.length > 0 && (
+      {watch.length > 0 && (
         <Block title="눈여겨볼 것">
-          <ol className="m-0 flex flex-col gap-2 pl-5">
-            {report.watch.map((w, i) => (
-              <li key={i}>
-                <span className="font-medium">
-                  {w.what} · {w.when} · {w.howMuch}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {watch.map((w, i) => (
+              <article key={i} aria-label={w.title} className={`${s.fact} gap-1 p-4`}>
+                <span className="text-xs text-muted">{w.title}</span>
+                <span
+                  className={`text-2xl font-bold tabular-nums ${w.danger ? 'text-danger' : ''}`}
+                >
+                  {w.value}
+                  {w.at && <span className="ml-1.5 text-xs font-normal text-muted">{w.at}</span>}
+                  {w.danger && <span className="ml-1.5 text-xs font-semibold">주의</span>}
                 </span>
-                <span className="block text-muted">{w.impact}</span>
-              </li>
+                {w.points && <Sparkline points={w.points} label={w.title} />}
+                <span className="text-xs text-muted">{w.sub}</span>
+                <span className="text-sm">{w.note}</span>
+              </article>
             ))}
-          </ol>
+          </div>
         </Block>
       )}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Block title="원인 추정">
-          {report.causes.length ? (
-            <ul className="m-0 flex flex-col gap-2 pl-5">
-              {report.causes.map((c, i) => (
-                <li key={i}>
-                  {c.guess}
-                  <span className="block text-muted">근거: {c.evidence}</span>
+
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <Block title="원인 점검" card>
+          {report?.causes.length ? (
+            <ul className="m-0 flex list-none flex-col gap-2 p-0 text-sm">
+              {report.causes.slice(0, REPORT_LIMITS.causes).map((c, i) => (
+                <li key={i} className="flex items-center gap-2">
+                  <span
+                    className={`shrink-0 rounded-md px-1.5 py-0.5 text-xs ${c.verdict === '의심' ? 'font-semibold' : 'text-muted'}`}
+                    style={{ background: 'var(--bg)' }}
+                  >
+                    {c.verdict}
+                  </span>
+                  <span className="min-w-0 flex-1">{c.label}</span>
+                  <span className="shrink-0 text-muted">{c.evidence}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="m-0 text-muted">추정할 원인이 없어요</p>
+            <p className="m-0 text-sm text-muted">{report ? '점검할 원인이 없어요' : '-'}</p>
           )}
         </Block>
-        <Block title="서비스별 상태">
-          {report.services.length ? (
-            <Lines items={report.services} />
-          ) : (
-            <p className="m-0 text-muted">특이 사항 없음</p>
-          )}
-        </Block>
-        <Block title="자원 여유">
-          {report.resources.length ? (
-            <Lines items={report.resources} />
-          ) : (
-            <p className="m-0 text-muted">데이터 없음</p>
-          )}
-        </Block>
-        <Block title="다음에 할 일">
-          {report.nextSteps.length ? (
-            <ol className="m-0 flex flex-col gap-1 pl-5">
-              {report.nextSteps.map((n, i) => (
-                <li key={i}>
-                  <span className="font-medium">{n.tab} 탭</span> · {n.action}
+        <Block title="자원 여유" card>
+          <ul
+            className="m-0 flex list-none flex-col gap-2 p-0 text-sm"
+            aria-label="기준까지 남은 양"
+          >
+            {resourceBars(data).map((b) => {
+              const over = b.ratio >= b.limit
+              return (
+                <li key={b.label} className="flex items-center gap-2">
+                  <span className="w-36 shrink-0 truncate text-muted">{b.label}</span>
+                  <span className="relative h-2 flex-1 rounded" style={{ background: 'var(--bg)' }}>
+                    <span
+                      className="absolute inset-y-0 left-0 rounded"
+                      style={{
+                        width: `${Math.min(100, b.ratio * 100)}%`,
+                        background: 'var(--accent)',
+                        opacity: 0.6,
+                      }}
+                    />
+                    {/* 기준 위치 표시. 색은 쓰지 않는다 */}
+                    <span
+                      className="absolute -inset-y-1 w-0.5"
+                      style={{ left: `${Math.min(99, b.limit * 100)}%`, background: 'var(--fg)' }}
+                      title={`기준 ${Math.round(b.limit * 100)}%`}
+                    />
+                  </span>
+                  <span
+                    className={`w-14 shrink-0 text-right tabular-nums ${over ? 'font-semibold text-danger' : ''}`}
+                  >
+                    {b.text}
+                  </span>
                 </li>
-              ))}
-            </ol>
+              )
+            })}
+          </ul>
+        </Block>
+        <Block title="서비스" card>
+          <p className={`m-0 text-sm ${problems.length ? 'font-semibold text-danger' : ''}`}>
+            {serviceLine(data)}
+          </p>
+        </Block>
+        <Block title="다음에 할 일" card>
+          {report?.nextSteps.length ? (
+            <ul className="m-0 flex list-none flex-col gap-2 p-0 text-sm">
+              {report.nextSteps.slice(0, REPORT_LIMITS.nextSteps).map((n, i) => {
+                const href = tabHref(n.tab, links)
+                return (
+                  <li key={i} className="flex items-center gap-2">
+                    {href ? (
+                      <Link href={href} className="shrink-0 font-medium text-accent">
+                        {n.tab} 탭
+                      </Link>
+                    ) : (
+                      <span className="shrink-0 font-medium">{n.tab} 탭</span>
+                    )}
+                    <span className="min-w-0">{n.action}</span>
+                  </li>
+                )
+              })}
+            </ul>
           ) : (
-            <p className="m-0 text-muted">지금 할 일이 없어요</p>
+            <p className="m-0 text-sm text-muted">{report ? '지금 할 일이 없어요' : '-'}</p>
           )}
         </Block>
       </div>
-    </div>
-  )
-}
-
-function Block({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section aria-label={title} className="flex flex-col gap-1.5">
-      <h4 className="m-0 text-xs font-semibold text-muted">{title}</h4>
-      {children}
     </section>
   )
 }
 
-function Lines({ items }: { items: string[] }) {
+function Block({ title, children, card }: { title: string; children: ReactNode; card?: boolean }) {
   return (
-    <ul className="m-0 flex flex-col gap-1 pl-5">
-      {items.map((t, i) => (
-        <li key={i}>{t}</li>
-      ))}
-    </ul>
+    <section aria-label={title} className={card ? `${s.fact} gap-2 p-4` : 'flex flex-col gap-2'}>
+      <h3 className="m-0 text-xs font-semibold text-muted">{title}</h3>
+      {children}
+    </section>
   )
 }

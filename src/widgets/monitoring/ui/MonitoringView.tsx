@@ -12,8 +12,8 @@ import { isHighError, isSlow, sortByIssues, totalErrorTrend, verdictOf } from '.
 import { BriefSection } from './BriefSection'
 import { TrendChart } from './TrendChart'
 
-// 운영 서버 모니터링. 벤토 그리드로 가장 중요한 판정을 왼쪽 위 큰 칸에 두고, 옆에 숫자 4칸,
-// 아래에 AI 리포트(전체 폭)와 같은 크기의 병목 카드 6장을 둔다. 그 아래로 서비스 표 → 추이 → 상태판. 기준(THRESHOLDS)을 넘은 값만 빨간 글자로 쓴다(CLAUDE.md 예외).
+// 모니터링 상세 지표. 벤토 그리드로 가장 중요한 판정을 왼쪽 위 큰 칸에 두고, 옆에 숫자 4칸,
+// 아래에 같은 크기의 병목 카드 6장을 둔다. AI 리포트는 요약 탭에 있다. 그 아래로 서비스 표 → 추이 → 상태판. 기준(THRESHOLDS)을 넘은 값만 빨간 글자로 쓴다(CLAUDE.md 예외).
 
 const upText = (up: boolean) => (up ? '정상' : '응답 없음')
 const timeText = (iso: string) => hhmm(Date.parse(iso) / 1000)
@@ -31,13 +31,10 @@ const TREND_ITEMS: { kind: TrendKind; label: string; format: (v: number) => stri
 export function MonitoringView({
   data,
   tabs,
-  explain,
 }: {
   data: MonitoringData
   /** 위쪽 탭(그라파나 대시보드로 옮겨 가기). 쓰는 쪽이 넣는다 */
   tabs?: ReactNode
-  /** 요약 아래 AI 해석. 쓰는 쪽이 Suspense로 감싸 넣는다 */
-  explain?: ReactNode
 }) {
   if (data.status !== 'ok') {
     return (
@@ -62,17 +59,15 @@ export function MonitoringView({
     )
   }
 
-  return <Dashboard data={data} tabs={tabs} explain={explain} />
+  return <Dashboard data={data} tabs={tabs} />
 }
 
 function Dashboard({
   data,
   tabs,
-  explain,
 }: {
   data: Extract<MonitoringData, { status: 'ok' }>
   tabs?: ReactNode
-  explain?: ReactNode
 }) {
   const [kind, setKind] = useState<TrendKind>('errors')
   const trendItem = TREND_ITEMS.find((i) => i.kind === kind) ?? TREND_ITEMS[0]!
@@ -93,7 +88,7 @@ function Dashboard({
     <div className={`${s.report} ${s.solo}`}>
       <div className={`${s.page} ${s.wide}`}>
         {tabs}
-        <ReportHeader title="모니터링" sub={`${timeText(data.fetchedAt)} 기준 · 1분마다 갱신`} />
+        <ReportHeader title="상세 지표" sub={`${timeText(data.fetchedAt)} 기준 · 1분마다 갱신`} />
 
         <div id="monitoring-summary" className="grid scroll-mt-4 grid-cols-2 gap-3 lg:grid-cols-4">
           <section aria-label="판정" className={`${s.fact} col-span-2 gap-3 p-5 lg:row-span-2`}>
@@ -137,8 +132,6 @@ function Dashboard({
             {rpsText(totalRps)}
           </Tile>
         </div>
-
-        {explain}
 
         <div id="monitoring-brief" className="scroll-mt-4">
           <BriefSection cards={data.brief} />

@@ -99,14 +99,7 @@ const { getExplanation, refreshMonitoring } = await import('./explain-server')
 const env = { ANTHROPIC_API_KEY: 'k' }
 const answer = (summary: string) => ({
   ok: true,
-  value: {
-    summary,
-    watch: [],
-    causes: [],
-    services: ['특이 사항 없음'],
-    resources: ['여유 있음'],
-    nextSteps: [],
-  },
+  value: { summary, watch: [], causes: [], nextSteps: [] },
 })
 
 beforeEach(() => {
@@ -152,21 +145,30 @@ describe('AI에 보낼 입력', () => {
 })
 
 describe('리포트 스키마', () => {
-  it('개수가 프롬프트보다 많아도 리포트 전체를 버리지 않는다(화면에서 자른다)', async () => {
+  it('개수가 프롬프트보다 많아도 리포트 전체를 버리지 않고, 지표·탭은 정한 값만 받는다', async () => {
     const { ExplanationSchema } = await import('./explain')
-    const many = Array.from({ length: 5 }, (_, i) => ({
-      guess: `추정 ${i}`,
-      evidence: '근거 지표 없음',
-    }))
-    const r = ExplanationSchema.safeParse({
-      summary: '요약',
+    const cause = { label: 'DB 연결·락', verdict: '아님', evidence: '대기 0건' }
+    const base = {
+      summary: '정상이에요.',
       watch: [],
-      causes: many,
-      services: Array.from({ length: 12 }, (_, i) => `서비스 ${i}`),
-      resources: [],
+      causes: [cause, cause, cause, cause],
       nextSteps: [],
-    })
-    expect(r.success).toBe(true)
+    }
+    expect(ExplanationSchema.safeParse(base).success).toBe(true)
+    const watch = {
+      metric: 'latency',
+      target: '주문',
+      title: '주문 응답 시간',
+      note: '잠깐 올랐어요',
+    }
+    expect(ExplanationSchema.safeParse({ ...base, watch: [watch] }).success).toBe(true)
+    expect(
+      ExplanationSchema.safeParse({ ...base, watch: [{ ...watch, metric: 'gc' }] }).success,
+    ).toBe(false)
+    expect(
+      ExplanationSchema.safeParse({ ...base, nextSteps: [{ tab: '게이트웨이', action: '보기' }] })
+        .success,
+    ).toBe(false)
   })
 })
 

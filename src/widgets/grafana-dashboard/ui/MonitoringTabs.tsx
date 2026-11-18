@@ -14,13 +14,16 @@ export function MonitoringTabs({
   current,
 }: {
   links: DashboardLink[]
-  /** 지금 보고 있는 대시보드 uid. 요약이면 null */
+  /** 지금 보고 있는 대시보드 uid. 요약이면 null, 상세 지표면 'detail' */
   current: string | null
 }) {
   return (
     <nav aria-label="모니터링 화면" className={`${s.seg} flex-wrap`}>
       <Link href="/monitoring" aria-current={current === null ? 'page' : undefined}>
         요약
+      </Link>
+      <Link href="/monitoring/detail" aria-current={current === 'detail' ? 'page' : undefined}>
+        상세 지표
       </Link>
       {links.map((l) => (
         <Link
