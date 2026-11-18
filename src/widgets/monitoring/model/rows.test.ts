@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { toServiceRows, toTargets } from './rows'
+import { sumTrends, toServiceRows, toTargets, toTrends } from './rows'
 
 const up = (job: string, value: number, instance = 'i') => ({ labels: { job, instance }, value })
 const v = (job: string, value: number) => ({ labels: { job }, value })
@@ -38,5 +38,38 @@ describe('모니터링 행 만들기', () => {
     })
     expect(rows.find((r) => r.job === 'file-service')?.errorRatio).toBeNull()
     expect(rows.find((r) => r.job === 'ai-service')).toMatchObject({ rps: null, p95Seconds: null })
+  })
+})
+
+describe('추이 만들기', () => {
+  const range = (job: string, values: number[]) => ({
+    labels: { job },
+    points: values.map((v, i): [number, number] => [i * 60, v]),
+  })
+
+  it('서비스만 남기고, NaN은 끊긴 점(null)이 된다', () => {
+    const trends = toTrends([range('order-service', [1, Number.NaN]), range('mysql', [3, 3])])
+    expect(trends).toEqual([
+      {
+        job: 'order-service',
+        name: '주문',
+        points: [
+          [0, 1],
+          [60, null],
+        ],
+      },
+    ])
+  })
+
+  it('시각마다 서비스 값을 더하고, 모두 비면 null이다', () => {
+    const trends = toTrends([
+      range('order-service', [1, Number.NaN, Number.NaN]),
+      range('member-service', [2, 3, Number.NaN]),
+    ])
+    expect(sumTrends(trends)).toEqual([
+      [0, 3],
+      [60, 3],
+      [120, null],
+    ])
   })
 })
