@@ -30,4 +30,8 @@ describe('메뉴', () => {
   it('링크 모음 페이지로 가는 메뉴가 있다', () => {
     expect(NAV_ITEMS.some((i) => i.href === '/links' && i.label === '링크 모음')).toBe(true)
   })
+
+  it('모니터링 페이지로 가는 메뉴가 있다', () => {
+    expect(NAV_ITEMS.some((i) => i.href === '/monitoring' && i.label === '모니터링')).toBe(true)
+  })
 })
