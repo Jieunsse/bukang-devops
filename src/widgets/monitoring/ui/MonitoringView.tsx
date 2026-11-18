@@ -131,7 +131,7 @@ function Dashboard({
 
         <ReportSection title="추이" description="최근 1시간 · 1분 간격">
           <div id="monitoring-trends" className="flex scroll-mt-4 flex-col gap-4">
-            <div className={`${s.fact} p-4`}>
+            <div className={s.card}>
               {totalTrend ? (
                 <TrendChart
                   title="전체 서버 오류 비율"
@@ -158,9 +158,9 @@ function Dashboard({
               ))}
             </div>
             {trends ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {trends.map((t) => (
-                  <div key={t.job} className={`${s.fact} p-4`}>
+                  <div key={t.job} className={s.card}>
                     <TrendChart title={t.name} points={t.points} format={trendItem.format} />
                   </div>
                 ))}

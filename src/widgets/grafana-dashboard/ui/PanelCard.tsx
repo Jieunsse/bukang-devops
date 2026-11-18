@@ -199,7 +199,7 @@ function StatValues({
                 {v === null ? '-' : format(v)}
                 {LEVEL_TEXT[l] && (
                   <span
-                    className={`ml-1.5 text-xs font-semibold ${l === 'warn' ? 'text-muted' : ''}`}
+                    className={`ml-1.5 text-xs font-medium ${l === 'warn' ? 'text-muted' : ''}`}
                   >
                     {LEVEL_TEXT[l]}
                   </span>

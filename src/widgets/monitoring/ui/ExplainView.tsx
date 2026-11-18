@@ -30,13 +30,10 @@ const Wait = ({ text = '리포트를 만드는 중이에요' }: { text?: string 
   <p className={`${s.tSmall} m-0`}>{text}</p>
 )
 
-/** 머리 오른쪽: 리포트 기준 시각(몇 분 전)과 새로고침 */
-export function ReportControls({ explanation }: { explanation: Result }) {
-  const result = use(explanation)
+/** 머리 오른쪽 새로고침. AI 리포트를 기다리지 않고 바로 보인다 */
+export function RefreshReport() {
   const router = useRouter()
-  const now = useNow()
   const [pending, start] = useTransition()
-  if (result.status === 'notConfigured') return null
   const refresh = () =>
     start(async () => {
       const r = await refreshMonitoringAction()
@@ -46,30 +43,32 @@ export function ReportControls({ explanation }: { explanation: Result }) {
       else if (r.status === 'refreshed') toast.success('지표와 AI 리포트를 새로 받았어요')
       router.refresh()
     })
-  const report = result.status === 'ok' ? result.explanation : null
-  // 화면 숫자는 지금 값이고 문장은 리포트를 만든 때 기준이라, 몇 분 전 리포트인지 함께 보여 준다
-  const minutesAgo = report
-    ? Math.max(0, Math.floor((now - Date.parse(report.createdAt)) / 60_000))
-    : 0
   return (
-    <div className="flex items-center gap-3">
-      {report && (
-        <span className={s.tSmall}>
-          {hhmm(Date.parse(report.createdAt) / 1000)} 기준 ·{' '}
-          {minutesAgo ? `${minutesAgo}분 전` : '방금'}
-        </span>
-      )}
-      <Button
-        size="sm"
-        variant="tertiary"
-        isPending={pending}
-        onPress={refresh}
-        aria-label="지표와 AI 리포트 새로 받기"
-      >
-        <ArrowsRotateRight aria-hidden />
-        새로고침
-      </Button>
-    </div>
+    <Button
+      size="sm"
+      variant="tertiary"
+      className="text-base"
+      isPending={pending}
+      onPress={refresh}
+      aria-label="지표와 AI 리포트 새로 받기"
+    >
+      <ArrowsRotateRight aria-hidden />
+      새로고침
+    </Button>
+  )
+}
+
+/** 머리 오른쪽 리포트 기준 시각. 지표는 지금 값, 문장은 만든 때 기준이라 몇 분 전 리포트인지 보여 준다 */
+export function ReportTime({ explanation }: { explanation: Result }) {
+  const result = use(explanation)
+  const now = useNow()
+  if (result.status !== 'ok') return null
+  const created = Date.parse(result.explanation.createdAt)
+  const minutesAgo = Math.max(0, Math.floor((now - created) / 60_000))
+  return (
+    <span className={s.tSmall}>
+      {hhmm(created / 1000)} 기준 · {minutesAgo ? `${minutesAgo}분 전` : '방금'}
+    </span>
   )
 }
 
@@ -112,6 +111,8 @@ export function ExplainView({
         <Card title="자원 여유">
           <ResourceBars data={data} />
         </Card>
+      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title="서비스">
           <p className={`${s.tBody} m-0 ${problems.length ? 'font-semibold text-danger' : ''}`}>
             {serviceLine(data)}
@@ -168,7 +169,7 @@ function Causes({ explanation }: { explanation: Result }) {
         // 결론 · 항목 · 근거 숫자. 「의심」만 빨강, 점 아이콘은 쓰지 않는다
         <li
           key={i}
-          className={`${s.tBody} grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]`}
+          className={`${s.tBody} grid grid-cols-[3rem_minmax(0,1fr)] gap-x-3 sm:grid-cols-[3rem_minmax(0,1fr)_auto]`}
         >
           <strong className={c.verdict === '의심' ? 'text-danger' : ''}>{c.verdict}</strong>
           <span>{c.label}</span>

@@ -1,6 +1,6 @@
 import { monotonePath, type Pt } from '@/shared/lib/chart'
 
-/** 리포트 카드 안 작은 그래프. 축·글자 없이 흐름만 보여 준다 */
+/** 리포트 카드 안 작은 그래프. 축·글자 없이 흐름만 보여 준다. 선 색은 상세 지표 그래프 첫 시계열과 같다 */
 export function Sparkline({ points, label }: { points: [number, number | null][]; label: string }) {
   const W = 160
   const H = 48
@@ -16,6 +16,7 @@ export function Sparkline({ points, label }: { points: [number, number | null][]
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="none"
       className="block h-12 w-full"
       role="img"
       aria-label={`${label} 최근 1시간 그래프`}
@@ -23,9 +24,10 @@ export function Sparkline({ points, label }: { points: [number, number | null][]
       <path
         d={monotonePath(pts)}
         fill="none"
-        stroke="var(--accent)"
+        stroke="var(--series-1)"
         strokeWidth="2"
         strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
       />
     </svg>
   )

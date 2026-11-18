@@ -3,11 +3,13 @@
 import { useId, useState, type PointerEvent } from 'react'
 
 import { monotonePath, type Pt, type Series } from '@/shared/lib/chart'
+import { useWidth } from '@/shared/lib/use-width'
 
 // 여러 시계열 선 그래프. 색은 --series-1 … 8 을 시계열 순서대로 쓴다(순위가 아니라 이름 순서라 새로 받아도 색이 바뀌지 않는다).
 // 시계열이 하나면 선 아래를 강조색 그라데이션으로 칠한다. 마우스를 올리면 그 시각의 값들을 툴팁 카드로 보여 준다.
 
-const W = 640
+/** 재기 전 폭. 실제로는 칸 폭을 재서 viewBox로 쓴다(축 글자가 12px로 보이게) */
+const DEFAULT_W = 640
 const H = 220
 const PAD = { top: 12, right: 12, bottom: 24, left: 56 }
 /** 선으로 그리는 시계열 수. 나머지는 표에만 남긴다(9번째 색을 만들지 않는다) */
@@ -34,6 +36,7 @@ export function MultiLineChart({
   format: (v: number) => string
 }) {
   const id = useId().replace(/:/g, '')
+  const { ref: boxRef, width: W } = useWidth<HTMLDivElement>(DEFAULT_W)
   const [hover, setHover] = useState<number | null>(null)
   const lines = series.slice(0, MAX_LINES)
   const times = [...new Set(lines.flatMap((s) => s.points.map(([t]) => t)))].sort((a, b) => a - b)
@@ -84,10 +87,11 @@ export function MultiLineChart({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="relative">
+      <div ref={boxRef} className="relative">
         <svg
           viewBox={`0 0 ${W} ${H}`}
-          className="block h-auto w-full touch-none overflow-visible"
+          className="block w-full touch-none overflow-visible"
+          style={{ height: H }}
           role="img"
           aria-label={`${title} 그래프. 시계열 ${lines.length}개, 가장 높을 때 ${format(top)}`}
           onPointerMove={onMove}

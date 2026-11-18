@@ -3,6 +3,7 @@
 import { useId, useState, type PointerEvent } from 'react'
 
 import { monotonePath, type Pt } from '@/shared/lib/chart'
+import { useWidth } from '@/shared/lib/use-width'
 
 // 선 그래프 하나. 색은 리포트 강조색 하나만 쓴다(서비스 구분은 그래프를 나눠서 한다).
 // 곡선은 값이 튀어 보이지 않게 단조 보간(monotone cubic)으로 그리고, 아래 면은 강조색이 옅어지게 칠한다.
@@ -25,7 +26,7 @@ export function TrendChart({
   points,
   format,
   hero = false,
-  width: W = 320,
+  width: initialWidth = 320,
   height: H = 140,
 }: {
   title: string
@@ -39,6 +40,8 @@ export function TrendChart({
 }) {
   const id = useId().replace(/:/g, '')
   const [hover, setHover] = useState<number | null>(null)
+  // 칸 폭을 재서 viewBox로 쓴다. 그래야 축 글자가 늘거나 줄지 않고 12px로 보인다
+  const { ref: boxRef, width: W } = useWidth<HTMLDivElement>(initialWidth)
   const values = points.map(([, v]) => v).filter((v): v is number => v !== null)
   const first = points[0]
   const last = points[points.length - 1]
@@ -124,10 +127,11 @@ export function TrendChart({
         )}
       </figcaption>
 
-      <div className="relative">
+      <div ref={boxRef} className="relative">
         <svg
           viewBox={`0 0 ${W} ${H}`}
-          className="block h-auto w-full touch-none overflow-visible"
+          className="block w-full touch-none overflow-visible"
+          style={{ height: H }}
           role="img"
           aria-label={`${title} 최근 1시간 추이. 가장 높을 때 ${format(peak)}, 지금 ${latest === null ? '기록 없음' : format(latest)}`}
           onPointerMove={onMove}

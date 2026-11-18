@@ -9,7 +9,12 @@ import { MonitoringTabs } from '@/widgets/grafana-dashboard/ui/MonitoringTabs'
 import { BriefSection, MonitoringView, SummaryTiles } from '@/widgets/monitoring'
 import { getExplanation } from '@/widgets/monitoring/model/explain-server'
 import { loadMonitoring } from '@/widgets/monitoring/model/load'
-import { AiSummaryLine, ExplainView, ReportControls } from '@/widgets/monitoring/ui/ExplainView'
+import {
+  AiSummaryLine,
+  ExplainView,
+  RefreshReport,
+  ReportTime,
+} from '@/widgets/monitoring/ui/ExplainView'
 
 // 요약 탭. 시선 순서: 머리(제목·기준 시각·새로고침) → 판정 띠(판정·한 줄 요약·숫자 넷) → AI 리포트 → 병목 흐름 6장.
 // 판정과 병목 흐름은 상세 지표 탭과 같은 부품·같은 계산 결과(loadMonitoring)를 써서 리포트 숫자와 같다.
@@ -39,9 +44,12 @@ export default async function MonitoringPage() {
         {tabs}
         <header className="flex flex-wrap items-center justify-between gap-4">
           <h2 className={s.tPage}>모니터링 리포트</h2>
-          <Suspense fallback={null}>
-            <ReportControls explanation={explanation} />
-          </Suspense>
+          <div className="flex items-center gap-3">
+            <Suspense fallback={null}>
+              <ReportTime explanation={explanation} />
+            </Suspense>
+            <RefreshReport />
+          </div>
         </header>
         <SummaryTiles
           data={data}

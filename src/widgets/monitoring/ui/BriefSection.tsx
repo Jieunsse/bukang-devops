@@ -16,9 +16,9 @@ export function BriefSection({ cards }: { cards: BriefCard[] }) {
   return (
     <ReportSection title="병목 흐름" description="최근 1시간 · 요청에서 DB까지 번지는 순서">
       <div className="flex flex-col gap-3">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {cards.map((c, i) => (
-            <section key={c.key} aria-label={c.title} className={`${s.fact} gap-2 p-4`}>
+            <section key={c.key} aria-label={c.title} className={s.card}>
               {c.series.length ? (
                 <MultiLineChart title={c.title} series={c.series} format={FORMAT[c.unit]} />
               ) : (

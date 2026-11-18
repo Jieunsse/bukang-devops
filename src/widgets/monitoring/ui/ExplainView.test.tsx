@@ -6,7 +6,7 @@ import type { MonitoringData } from '../model/load'
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 vi.mock('../api/actions', () => ({ refreshMonitoringAction: vi.fn() }))
 
-const { AiSummaryLine, ExplainView, ReportControls } = await import('./ExplainView')
+const { AiSummaryLine, ExplainView, RefreshReport, ReportTime } = await import('./ExplainView')
 
 const T = (m: number) => Date.UTC(2026, 10, 18, 11, 54 + m) / 1000 // 20:54 KST부터
 const data = {
@@ -56,7 +56,8 @@ async function renderView(
     const explanation = Promise.resolve(result)
     render(
       <>
-        <ReportControls explanation={explanation} />
+        <ReportTime explanation={explanation} />
+        <RefreshReport />
         <AiSummaryLine explanation={explanation} />
         <ExplainView data={data} links={links} explanation={explanation} />
       </>,
@@ -106,12 +107,12 @@ describe('AI 리포트', () => {
     )
   })
 
-  it('AI 연결이 없어도 코드가 그리는 자원 막대와 서비스 줄은 보이고, 새로고침 버튼은 없다', async () => {
+  it('AI 연결이 없어도 코드가 그리는 자원 막대와 서비스 줄은 보이고, 새로고침은 기다리지 않고 보인다', async () => {
     await renderView({ status: 'notConfigured' })
     expect(screen.getByText('AI 연결 정보가 없어요')).toBeInTheDocument()
     expect(screen.getByText('특이 사항 없음 · 1곳 정상')).toBeInTheDocument()
     expect(screen.getByRole('list', { name: '기준까지 남은 양' })).toBeInTheDocument()
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '지표와 AI 리포트 새로 받기' })).toBeInTheDocument()
   })
 
   it('실패하면 받지 못했다고 보이고 다시 시도할 수 있다', async () => {

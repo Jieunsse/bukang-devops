@@ -74,7 +74,7 @@ export function DashboardView({ data }: { data: DashboardViewData }) {
             {variables.map((v) => (
               <Select
                 key={v.name}
-                className="w-56"
+                className="w-56 text-base"
                 value={v.selected[0] ?? null}
                 onChange={(value) => value !== null && choose(v.name, String(value))}
               >
