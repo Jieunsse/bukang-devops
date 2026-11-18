@@ -233,9 +233,9 @@ function StatValues({
           <div key={i} className="min-w-0">
             {many && <dt className={`${s.tSmall} truncate`}>{seriesLabel(x.name)}</dt>}
             <dd
-              className={`m-0 flex items-baseline gap-2 ${size} tabular-nums ${levelClass(l) ?? ''}`}
+              className={`m-0 flex flex-wrap items-baseline gap-x-2 ${size} tabular-nums ${levelClass(l) ?? ''}`}
             >
-              {text}
+              <span className="whitespace-nowrap">{text}</span>
               <LevelBadge level={l} />
             </dd>
           </div>

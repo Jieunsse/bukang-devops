@@ -295,12 +295,14 @@ function VerdictCard({
                 className="flex items-baseline gap-2 rounded-md hover:underline focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
               >
                 <span
-                  className={`${s.tLabel} w-16 shrink-0 ${r.level === 'bad' ? 'text-danger' : ''}`}
+                  className={`${s.tLabel} shrink-0 ${r.level === 'bad' ? 'text-danger' : ''}`}
                 >
                   {LEVEL_TEXT[r.level]}
                 </span>
                 <span className="min-w-0 truncate">{r.name}</span>
-                <b className={`ml-auto tabular-nums ${r.level === 'bad' ? 'text-danger' : ''}`}>
+                <b
+                  className={`ml-auto shrink-0 whitespace-nowrap tabular-nums ${r.level === 'bad' ? 'text-danger' : ''}`}
+                >
                   {r.value}
                 </b>
               </a>
