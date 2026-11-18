@@ -75,7 +75,7 @@ describe('모니터링', () => {
         }}
       />,
     )
-    expect(screen.getAllByText('지금 2.00')).toHaveLength(2)
+    expect(screen.getByText('지금 2.00')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '응답 시간(95%)' }))
     expect(screen.getByText('지금 250ms')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '힙 메모리' }))

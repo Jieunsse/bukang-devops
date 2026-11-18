@@ -117,8 +117,9 @@ function Dashboard({ data }: { data: Extract<MonitoringData, { status: 'ok' }> }
                 title="전체 초당 요청"
                 points={totalTrend}
                 format={(v) => rpsText(v)}
+                hero
                 width={960}
-                height={180}
+                height={240}
               />
             ) : (
               <p className="text-sm text-muted">전체 초당 요청 추이를 받지 못했어요</p>
