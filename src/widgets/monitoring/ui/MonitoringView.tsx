@@ -40,10 +40,13 @@ const TREND_ITEMS: { kind: TrendKind; label: string; format: (v: number) => stri
 export function MonitoringView({
   data,
   tabs,
+  explain,
 }: {
   data: MonitoringData
   /** 위쪽 탭(그라파나 대시보드로 옮겨 가기). 쓰는 쪽이 넣는다 */
   tabs?: ReactNode
+  /** 요약 아래 AI 해석. 쓰는 쪽이 Suspense로 감싸 넣는다 */
+  explain?: ReactNode
 }) {
   if (data.status !== 'ok') {
     return (
@@ -68,15 +71,17 @@ export function MonitoringView({
     )
   }
 
-  return <Dashboard data={data} tabs={tabs} />
+  return <Dashboard data={data} tabs={tabs} explain={explain} />
 }
 
 function Dashboard({
   data,
   tabs,
+  explain,
 }: {
   data: Extract<MonitoringData, { status: 'ok' }>
   tabs?: ReactNode
+  explain?: ReactNode
 }) {
   const [kind, setKind] = useState<TrendKind>('errors')
   const trendItem = TREND_ITEMS.find((i) => i.kind === kind) ?? TREND_ITEMS[0]!
@@ -132,6 +137,8 @@ function Dashboard({
             value={<span className={bad(verdict.downCount > 0)}>{verdict.downCount}곳</span>}
           />
         </dl>
+
+        {explain}
 
         <div id="monitoring-brief" className="scroll-mt-4">
           <BriefSection cards={data.brief} />
