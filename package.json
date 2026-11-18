@@ -19,6 +19,7 @@
     "node": ">=20.9"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.10.0",
     "@google-analytics/data": "7.3.0",
     "@gravity-ui/icons": "2.23.0",
     "@heroui/react": "3.2.6",
