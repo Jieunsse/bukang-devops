@@ -58,15 +58,14 @@ async function renderView(
 }
 
 describe('AI 리포트', () => {
-  it('AI를 기다리는 동안에도 판정·자원 막대·서비스 줄은 바로 보인다', () => {
+  it('AI를 기다리는 동안에도 자원 막대·서비스 줄은 바로 보인다', () => {
     render(<ExplainView data={data} links={links} explanation={new Promise(() => {})} />)
-    expect(screen.getByText('모두 정상')).toBeInTheDocument()
     expect(screen.getByRole('list', { name: '기준까지 남은 양' })).toBeInTheDocument()
     expect(screen.getByText('특이 사항 없음 · 1곳 정상')).toBeInTheDocument()
     expect(screen.getAllByText('리포트를 만드는 중이에요').length).toBeGreaterThan(0)
   })
 
-  it('판정·요약·그래프 카드·원인 점검·자원 막대·서비스·할 일 링크를 보여 주고, 기준을 넘은 값만 빨강이다', async () => {
+  it('요약·그래프 카드·원인 점검·자원 막대·서비스·할 일 링크를 보여 주고, 기준을 넘은 값만 빨강이다', async () => {
     await renderView({
       status: 'ok',
       explanation: {
@@ -84,7 +83,6 @@ describe('AI 리포트', () => {
         createdAt: '2026-11-18T12:05:00Z',
       },
     })
-    expect(screen.getByText('모두 정상')).toBeInTheDocument()
     expect(screen.getByText('주문 응답 시간이 잠깐 1초를 넘었어요.')).toBeInTheDocument()
     expect(screen.getByText(/21:05 기준 · \d+분 전/)).toBeInTheDocument()
     const card = screen.getByRole('article', { name: '주문 응답 시간' })

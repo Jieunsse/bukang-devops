@@ -19,7 +19,7 @@ import { resolveWatch, resourceBars, serviceLine, tabHref } from '../model/repor
 import { verdictOf } from '../model/verdict'
 import { Sparkline } from './Sparkline'
 
-// AI 리포트. 판정·자원 막대·서비스 줄은 코드가 지표로 바로 그리고, AI 칸(요약, 눈여겨볼 것, 원인 점검, 할 일)만
+// AI 리포트. 자원 막대·서비스 줄은 코드가 지표로 바로 그리고, AI 칸(요약, 눈여겨볼 것, 원인 점검, 할 일)만
 // 각각 Suspense로 늦게 채운다. 그래서 AI가 늦거나 실패해도 코드가 그리는 부분은 바로 보인다.
 // 기준을 넘은 값만 빨간 글자와 「주의」로 쓴다(CLAUDE.md 모니터링 예외).
 
@@ -44,13 +44,8 @@ export function ExplainView({
   return (
     <section aria-label="AI 리포트" className="flex flex-col gap-4">
       <header className={`${s.fact} flex-row flex-wrap items-center gap-x-4 gap-y-2 p-5`}>
-        <span className={`text-2xl font-bold ${problems.length ? 'text-danger' : ''}`}>
-          {problems.length
-            ? `주의 · 문제 ${problems.length}곳`
-            : data.partial
-              ? '일부 지표 모름'
-              : '모두 정상'}
-        </span>
+        {/* 판정은 바로 위 판정 칸이 보여 주므로 여기서는 리포트 이름만 둔다 */}
+        <strong className="text-base">AI 리포트</strong>
         <Suspense
           fallback={
             <span className="flex-1">

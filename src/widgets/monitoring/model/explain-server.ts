@@ -91,7 +91,7 @@ const readCache = unstable_cache(
     return next ?? attempt(null)
   },
   // 응답 모양(여섯 칸 리포트)이 바뀌면 키를 올려 옛 캐시 값을 읽지 않게 한다
-  ['monitoring-explain-v4'],
+  ['monitoring-explain-v5'],
   // revalidate를 두지 않는다: 새로고침(updateTag) 전까지 같은 해석을 쓴다
   { tags: [EXPLAIN_TAG] },
 )
