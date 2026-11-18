@@ -1,4 +1,4 @@
-import { BRIEF_SUFFIX, summarizeSeries, THRESHOLDS, type BriefKey } from './brief'
+import { BRIEF_SUFFIX, latestOf, summarizeSeries, THRESHOLDS, type BriefKey } from './brief'
 import { BRIEF_FORMAT, percentText } from './format'
 import type { MonitoringData } from './load'
 import { verdictOf } from './verdict'
@@ -27,13 +27,24 @@ export type WatchCard = {
 
 const pct = (v: number) => `${Math.round(v * 100)}%`
 
-/** 지표별 기준(문자열)과 값. 처리량은 기준이 없다 */
-const LIMIT: Partial<Record<BriefKey, { value: number; text: string }>> = {
-  cpu: { value: THRESHOLDS.cpu, text: pct(THRESHOLDS.cpu) },
-  latency: { value: THRESHOLDS.latencySeconds, text: `${THRESHOLDS.latencySeconds}초` },
-  dbConn: { value: THRESHOLDS.dbConnRatio, text: pct(THRESHOLDS.dbConnRatio) },
-  pending: { value: THRESHOLDS.pending, text: `${THRESHOLDS.pending}건` },
-  lock: { value: THRESHOLDS.lockPerSecond, text: `초당 ${THRESHOLDS.lockPerSecond}회` },
+/**
+ * 지표별 기준. inclusive는 기준과 같은 값도 문제로 보는지다. 상세 탭 브리핑(brief.ts)과 같게 둔다:
+ * 응답 시간만 「초과」, 나머지는 「이상」. 처리량은 기준이 없다
+ */
+const LIMIT: Partial<Record<BriefKey, { value: number; text: string; inclusive: boolean }>> = {
+  cpu: { value: THRESHOLDS.cpu, text: pct(THRESHOLDS.cpu), inclusive: true },
+  latency: {
+    value: THRESHOLDS.latencySeconds,
+    text: `${THRESHOLDS.latencySeconds}초`,
+    inclusive: false,
+  },
+  dbConn: { value: THRESHOLDS.dbConnRatio, text: pct(THRESHOLDS.dbConnRatio), inclusive: true },
+  pending: { value: THRESHOLDS.pending, text: `${THRESHOLDS.pending}건`, inclusive: true },
+  lock: {
+    value: THRESHOLDS.lockPerSecond,
+    text: `초당 ${THRESHOLDS.lockPerSecond}회`,
+    inclusive: true,
+  },
 }
 
 const isResource = (m: WatchMetric): m is ResourceMetric =>
@@ -49,7 +60,8 @@ function headroom(v: number, limit: number) {
 export function resolveWatch(data: Ok, item: WatchItem): WatchCard | null {
   if (isResource(item.metric)) {
     const metric = item.metric
-    const row = data.resources.find((r) => r.name === item.target) ?? data.resources[0]
+    // 못 찾으면 다른 서버 숫자를 대신 쓰지 않고 카드를 뺀다
+    const row = data.resources.find((r) => r.name === item.target)
     const v = row?.[metric]
     if (v === null || v === undefined) return null
     const limit = THRESHOLDS[metric]
@@ -64,7 +76,8 @@ export function resolveWatch(data: Ok, item: WatchItem): WatchCard | null {
     }
   }
   const card = data.brief.find((c) => c.key === item.metric)
-  const series = card?.series.find((s) => s.name === item.target) ?? card?.series[0]
+  // 못 찾으면 다른 대상 숫자를 대신 쓰지 않고 카드를 뺀다(AI 제목과 숫자가 어긋나지 않게)
+  const series = card?.series.find((s) => s.name === item.target)
   if (!card || !series) return null
   const s = summarizeSeries(series, BRIEF_FORMAT[card.unit], BRIEF_SUFFIX[card.key])
   if (s.peak === null) return null
@@ -76,20 +89,20 @@ export function resolveWatch(data: Ok, item: WatchItem): WatchCard | null {
     value: s.peak,
     at: s.peakAt,
     sub: limit ? `지금 ${s.latest ?? '-'} · 기준 ${limit.text}` : `지금 ${s.latest ?? '-'}`,
-    danger: limit ? peakValue > limit.value : false,
+    danger: limit ? (limit.inclusive ? peakValue >= limit.value : peakValue > limit.value) : false,
     points: series.points,
   }
 }
 
 export type ResourceBar = { label: string; ratio: number; limit: number; text: string }
 
-/** 서버별 CPU·메모리·디스크(·스왑)와 DB 연결을 기준과 함께 막대로 */
+/** 서버별 CPU·메모리·디스크(·스왑)와 DB 연결(브리핑 상위 3곳 중 지금 가장 많이 쓰는 곳)을 기준과 함께 막대로 */
 export function resourceBars(data: Ok): ResourceBar[] {
   const cpu = data.brief.find((c) => c.key === 'cpu')
   const bars: ResourceBar[] = []
   for (const r of data.resources) {
     const c = cpu?.series.find((s) => s.name === r.name)
-    const cpuNow = c ? summarizeRaw(c.points) : null
+    const cpuNow = c ? latestOf(c) : null
     if (cpuNow !== null) {
       bars.push({
         label: `${r.name} CPU`,
@@ -121,26 +134,17 @@ export function resourceBars(data: Ok): ResourceBar[] {
       })
   }
   const db = data.brief.find((c) => c.key === 'dbConn')
-  const dbNow = db?.series.map((s) => summarizeRaw(s.points)).filter((v): v is number => v !== null)
+  const dbNow = db?.series.map(latestOf).filter((v): v is number => v !== null)
   if (dbNow?.length) {
     const v = Math.max(...dbNow)
     bars.push({
-      label: 'DB 연결(가장 많이 쓴 곳)',
+      label: 'DB 연결 최대',
       ratio: v,
       limit: THRESHOLDS.dbConnRatio,
       text: BRIEF_FORMAT.percentunit(v),
     })
   }
   return bars
-}
-
-/** 마지막 값 */
-function summarizeRaw(points: [number, number | null][]): number | null {
-  for (let i = points.length - 1; i >= 0; i--) {
-    const v = points[i]![1]
-    if (v !== null) return v
-  }
-  return null
 }
 
 export function serviceLine(data: Ok): string {

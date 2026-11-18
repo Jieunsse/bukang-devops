@@ -18,7 +18,8 @@ export default async function MonitoringDetailPage() {
   return (
     <MonitoringView
       data={await loadMonitoring()}
-      tabs={links.length ? <MonitoringTabs links={links} current="detail" /> : undefined}
+      // 대시보드 목록을 못 받아도 요약으로 돌아갈 수 있게 탭은 늘 그린다
+      tabs={<MonitoringTabs links={links} current="detail" />}
     />
   )
 }
