@@ -3,7 +3,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 
-import { formatUnit, type Panel } from '@/entities/grafana-dashboard'
+import {
+  formatUnit,
+  levelOf,
+  panelLabel,
+  type Panel,
+  type ThresholdLevel,
+} from '@/entities/grafana-dashboard'
 import { seriesStats } from '@/shared/lib/chart'
 import { report as s } from '@/shared/ui'
 import { MAX_LINES, MultiLineChart, seriesColor } from '@/shared/ui/chart/MultiLineChart'
@@ -12,6 +18,16 @@ import type { SeriesData } from '../model/types'
 
 // 그라파나 패널 하나. 화면에 보일 때 처음 불러온다(대시보드 하나에 패널이 100개가 넘는다).
 // 그래프 아래에 시계열마다 지금·평균·최대를 표로 붙인다. 숫자 패널(stat)은 큰 숫자로 보여 준다.
+// 영어 이름은 뜻으로 바꾸고 읽는 법 한 줄을 붙인다. 그라파나 기준값의 빨강 단계를 넘은 지금 값은
+// 요약 화면과 같은 말로 빨간 「주의」, 그 아래 단계는 색 없는 「기준 가까움」으로 알린다.
+
+/** 기준 단계 → 글자 표시. 빨강은 기준을 넘은 값(bad)에만 쓴다(CLAUDE.md 모니터링 예외) */
+const LEVEL_TEXT: Record<ThresholdLevel, string | null> = {
+  ok: null,
+  warn: '기준 가까움',
+  bad: '주의',
+}
+const levelClass = (l: ThresholdLevel) => (l === 'bad' ? 'font-semibold text-danger' : undefined)
 
 /** 화면에 들어온 뒤에만 true. 한 번 보이면 계속 true다 */
 function useSeen<T extends Element>() {
@@ -45,7 +61,18 @@ export function PanelCard({ uid, panel, query }: { uid: string; panel: Panel; qu
     refetchInterval: 60_000,
   })
   const format = (v: number) => formatUnit(v, panel.unit, panel.decimals)
+  const label = panelLabel(panel)
+  const steps = label.ignoreThresholds ? [] : panel.steps
+  const level = (v: number | null): ThresholdLevel =>
+    v === null || !steps.length ? 'ok' : levelOf(steps, v)
   const wide = panel.kind !== 'stat'
+  // 패널 머리에 붙일 가장 나쁜 단계(지금 값 기준)
+  const worst = (data?.series ?? [])
+    .map((x) => level(seriesStats(x.points).latest))
+    .reduce<ThresholdLevel>(
+      (a, b) => (a === 'bad' || b === 'bad' ? 'bad' : a === 'warn' || b === 'warn' ? 'warn' : 'ok'),
+      'ok',
+    )
 
   return (
     <section
@@ -53,7 +80,18 @@ export function PanelCard({ uid, panel, query }: { uid: string; panel: Panel; qu
       aria-label={panel.title}
       className={`${s.fact} min-h-40 gap-3 p-4 ${wide ? 'lg:col-span-2' : ''}`}
     >
-      <h4 className="m-0 text-sm font-semibold">{panel.title}</h4>
+      <header className="flex flex-col gap-0.5">
+        <h4 className="m-0 flex flex-wrap items-baseline gap-x-2 text-sm font-semibold">
+          {label.name}
+          {label.original && <small className="font-normal text-muted">{label.original}</small>}
+          {LEVEL_TEXT[worst] && (
+            <span className={levelClass(worst) ?? 'font-normal text-muted'}>
+              {LEVEL_TEXT[worst]}
+            </span>
+          )}
+        </h4>
+        {label.help && <p className="m-0 text-xs text-muted">{label.help}</p>}
+      </header>
       {!seen || isPending ? (
         <p className="m-0 py-10 text-center text-sm text-muted">불러오는 중이에요</p>
       ) : isError || data.failed ? (
@@ -61,29 +99,45 @@ export function PanelCard({ uid, panel, query }: { uid: string; panel: Panel; qu
       ) : data.series.length === 0 ? (
         <p className="m-0 py-10 text-center text-sm text-muted">이 기간에 기록이 없어요</p>
       ) : panel.kind === 'stat' ? (
-        <StatValues data={data} format={format} />
+        <StatValues data={data} format={format} level={level} />
       ) : (
         <>
-          <MultiLineChart title={panel.title} series={data.series} format={format} />
-          <SeriesTable title={panel.title} data={data} format={format} />
+          <MultiLineChart title={label.name} series={data.series} format={format} />
+          <SeriesTable title={label.name} data={data} format={format} level={level} />
         </>
       )}
     </section>
   )
 }
 
-function StatValues({ data, format }: { data: SeriesData; format: (v: number) => string }) {
+function StatValues({
+  data,
+  format,
+  level,
+}: {
+  data: SeriesData
+  format: (v: number) => string
+  level: (v: number | null) => ThresholdLevel
+}) {
   return (
     <dl className="m-0 grid gap-2">
       {data.series.slice(0, 6).map((x, i) => (
         <div key={i} className="min-w-0">
           {data.series.length > 1 && <dt className="truncate text-xs text-muted">{x.name}</dt>}
-          <dd className="m-0 text-3xl font-bold tracking-tight tabular-nums">
-            {(() => {
-              const v = seriesStats(x.points).latest
-              return v === null ? '-' : format(v)
-            })()}
-          </dd>
+          {(() => {
+            const v = seriesStats(x.points).latest
+            const l = level(v)
+            return (
+              <dd
+                className={`m-0 text-3xl font-bold tracking-tight tabular-nums ${levelClass(l) ?? ''}`}
+              >
+                {v === null ? '-' : format(v)}
+                {LEVEL_TEXT[l] && (
+                  <span className="ml-2 text-sm font-semibold">{LEVEL_TEXT[l]}</span>
+                )}
+              </dd>
+            )
+          })()}
         </div>
       ))}
     </dl>
@@ -94,10 +148,12 @@ function SeriesTable({
   title,
   data,
   format,
+  level,
 }: {
   title: string
   data: SeriesData
   format: (v: number) => string
+  level: (v: number | null) => ThresholdLevel
 }) {
   const f = (v: number | null) => (v === null ? '-' : format(v))
   return (
@@ -129,7 +185,7 @@ function SeriesTable({
                     </span>
                   </span>
                 </td>
-                <td className={s.num}>{f(st.latest)}</td>
+                <td className={`${s.num} ${levelClass(level(st.latest)) ?? ''}`}>{f(st.latest)}</td>
                 <td className={s.num}>{f(st.avg)}</td>
                 <td className={s.num}>{f(st.max)}</td>
               </tr>

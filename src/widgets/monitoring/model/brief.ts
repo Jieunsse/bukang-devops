@@ -20,7 +20,10 @@ export type BriefCard = {
 
 /** 주의로 볼 기준. 넘으면 카드와 맨 위 종합에 문장이 붙는다 */
 export const THRESHOLDS = {
+  /** 서버 오류(5xx) 비율. 1%를 넘으면 문제. 부하 테스트로 평소 값을 재면 바꾼다 */
+  errorRatio: 0.01,
   cpu: 0.8,
+  /** 응답 시간 95번째 백분위. 1초를 넘으면 문제. 부하 테스트로 평소 값을 재면 바꾼다 */
   latencySeconds: 1,
   dbConnRatio: 1,
   pending: 1,
@@ -132,7 +135,7 @@ export function buildBrief(
       series: top,
       caption: worst ? `가장 느린 곳 ${worst.name}: ${startToPeak(worst, f.s)}` : '기록 없음',
       alert:
-        worst && peak && peak.value >= THRESHOLDS.latencySeconds
+        worst && peak && peak.value > THRESHOLDS.latencySeconds
           ? `${worst.name} 응답 시간이 ${hhmm(peak.at)}에 ${f.s(peak.value)}까지 늘었어요.`
           : null,
     })

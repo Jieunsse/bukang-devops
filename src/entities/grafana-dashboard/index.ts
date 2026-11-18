@@ -1,4 +1,6 @@
-export { parseDashboard } from './model/parse'
+export { colorLevel, levelOf, parseDashboard } from './model/parse'
+export { panelLabel, sectionLabel } from './model/glossary'
+export type { PanelLabel } from './model/glossary'
 export type {
   Dashboard,
   Panel,
@@ -6,6 +8,8 @@ export type {
   PanelTarget,
   Section,
   Variable,
+  ThresholdLevel,
+  ThresholdStep,
   VariableQuery,
 } from './model/parse'
 export { ALL, formatValues, interpolate, legendName } from './model/interpolate'

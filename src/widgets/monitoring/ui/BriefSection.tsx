@@ -6,7 +6,7 @@ import { MultiLineChart } from '@/shared/ui/chart/MultiLineChart'
 import type { BriefCard, BriefUnit } from '../model/brief'
 
 // 자동 브리핑. 맨 위에 주의 문장을 모으고, 아래에 병목이 번지는 순서대로 카드 6장을 둔다.
-// 상태 색은 기한 표시에만 쓰는 규칙이라 주의는 굵은 글자와 「주의」 표시로 알린다.
+// 기준을 넘은 항목은 「주의」 글자를 빨강으로 쓴다(CLAUDE.md 모니터링 예외).
 
 const FORMAT: Record<BriefUnit, (v: number) => string> = {
   reqps: (v) => v.toFixed(v < 10 ? 2 : 1),
@@ -19,16 +19,13 @@ const NUMBERS = ['①', '②', '③', '④', '⑤', '⑥']
 export function BriefSection({ cards }: { cards: BriefCard[] }) {
   const alerts = cards.map((c) => c.alert).filter((a): a is string => a !== null)
   return (
-    <ReportSection
-      title="자동 브리핑"
-      description="최근 1시간 지표로 매번 새로 써요. 기준을 넘은 것만 맨 위에 모아요."
-    >
+    <ReportSection title="자동 브리핑" description="최근 1시간">
       <div className="flex flex-col gap-3">
         <div className={s.lead} role="status">
           {alerts.length ? (
             alerts.map((a, i) => (
               <p key={i}>
-                <strong>주의</strong> {a}
+                <strong className="text-danger">주의</strong> {a}
               </p>
             ))
           ) : (
@@ -45,7 +42,7 @@ export function BriefSection({ cards }: { cards: BriefCard[] }) {
               )}
               <h4 className="m-0 text-base font-bold">
                 {NUMBERS[i]} {c.title}
-                {c.alert && <span className="ml-2 text-sm">· 주의</span>}
+                {c.alert && <span className="ml-2 text-sm text-danger">· 주의</span>}
               </h4>
               <p className={`m-0 text-sm ${c.alert ? 'font-semibold' : 'text-muted'}`}>
                 {c.caption}
