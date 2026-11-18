@@ -96,7 +96,7 @@ function Dashboard({
   // 영역이 몇 개 안 돼서 왼쪽 목차 없이 한 줄로 쌓는다
   return (
     <div className={`${s.report} ${s.solo}`}>
-      <div className={s.page}>
+      <div className={`${s.page} ${s.wide}`}>
         {tabs}
         <ReportHeader title="모니터링" sub={`${timeText(data.fetchedAt)} 기준 · 1분마다 갱신`} />
 
