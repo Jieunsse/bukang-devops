@@ -2,15 +2,8 @@ import type { Series as BaseSeries } from '@/shared/lib/chart'
 
 // 서버와 화면이 함께 쓰는 모양. server-only 코드를 화면 번들에 넣지 않으려고 따로 둔다.
 
-export const RANGES = {
-  '1h': { label: '1시간', seconds: 3600, step: 60 },
-  '6h': { label: '6시간', seconds: 6 * 3600, step: 180 },
-  '24h': { label: '24시간', seconds: 24 * 3600, step: 720 },
-} as const
-export type RangeKey = keyof typeof RANGES
-
-export const parseRange = (v: unknown): RangeKey =>
-  typeof v === 'string' && v in RANGES ? (v as RangeKey) : '1h'
+// 기간 목록은 모든 모니터링 탭이 함께 쓴다
+export { parseRange, RANGES, type RangeKey } from '@/shared/lib/time-range'
 
 /** 변수 이름 → 고른 값들(주소창 v.<이름>=값 에서 온다) */
 export type SelectedValues = Record<string, string[]>

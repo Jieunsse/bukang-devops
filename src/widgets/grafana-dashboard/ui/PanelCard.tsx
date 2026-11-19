@@ -2,7 +2,7 @@
 
 import { CircleQuestion } from '@gravity-ui/icons'
 import { Tooltip } from '@heroui/react'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 
 import {
@@ -14,6 +14,7 @@ import {
   type ThresholdLevel,
 } from '@/entities/grafana-dashboard'
 import { seriesStats } from '@/shared/lib/chart'
+import { cacheSecondsOf, parseRange } from '@/shared/lib/time-range'
 import { report as s } from '@/shared/ui'
 import { MAX_LINES, MultiLineChart, seriesColor } from '@/shared/ui/chart/MultiLineChart'
 
@@ -60,6 +61,8 @@ type PanelProps = { uid: string; panel: Panel; query: string; eager?: boolean }
 /** 패널 값. 화면에 보일 때 처음 불러오고 1분마다 다시 받는다. eager면 판정 카드에 결과를 보낸다 */
 function usePanelData<T extends Element>({ uid, panel, query, eager = false }: PanelProps) {
   const { ref, seen } = useSeen<T>(eager)
+  // 서버 캐시와 같은 시간 동안 다시 받지 않는다. query 안의 range가 키라서 기간마다 따로 캐시된다
+  const cacheMs = cacheSecondsOf(parseRange(new URLSearchParams(query).get('range'))) * 1000
   const result = useQuery({
     queryKey: ['grafana-panel', uid, panel.id, query],
     queryFn: async (): Promise<SeriesData> => {
@@ -68,8 +71,10 @@ function usePanelData<T extends Element>({ uid, panel, query, eager = false }: P
       return res.json() as Promise<SeriesData>
     },
     enabled: seen,
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    staleTime: cacheMs,
+    refetchInterval: cacheMs,
+    // 기간을 바꾸는 동안 이전 그래프를 두어 빈 칸으로 깜빡이지 않게 한다
+    placeholderData: keepPreviousData,
   })
   const label = panelLabel(panel)
   const steps = label.ignoreThresholds ? [] : panel.steps

@@ -15,6 +15,7 @@ export default async function MonitoringDetailPage() {
         .then(toDashboardLinks)
         .catch(() => [])
     : []
+  // 판정·표·상태판은 지금 상태라 기간과 상관없다. 기간 그래프는 화면이 주소의 range로 따로 받는다
   return (
     <MonitoringView
       data={await loadMonitoring()}

@@ -39,7 +39,8 @@ class ExplainFailed extends Error {}
 async function generate(env: Env): Promise<Explanation> {
   const config = readClaudeConfig(env)
   if (!config) throw new ExplainFailed('키 없음')
-  const data = await loadMonitoring(env)
+  // 화면에서 고른 기간과 상관없이 최근 1시간으로 만든다. 기간마다 만들면 AI 비용이 늘어서다
+  const data = await loadMonitoring(env, '1h')
   if (data.status !== 'ok') throw new ExplainFailed('지표 없음')
   const result = await askClaude(
     createClaudeClient(config),

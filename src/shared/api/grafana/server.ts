@@ -41,6 +41,8 @@ export async function queryPrometheusRange(
   config: GrafanaConfig,
   promql: string,
   range: { start: number; end: number; step: number },
+  /** 캐시 시간(초). 긴 기간은 길게 둔다 */
+  revalidate = REVALIDATE_SECONDS,
 ): Promise<RangeSeries[]> {
   const params = new URLSearchParams({
     query: promql,
@@ -52,7 +54,7 @@ export async function queryPrometheusRange(
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${config.token}` },
     signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
-    next: { revalidate: REVALIDATE_SECONDS, tags: [GRAFANA_METRICS_TAG] },
+    next: { revalidate, tags: [GRAFANA_METRICS_TAG] },
   })
   if (!res.ok) throw new Error(`그라파나 응답 ${res.status}`)
   const body = (await res.json()) as {

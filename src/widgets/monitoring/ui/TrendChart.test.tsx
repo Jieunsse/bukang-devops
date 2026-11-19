@@ -29,7 +29,7 @@ describe('선 그래프', () => {
 
   it('기록이 없으면 안내 문구만 보인다', () => {
     render(<TrendChart title="초당 요청" points={[[0, null]]} format={format} />)
-    expect(screen.getByText('최근 1시간 기록이 없어요')).toBeInTheDocument()
+    expect(screen.getByText('이 기간 기록이 없어요')).toBeInTheDocument()
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 

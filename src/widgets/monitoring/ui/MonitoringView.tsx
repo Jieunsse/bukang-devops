@@ -1,13 +1,14 @@
 'use client'
 
 import { EmptyState } from '@heroui/react'
-import { useState, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 
 import { report as s, ReportHeader, ReportSection } from '@/shared/ui'
 
 import { THRESHOLDS } from '../model/brief'
 import { hhmm, mbText, msText, percentText, rpsText, UNKNOWN } from '../model/format'
-import type { MonitoringData, TrendKind } from '../model/load'
+import type { MonitoringData } from '../model/load'
+import { rangedOf } from '../model/ranged'
 import type { ServiceRow } from '../model/rows'
 import {
   isDbFull,
@@ -18,14 +19,14 @@ import {
   isSlow,
   latencyGrade,
   sortByIssues,
-  totalErrorTrend,
   verdictOf,
 } from '../model/verdict'
-import { BriefSection } from './BriefSection'
-import { TrendChart } from './TrendChart'
+import { RangedSections } from './RangedSections'
 
 // 모니터링 상세 지표. 벤토 그리드로 가장 중요한 판정을 왼쪽 위 큰 칸에 두고, 옆에 숫자 4칸,
 // 아래에 같은 크기의 병목 카드 6장을 둔다. AI 리포트는 요약 탭에 있다. 그 아래로 서비스 표 → 추이 → 상태판. 기준(THRESHOLDS)을 넘은 값만 빨간 글자로 쓴다(CLAUDE.md 예외).
+
+type Ok = Extract<MonitoringData, { status: 'ok' }>
 
 const upText = (up: boolean) => (up ? '정상' : '응답 없음')
 const timeText = (iso: string) => hhmm(Date.parse(iso) / 1000)
@@ -34,14 +35,6 @@ const bad = (on: boolean) => (on ? 'font-semibold text-danger' : undefined)
 /** 색만으로 구분하지 않게 빨간 값 옆에 붙이는 글자 */
 const Flag = ({ on, text = '주의' }: { on: boolean; text?: string }) =>
   on ? <span className={`${s.tLabel} ml-2 text-danger`}>{text}</span> : null
-
-/** 추이에서 고를 수 있는 지표. 지표마다 단위가 달라 그래프를 따로 그린다 */
-const TREND_ITEMS: { kind: TrendKind; label: string; format: (v: number) => string }[] = [
-  { kind: 'errors', label: '서버 오류 비율', format: (v) => percentText(v) },
-  { kind: 'rps', label: '초당 요청', format: (v) => rpsText(v) },
-  { kind: 'p95', label: '응답 시간(95%)', format: (v) => msText(v) },
-  { kind: 'heap', label: '힙 메모리', format: (v) => mbText(v) },
-]
 
 export function MonitoringView({
   data,
@@ -77,13 +70,7 @@ export function MonitoringView({
   return <Dashboard data={data} tabs={tabs} />
 }
 
-function Dashboard({
-  data,
-  tabs,
-}: {
-  data: Extract<MonitoringData, { status: 'ok' }>
-  tabs?: ReactNode
-}) {
+function Dashboard({ data, tabs }: { data: Ok; tabs?: ReactNode }) {
   // 영역이 몇 개 안 돼서 왼쪽 목차 없이 한 줄로 쌓는다
   return (
     <div className={`${s.report} ${s.solo} ${s.mon}`}>
@@ -93,13 +80,11 @@ function Dashboard({
 
         <SummaryTiles data={data} />
 
-        <div id="monitoring-brief" className="scroll-mt-4">
-          <BriefSection cards={data.brief} />
-        </div>
-
         <ServicesSection services={data.services} partial={data.partial} />
 
-        <TrendsSection data={data} />
+        <div id="monitoring-brief" className="scroll-mt-4">
+          <RangedSections initial={rangedOf(data)} initialAt={data.fetchedAt} />
+        </div>
 
         <ReportSection title="상태판" description="응답 없는 대상이 위로">
           <div id="monitoring-targets" className={`${s.tbl} scroll-mt-4`}>
@@ -139,7 +124,7 @@ export function ServicesSection({
   return (
     <ReportSection
       title="서비스별 지표"
-      description={`최근 5분 · 응답 시간 기준 ${msText(THRESHOLDS.latencySeconds)}, ${THRESHOLDS.failSeconds}초 넘으면 실패 · ${
+      description={`지금 · 최근 5분 · 응답 시간 기준 ${msText(THRESHOLDS.latencySeconds)}, ${THRESHOLDS.failSeconds}초 넘으면 실패 · ${
         partial ? '일부 지표 받지 못함(-)' : '문제 있는 서비스가 위로'
       }`}
     >
@@ -245,7 +230,7 @@ export function SummaryTiles({
       className="grid scroll-mt-4 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
     >
       <section aria-label="판정" className={`${s.card} gap-2 sm:col-span-2 lg:row-span-2`}>
-        <span className={s.tLabel}>판정</span>
+        <span className={s.tLabel}>판정 · 지금</span>
         <p className={`${s.tVerdict} ${problems.length ? 'text-danger' : ''}`}>
           {problems.length
             ? `주의 · 문제 ${problems.length}곳`
@@ -286,59 +271,5 @@ export function SummaryTiles({
         {rpsText(totalRps)}
       </Tile>
     </div>
-  )
-}
-
-/** 추이: 전체 서버 오류 비율 큰 그래프와 서비스(모듈)별 그래프. 요약 탭과 상세 지표 탭이 함께 쓴다 */
-export function TrendsSection({ data }: { data: Extract<MonitoringData, { status: 'ok' }> }) {
-  const [kind, setKind] = useState<TrendKind>('errors')
-  const trendItem = TREND_ITEMS.find((i) => i.kind === kind) ?? TREND_ITEMS[0]!
-  const trends = data.trends[kind]
-  const totalTrend =
-    data.trends.errors && data.trends.rps
-      ? totalErrorTrend(data.trends.errors, data.trends.rps)
-      : null
-  return (
-    <ReportSection title="추이" description="최근 1시간 · 1분 간격">
-      <div id="monitoring-trends" className="flex scroll-mt-4 flex-col gap-4">
-        <div className={s.card}>
-          {totalTrend ? (
-            <TrendChart
-              title="전체 서버 오류 비율"
-              points={totalTrend}
-              format={(v) => percentText(v)}
-              hero
-              width={960}
-              height={240}
-            />
-          ) : (
-            <p className="text-base text-muted">전체 서버 오류 비율 추이를 받지 못했어요</p>
-          )}
-        </div>
-        <div role="group" aria-label="추이 지표" className={`${s.seg} self-start`}>
-          {TREND_ITEMS.map((item) => (
-            <button
-              key={item.kind}
-              type="button"
-              aria-pressed={kind === item.kind}
-              onClick={() => setKind(item.kind)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-        {trends ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {trends.map((t) => (
-              <div key={t.job} className={s.card}>
-                <TrendChart title={t.name} points={t.points} format={trendItem.format} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-base text-muted">{trendItem.label} 추이를 받지 못했어요</p>
-        )}
-      </div>
-    </ReportSection>
   )
 }

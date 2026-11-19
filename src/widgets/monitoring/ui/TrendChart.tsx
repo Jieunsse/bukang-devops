@@ -3,6 +3,7 @@
 import { useId, useState, type PointerEvent } from 'react'
 
 import { monotonePath, type Pt } from '@/shared/lib/chart'
+import { clockText, spansOverDay } from '@/shared/lib/time-range'
 import { useWidth } from '@/shared/lib/use-width'
 
 // 선 그래프 하나. 색은 리포트 강조색 하나만 쓴다(서비스 구분은 그래프를 나눠서 한다).
@@ -12,14 +13,6 @@ import { useWidth } from '@/shared/lib/use-width'
 const PAD = { top: 16, right: 12, bottom: 28, left: 12 }
 /** x축 눈금 개수(양 끝 포함) */
 const TICKS = 7
-
-const hhmm = (t: number) =>
-  new Date(t * 1000).toLocaleTimeString('ko-KR', {
-    timeZone: 'Asia/Seoul',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
 
 export function TrendChart({
   title,
@@ -38,6 +31,8 @@ export function TrendChart({
   width?: number
   height?: number
 }) {
+  // 24시간이 넘는 그래프는 시각에 날짜를 붙인다
+  const hhmm = (s: number) => clockText(s, spansOverDay(points))
   const id = useId().replace(/:/g, '')
   const [hover, setHover] = useState<number | null>(null)
   // 칸 폭을 재서 viewBox로 쓴다. 그래야 축 글자가 늘거나 줄지 않고 12px로 보인다
@@ -49,7 +44,7 @@ export function TrendChart({
     return (
       <figure className="m-0">
         <figcaption className="text-base font-medium">{title}</figcaption>
-        <p className="py-8 text-center text-base text-muted">최근 1시간 기록이 없어요</p>
+        <p className="py-8 text-center text-base text-muted">이 기간 기록이 없어요</p>
       </figure>
     )
   }
@@ -133,7 +128,7 @@ export function TrendChart({
           className="block w-full touch-none overflow-visible"
           style={{ height: H }}
           role="img"
-          aria-label={`${title} 최근 1시간 추이. 가장 높을 때 ${format(peak)}, 지금 ${latest === null ? '기록 없음' : format(latest)}`}
+          aria-label={`${title} 추이. 가장 높을 때 ${format(peak)}, 지금 ${latest === null ? '기록 없음' : format(latest)}`}
           onPointerMove={onMove}
           onPointerLeave={() => setHover(null)}
         >

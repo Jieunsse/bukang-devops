@@ -7,11 +7,11 @@ import s from '@/shared/ui/report/report.module.css'
 import { toDashboardLinks } from '@/widgets/grafana-dashboard/model/dashboards'
 import { MonitoringTabs } from '@/widgets/grafana-dashboard/ui/MonitoringTabs'
 import {
-  BriefSection,
   MonitoringView,
+  RangedSections,
+  rangedOf,
   ServicesSection,
   SummaryTiles,
-  TrendsSection,
 } from '@/widgets/monitoring'
 import { getExplanation } from '@/widgets/monitoring/model/explain-server'
 import { loadMonitoring } from '@/widgets/monitoring/model/load'
@@ -22,7 +22,7 @@ import {
   ReportTime,
 } from '@/widgets/monitoring/ui/ExplainView'
 
-// 요약 탭. 시선 순서: 머리(제목·기준 시각·새로고침) → 판정 띠(판정·한 줄 요약·숫자 넷) → AI 리포트 → 서비스별 지표 표 → 병목 흐름 6장 → 서비스별 추이.
+// 요약 탭. 시선 순서: 머리(제목·기준 시각·새로고침) → 판정 띠(판정·한 줄 요약·숫자 넷) → AI 리포트 → 서비스별 지표 표 → 병목 흐름 6장 → 서비스별 추이(병목·추이만 고른 기간).
 // 판정과 병목 흐름은 상세 지표 탭과 같은 부품·같은 계산 결과(loadMonitoring)를 써서 리포트 숫자와 같다.
 // 그라파나 토큰과 Claude 키는 서버에서만 쓰고, 브라우저에는 계산한 지표와 리포트 문구만 내려 준다.
 // AI 리포트를 처음 만들 때와 새로고침(서버 액션) 때 최대 60초 걸릴 수 있다
@@ -37,6 +37,8 @@ export default async function MonitoringPage() {
         .then(toDashboardLinks)
         .catch(() => [])
     : []
+  // 판정·AI 리포트·서비스 표는 기간과 상관없이 지금 상태(최근 1시간)다.
+  // 병목 흐름·추이만 화면이 주소의 range로 따로 받는다(긴 기간 질의가 판정을 기다리게 하지 않게)
   const data = await loadMonitoring()
   // 대시보드 목록을 못 받아도 상세 지표로 갈 수 있게 탭은 늘 그린다
   const tabs = <MonitoringTabs links={links} current={null} />
@@ -67,8 +69,7 @@ export default async function MonitoringPage() {
         />
         <ExplainView explanation={explanation} data={data} links={links} />
         <ServicesSection services={data.services} partial={data.partial} />
-        <BriefSection cards={data.brief} />
-        <TrendsSection data={data} />
+        <RangedSections initial={rangedOf(data)} initialAt={data.fetchedAt} />
       </div>
     </div>
   )

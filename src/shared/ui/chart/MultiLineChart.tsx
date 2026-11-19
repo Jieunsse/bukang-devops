@@ -3,6 +3,7 @@
 import { useId, useState, type PointerEvent } from 'react'
 
 import { monotonePath, type Pt, type Series } from '@/shared/lib/chart'
+import { clockText, spansOverDay } from '@/shared/lib/time-range'
 import { useWidth } from '@/shared/lib/use-width'
 
 // 여러 시계열 선 그래프. 모양은 레퍼런스(이용 통계 시안)와 같다: 곡선, 아래로 옅어지는 면, 왼쪽이 옅은 선,
@@ -16,14 +17,6 @@ const PAD = { top: 16, right: 12, bottom: 32, left: 12 }
 /** 선으로 그리는 시계열 수. 나머지는 표에만 남긴다(9번째 색을 만들지 않는다) */
 export const MAX_LINES = 8
 const TICKS = 5
-
-const hhmm = (t: number) =>
-  new Date(t * 1000).toLocaleTimeString('ko-KR', {
-    timeZone: 'Asia/Seoul',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
 
 export const seriesColor = (i: number) => `var(--series-${(i % MAX_LINES) + 1})`
 
@@ -50,6 +43,8 @@ export function MultiLineChart({
   const filled = lines.length <= 3
   const dim = (si: number) => (highlight !== null && highlight !== si ? 0.15 : 1)
   const times = [...new Set(lines.flatMap((s) => s.points.map(([t]) => t)))].sort((a, b) => a - b)
+  // 24시간이 넘는 그래프는 시각에 날짜를 붙인다
+  const hhmm = (s: number) => clockText(s, spansOverDay(times.map((x) => [x, null] as const)))
   const values = lines
     .flatMap((s) => s.points.map(([, v]) => v))
     .filter((v): v is number => v !== null)

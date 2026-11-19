@@ -95,7 +95,9 @@ const monitoring = {
   ],
   resources: [{ name: '앱 서버', memory: 0.804, disk: 0.78, swap: null }],
 }
-const loadMonitoring = vi.fn(async (..._a: unknown[]) => monitoring)
+const loadMonitoring = vi.fn<(...args: unknown[]) => Promise<typeof monitoring>>(
+  async () => monitoring,
+)
 vi.mock('./load', () => ({ loadMonitoring: (...a: unknown[]) => loadMonitoring(...a) }))
 vi.mock('@/shared/api/grafana/server', () => ({ GRAFANA_METRICS_TAG: 'grafana-metrics' }))
 

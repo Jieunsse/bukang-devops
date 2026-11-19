@@ -7,6 +7,7 @@ import {
   queryPanel,
   resolveVariables,
 } from '@/widgets/grafana-dashboard/model/server'
+import { cacheSecondsOf } from '@/shared/lib/time-range'
 import { parseRange, selectedFromParams } from '@/widgets/grafana-dashboard/model/types'
 
 // 패널 하나의 시계열. 브라우저는 대시보드 uid·패널 번호·변수 값·기간만 보낸다.
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
     if (!panel) return NextResponse.json({ error: '패널이 없어요' }, { status: 404 })
     const { values } = await resolveVariables(config, dashboard, selectedFromParams(params), range)
     return NextResponse.json(await queryPanel(config, panel, values, range), {
-      headers: { 'Cache-Control': 'private, max-age=30' },
+      headers: { 'Cache-Control': `private, max-age=${cacheSecondsOf(range)}` },
     })
   } catch (e) {
     console.error(`[grafana] 패널 불러오기 실패: ${e instanceof Error ? e.message : String(e)}`)
