@@ -95,8 +95,8 @@ const monitoring = {
   ],
   resources: [{ name: '앱 서버', memory: 0.804, disk: 0.78, swap: null }],
 }
-const loadMonitoring = vi.fn(async () => monitoring)
-vi.mock('./load', () => ({ loadMonitoring: () => loadMonitoring() }))
+const loadMonitoring = vi.fn(async (..._a: unknown[]) => monitoring)
+vi.mock('./load', () => ({ loadMonitoring: (...a: unknown[]) => loadMonitoring(...a) }))
 vi.mock('@/shared/api/grafana/server', () => ({ GRAFANA_METRICS_TAG: 'grafana-metrics' }))
 
 const { buildExplainInput } = await import('./explain')
@@ -195,6 +195,17 @@ describe('해석 캐시', () => {
       status: 'ok',
       explanation: { summary: '첫 해석', createdAt: '2026-11-18T10:00:00.000Z' },
     })
+  })
+
+  it('화면 기간을 바꿔도 AI 리포트는 최근 1시간 지표로 한 번만 만든다', async () => {
+    askClaude.mockResolvedValue(answer('첫 해석'))
+    loadMonitoring.mockClear()
+    // 요약 탭은 기간이 1시간이든 7일이든 같은 getExplanation을 부른다
+    await getExplanation(env)
+    await getExplanation(env)
+    expect(askClaude).toHaveBeenCalledTimes(1)
+    expect(loadMonitoring).toHaveBeenCalledTimes(1)
+    expect(loadMonitoring).toHaveBeenCalledWith(env, '1h')
   })
 
   it('1분 안에 새로고침을 다시 누르면 AI를 부르지 않는다', async () => {
