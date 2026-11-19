@@ -40,14 +40,34 @@ export type ServiceRow = {
   /** 최근 5분 응답 시간 95번째 백분위(초) */
   p95Seconds: number | null
   heapBytes: number | null
+  /** 최근 1시간 중 가장 높았던 초당 요청 */
+  rpsPeak: number | null
+  /** 최근 5분 요청 중 2초를 넘긴 비율(0~1). 요청이 없으면 null */
+  over2sRatio: number | null
+  /** 서비스 프로세스 CPU 사용률(0~1) */
+  cpu: number | null
+  /** 힙 사용률(0~1) */
+  heapRatio: number | null
+  /** DB 연결 풀. DB를 쓰지 않는 서비스(게이트웨이)는 null */
+  dbActive: number | null
+  dbMax: number | null
+  dbPending: number | null
 }
 
-export type MetricSamples = {
-  rps: Sample[] | null
-  errors: Sample[] | null
-  p95: Sample[] | null
-  heap: Sample[] | null
-}
+const EXTRA_KEYS = [
+  'rpsPeak',
+  'over2s',
+  'cpu',
+  'heapRatio',
+  'dbActive',
+  'dbMax',
+  'dbPending',
+] as const
+
+export type MetricSamples = Record<
+  'rps' | 'errors' | 'p95' | 'heap' | (typeof EXTRA_KEYS)[number],
+  Sample[] | null
+>
 
 /** 멈춘 대상을 먼저, 그다음 이름 순 */
 export function toTargets(up: Sample[]): Target[] {
@@ -75,6 +95,10 @@ export function toServiceRows(targets: Target[], m: MetricSamples): ServiceRow[]
   const errors = byJob(m.errors)
   const p95 = byJob(m.p95)
   const heap = byJob(m.heap)
+  const extra = Object.fromEntries(EXTRA_KEYS.map((k) => [k, byJob(m[k])])) as Record<
+    (typeof EXTRA_KEYS)[number],
+    (job: string) => number | null
+  >
 
   return targets
     .filter((t) => isService(t.job))
@@ -90,6 +114,13 @@ export function toServiceRows(targets: Target[], m: MetricSamples): ServiceRow[]
         errorRatio: r && e !== null ? e / r : null,
         p95Seconds: p95(t.job),
         heapBytes: heap(t.job),
+        rpsPeak: extra.rpsPeak(t.job),
+        over2sRatio: extra.over2s(t.job),
+        cpu: extra.cpu(t.job),
+        heapRatio: extra.heapRatio(t.job),
+        dbActive: extra.dbActive(t.job),
+        dbMax: extra.dbMax(t.job),
+        dbPending: extra.dbPending(t.job),
       }
     })
 }

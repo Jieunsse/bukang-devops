@@ -29,6 +29,19 @@ const QUERIES = {
   errors: 'sum by (job) (rate(http_server_requests_seconds_count{status=~"5.."}[5m]))',
   p95: 'histogram_quantile(0.95, sum by (job, le) (rate(http_server_requests_seconds_bucket[5m])))',
   heap: 'sum by (job) (jvm_memory_used_bytes{area="heap"})',
+  // 팀 성능 요청 지표(서비스별 CPU·DB 연결 풀·응답 2초 실패·처리량·메모리).
+  // 가상 사용자 수(k6_vus)는 k6 결과가 아직 운영 프로메테우스로 들어오지 않아 빠졌다. 들어오면 여기에 더한다
+  rpsPeak: 'max_over_time(sum by (job) (rate(http_server_requests_seconds_count[2m]))[1h:1m])',
+  // shortcut: 히스토그램에 2초 구간이 없어 가장 가까운 2.147초 구간을 쓴다. 2~2.147초 요청은 빠진다
+  over2s:
+    '1 - sum by (job) (rate(http_server_requests_seconds_bucket{le="2.147483647"}[5m])) / sum by (job) (rate(http_server_requests_seconds_count[5m]))',
+  cpu: 'max by (job) (process_cpu_usage)',
+  // 최대값이 없는 힙 영역은 -1이라 빼고 더한다
+  heapRatio:
+    'sum by (job) (jvm_memory_used_bytes{area="heap"}) / sum by (job) (jvm_memory_max_bytes{area="heap"} > 0)',
+  dbActive: 'sum by (job) (hikaricp_connections_active)',
+  dbMax: 'sum by (job) (hikaricp_connections_max)',
+  dbPending: 'sum by (job) (hikaricp_connections_pending)',
   // 서버 자원. 그라파나 서버 대시보드의 메모리·디스크·스왑 사용률과 같은 식이다.
   // instance로 묶어 job 라벨을 지운다(job이 두 서버 모두 node라 이름이 겹친다). 디스크가 여러 개면 가장 찬 것
   memory: 'max by (instance) (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)',
@@ -88,16 +101,11 @@ export async function loadMonitoring(
   const config = readGrafanaConfig(env)
   if (!config) return { status: 'notConfigured' }
 
-  const [up, rps, errors, p95, heap, memory, disk, swap] = await Promise.all([
-    settle(config, 'up'),
-    settle(config, 'rps'),
-    settle(config, 'errors'),
-    settle(config, 'p95'),
-    settle(config, 'heap'),
-    settle(config, 'memory'),
-    settle(config, 'disk'),
-    settle(config, 'swap'),
-  ])
+  const names = Object.keys(QUERIES) as (keyof typeof QUERIES)[]
+  const m = Object.fromEntries(
+    await Promise.all(names.map(async (name) => [name, await settle(config, name)] as const)),
+  ) as Record<keyof typeof QUERIES, Sample[] | null>
+  const { up, memory, disk, swap } = m
   // 끝 시각을 1분 단위로 맞춰야 1분 동안 질의 주소가 같아 fetch 캐시를 다시 쓴다
   const end = Math.floor(Date.now() / 1000 / TREND_STEP_SECONDS) * TREND_STEP_SECONDS
   const range = { start: end - TREND_WINDOW_SECONDS, end, step: TREND_STEP_SECONDS }
@@ -120,7 +128,7 @@ export async function loadMonitoring(
   return {
     status: 'ok',
     targets,
-    services: toServiceRows(targets, { rps, errors, p95, heap }),
+    services: toServiceRows(targets, m),
     trends: {
       errors: errorsTrend ?? null,
       rps: rpsTrend ?? null,
@@ -129,9 +137,14 @@ export async function loadMonitoring(
     },
     brief,
     resources: toResources({ memory, disk, swap }),
-    partial: [rps, errors, p95, heap, errorsTrend, rpsTrend, p95Trend, heapTrend].some(
-      (r) => r === null,
-    ),
+    partial: [
+      // 서버 자원(메모리·디스크·스왑)은 따로 「-」로 보여서 일부 지표 모름에 넣지 않는다
+      ...names.filter((n) => !['up', 'memory', 'disk', 'swap'].includes(n)).map((n) => m[n]),
+      errorsTrend,
+      rpsTrend,
+      p95Trend,
+      heapTrend,
+    ].some((r) => r === null),
     fetchedAt: new Date().toISOString(),
   }
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ServiceRow } from './rows'
-import { issuesOf, sortByIssues, totalErrorTrend, verdictOf } from './verdict'
+import { issuesOf, latencyGrade, sortByIssues, totalErrorTrend, verdictOf } from './verdict'
 
 const row = (name: string, o: Partial<ServiceRow> = {}): ServiceRow => ({
   job: `${name}-service`,
@@ -11,17 +11,22 @@ const row = (name: string, o: Partial<ServiceRow> = {}): ServiceRow => ({
   errorRatio: 0,
   p95Seconds: 0.1,
   heapBytes: null,
+  rpsPeak: null,
+  over2sRatio: null,
+  cpu: null,
+  heapRatio: null,
+  dbActive: null,
+  dbMax: null,
+  dbPending: null,
   ...o,
 })
 
 describe('요약 판정', () => {
-  it('응답 없음, 오류 1% 초과, p95 1초 초과를 문제로 본다(기준값과 같으면 정상)', () => {
-    expect(issuesOf(row('a', { up: false, errorRatio: 0.02, p95Seconds: 1.5 }))).toEqual([
-      'down',
-      'errors',
-      'slow',
-    ])
-    expect(issuesOf(row('b', { errorRatio: 0.01, p95Seconds: 1 }))).toEqual([])
+  it('응답 없음, 오류 1% 초과, p95 500ms 초과, 2초 넘은 요청 1% 초과를 문제로 본다(기준값과 같으면 정상)', () => {
+    expect(
+      issuesOf(row('a', { up: false, errorRatio: 0.02, p95Seconds: 0.6, over2sRatio: 0.02 })),
+    ).toEqual(['down', 'errors', 'slow', 'over2s'])
+    expect(issuesOf(row('b', { errorRatio: 0.01, p95Seconds: 0.5, over2sRatio: 0.01 }))).toEqual([])
     expect(issuesOf(row('c', { errorRatio: null, p95Seconds: null }))).toEqual([])
   })
 
@@ -45,6 +50,27 @@ describe('요약 판정', () => {
 
   it('요청이 없으면 전체 오류 비율을 모른다', () => {
     expect(verdictOf([row('a', { rps: null })], []).totalErrorRatio).toBeNull()
+  })
+})
+
+describe('자원 문제', () => {
+  it('CPU 80% 이상, 힙 90% 이상, DB 연결을 모두 쓰거나 대기가 있으면 문제로 본다', () => {
+    expect(issuesOf(row('a', { cpu: 0.8, heapRatio: 0.9, dbActive: 10, dbMax: 10 }))).toEqual([
+      'cpu',
+      'memory',
+      'db',
+    ])
+    expect(issuesOf(row('b', { dbActive: 3, dbMax: 10, dbPending: 1 }))).toEqual(['db'])
+    expect(issuesOf(row('c', { cpu: 0.79, heapRatio: 0.89, dbActive: 9, dbMax: 10 }))).toEqual([])
+  })
+})
+
+describe('응답 시간 등급', () => {
+  it('500ms까지 통과, 2초 미만 주의, 2초부터 실패다', () => {
+    expect(latencyGrade(0.5)).toBe('pass')
+    expect(latencyGrade(0.51)).toBe('warn')
+    expect(latencyGrade(2)).toBe('fail')
+    expect(latencyGrade(null)).toBeNull()
   })
 })
 

@@ -21,6 +21,13 @@ const data = {
       errorRatio: 0,
       p95Seconds: 0.02,
       heapBytes: null,
+      rpsPeak: null,
+      over2sRatio: null,
+      cpu: null,
+      heapRatio: null,
+      dbActive: null,
+      dbMax: null,
+      dbPending: null,
     },
   ],
   trends: { errors: null, rps: null, p95: null, heap: null },
@@ -98,7 +105,7 @@ describe('리포트 계산(코드가 하는 부분)', () => {
       title: '주문 응답 시간',
       value: BRIEF_FORMAT.s(0.416),
       at: '20:56',
-      sub: `지금 ${BRIEF_FORMAT.s(0.022)} · 기준 1초`,
+      sub: `지금 ${BRIEF_FORMAT.s(0.022)} · 기준 500ms`,
       note: '잠깐 올랐어요',
     })
     expect(w?.points).toHaveLength(3)
@@ -144,7 +151,7 @@ describe('리포트 계산(코드가 하는 부분)', () => {
       resolveWatch(d, { metric, target: '주문', title: 't', note: '' })?.danger
     expect(w(at('dbConn', 'percentunit', 1), 'dbConn')).toBe(true)
     expect(w(at('pending', 'short', 1), 'pending')).toBe(true)
-    expect(w(at('latency', 's', 1), 'latency')).toBe(false)
+    expect(w(at('latency', 's', 0.5), 'latency')).toBe(false)
   })
 
   it('자원 막대는 서버별 CPU·메모리·디스크와 DB 연결을 기준과 함께 준다', () => {

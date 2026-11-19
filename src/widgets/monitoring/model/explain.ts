@@ -11,13 +11,17 @@ import { issuesOf, verdictOf, type Issue } from './verdict'
 
 type Ok = Extract<MonitoringData, { status: 'ok' }>
 
+const pct = (v: number) => `${Math.round(v * 100)}%`
+
 const ISSUE_TEXT: Record<Issue, string> = {
   down: '응답 없음',
   errors: '서버 오류 비율 1% 초과',
-  slow: '응답 시간(95%) 1초 초과',
+  slow: `응답 시간(95%) ${msText(THRESHOLDS.latencySeconds)} 초과`,
+  over2s: `${THRESHOLDS.failSeconds}초 넘은 요청 1% 초과`,
+  cpu: `CPU ${pct(THRESHOLDS.cpu)} 이상`,
+  memory: `힙 메모리 ${pct(THRESHOLDS.memory)} 이상`,
+  db: 'DB 연결을 모두 쓰거나 대기 중',
 }
-
-const pct = (v: number) => `${Math.round(v * 100)}%`
 
 export function buildExplainInput(data: Ok) {
   const verdict = verdictOf(data.services, data.targets)
@@ -33,7 +37,7 @@ export function buildExplainInput(data: Ok) {
     },
     thresholds: {
       errorRatio: pct(THRESHOLDS.errorRatio),
-      latency: `${THRESHOLDS.latencySeconds}초`,
+      latency: msText(THRESHOLDS.latencySeconds),
       cpu: pct(THRESHOLDS.cpu),
       dbConn: pct(THRESHOLDS.dbConnRatio),
       pending: `${THRESHOLDS.pending}건`,
@@ -56,7 +60,13 @@ export function buildExplainInput(data: Ok) {
       requestsPerSecond: rpsText(r.rps),
       errorRatio: percentText(r.errorRatio),
       p95: msText(r.p95Seconds),
+      peakRequestsPerSecond: rpsText(r.rpsPeak),
+      over2sRatio: percentText(r.over2sRatio),
+      cpu: percentText(r.cpu),
       heap: mbText(r.heapBytes),
+      heapRatio: percentText(r.heapRatio),
+      dbConnections: r.dbMax === null ? '-' : `${r.dbActive ?? '-'} / ${r.dbMax}`,
+      dbPending: r.dbPending === null ? '-' : `${r.dbPending}건`,
       issues: issuesOf(r).map((i) => ISSUE_TEXT[i]),
     })),
     // 서버 자원 사용률. 지금 값

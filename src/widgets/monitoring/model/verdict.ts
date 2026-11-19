@@ -3,16 +3,34 @@ import type { ServiceRow, Target, TrendSeries } from './rows'
 
 // 요약 판정. 「지금 문제 있는 곳이 있나」를 숫자로 정한다. 기준값은 THRESHOLDS 한곳에서 온다.
 
-export type Issue = 'down' | 'errors' | 'slow'
+export type Issue = 'down' | 'errors' | 'slow' | 'over2s' | 'cpu' | 'memory' | 'db'
 
 export const isHighError = (ratio: number | null) => ratio !== null && ratio > THRESHOLDS.errorRatio
 export const isSlow = (p95: number | null) => p95 !== null && p95 > THRESHOLDS.latencySeconds
+
+export const isHighCpu = (v: number | null) => v !== null && v >= THRESHOLDS.cpu
+export const isHighHeap = (v: number | null) => v !== null && v >= THRESHOLDS.memory
+export const isDbFull = (r: Pick<ServiceRow, 'dbActive' | 'dbMax'>) =>
+  r.dbActive !== null && r.dbMax !== null && r.dbActive >= r.dbMax * THRESHOLDS.dbConnRatio
+export const isDbWaiting = (v: number | null) => v !== null && v >= THRESHOLDS.pending
+
+/** 응답 시간(95%) 등급. 500ms까지 통과, 2초 미만 주의, 2초부터 실패 */
+export function latencyGrade(p95: number | null): 'pass' | 'warn' | 'fail' | null {
+  if (p95 === null) return null
+  if (p95 >= THRESHOLDS.failSeconds) return 'fail'
+  return isSlow(p95) ? 'warn' : 'pass'
+}
 
 export function issuesOf(r: ServiceRow): Issue[] {
   const out: Issue[] = []
   if (!r.up) out.push('down')
   if (isHighError(r.errorRatio)) out.push('errors')
   if (isSlow(r.p95Seconds)) out.push('slow')
+  // 2초 넘은 요청은 실패로 보므로 서버 오류와 같은 1% 기준을 쓴다
+  if (isHighError(r.over2sRatio)) out.push('over2s')
+  if (isHighCpu(r.cpu)) out.push('cpu')
+  if (isHighHeap(r.heapRatio)) out.push('memory')
+  if (isDbFull(r) || isDbWaiting(r.dbPending)) out.push('db')
   return out
 }
 

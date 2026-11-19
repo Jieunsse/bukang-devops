@@ -1,5 +1,5 @@
 import { BRIEF_SUFFIX, latestOf, summarizeSeries, THRESHOLDS, type BriefKey } from './brief'
-import { BRIEF_FORMAT, percentText } from './format'
+import { BRIEF_FORMAT, msText, percentText } from './format'
 import type { MonitoringData } from './load'
 import { verdictOf } from './verdict'
 
@@ -35,7 +35,7 @@ const LIMIT: Partial<Record<BriefKey, { value: number; text: string; inclusive: 
   cpu: { value: THRESHOLDS.cpu, text: pct(THRESHOLDS.cpu), inclusive: true },
   latency: {
     value: THRESHOLDS.latencySeconds,
-    text: `${THRESHOLDS.latencySeconds}초`,
+    text: msText(THRESHOLDS.latencySeconds),
     inclusive: false,
   },
   dbConn: { value: THRESHOLDS.dbConnRatio, text: pct(THRESHOLDS.dbConnRatio), inclusive: true },

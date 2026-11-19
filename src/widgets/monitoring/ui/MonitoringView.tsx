@@ -5,10 +5,22 @@ import { useState, type ReactNode } from 'react'
 
 import { report as s, ReportHeader, ReportSection } from '@/shared/ui'
 
-import { hhmm, mbText, msText, percentText, rpsText } from '../model/format'
+import { THRESHOLDS } from '../model/brief'
+import { hhmm, mbText, msText, percentText, rpsText, UNKNOWN } from '../model/format'
 import type { MonitoringData, TrendKind } from '../model/load'
 import type { ServiceRow } from '../model/rows'
-import { isHighError, isSlow, sortByIssues, totalErrorTrend, verdictOf } from '../model/verdict'
+import {
+  isDbFull,
+  isDbWaiting,
+  isHighCpu,
+  isHighError,
+  isHighHeap,
+  isSlow,
+  latencyGrade,
+  sortByIssues,
+  totalErrorTrend,
+  verdictOf,
+} from '../model/verdict'
 import { BriefSection } from './BriefSection'
 import { TrendChart } from './TrendChart'
 
@@ -19,6 +31,9 @@ const upText = (up: boolean) => (up ? '정상' : '응답 없음')
 const timeText = (iso: string) => hhmm(Date.parse(iso) / 1000)
 /** 기준을 넘은 값만 빨간 굵은 글자 */
 const bad = (on: boolean) => (on ? 'font-semibold text-danger' : undefined)
+/** 색만으로 구분하지 않게 빨간 값 옆에 붙이는 글자 */
+const Flag = ({ on, text = '주의' }: { on: boolean; text?: string }) =>
+  on ? <span className={`${s.tLabel} ml-2 text-danger`}>{text}</span> : null
 
 /** 추이에서 고를 수 있는 지표. 지표마다 단위가 달라 그래프를 따로 그린다 */
 const TREND_ITEMS: { kind: TrendKind; label: string; format: (v: number) => string }[] = [
@@ -82,45 +97,7 @@ function Dashboard({
           <BriefSection cards={data.brief} />
         </div>
 
-        <ReportSection
-          title="서비스별 지표"
-          description={
-            data.partial
-              ? '최근 5분 · 일부 지표 받지 못함(-)'
-              : '최근 5분 · 문제 있는 서비스가 위로'
-          }
-        >
-          <div id="monitoring-services" className={`${s.tbl} scroll-mt-4`}>
-            <table aria-label="서비스별 지표">
-              <thead>
-                <tr>
-                  <th>서비스</th>
-                  <th>상태</th>
-                  <th className={s.num}>초당 요청</th>
-                  <th className={s.num}>서버 오류 비율</th>
-                  <th className={s.num}>응답 시간(95%)</th>
-                  <th className={s.num}>힙 메모리</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortByIssues(data.services).map((r: ServiceRow) => (
-                  <tr key={r.job}>
-                    <td>{r.name}</td>
-                    <td className={bad(!r.up)}>{upText(r.up)}</td>
-                    <td className={s.num}>{rpsText(r.rps)}</td>
-                    <td className={`${s.num} ${bad(isHighError(r.errorRatio)) ?? ''}`}>
-                      {percentText(r.errorRatio)}
-                    </td>
-                    <td className={`${s.num} ${bad(isSlow(r.p95Seconds)) ?? ''}`}>
-                      {msText(r.p95Seconds)}
-                    </td>
-                    <td className={s.num}>{mbText(r.heapBytes)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </ReportSection>
+        <ServicesSection services={data.services} partial={data.partial} />
 
         <TrendsSection data={data} />
 
@@ -148,6 +125,82 @@ function Dashboard({
         </ReportSection>
       </div>
     </div>
+  )
+}
+
+/** 서비스별 지표 표. 요약 탭과 상세 지표 탭이 함께 쓴다. 팀 성능 기준: 응답 시간(95%) 500ms, 2초 넘으면 실패 */
+export function ServicesSection({
+  services,
+  partial,
+}: {
+  services: ServiceRow[]
+  partial: boolean
+}) {
+  return (
+    <ReportSection
+      title="서비스별 지표"
+      description={`최근 5분 · 응답 시간 기준 ${msText(THRESHOLDS.latencySeconds)}, ${THRESHOLDS.failSeconds}초 넘으면 실패 · ${
+        partial ? '일부 지표 받지 못함(-)' : '문제 있는 서비스가 위로'
+      }`}
+    >
+      <div id="monitoring-services" className={`${s.tbl} scroll-mt-4`}>
+        <table aria-label="서비스별 지표">
+          <thead>
+            <tr>
+              <th>서비스</th>
+              <th>상태</th>
+              <th className={s.num}>초당 요청(지금 / 1시간 최대)</th>
+              <th className={s.num}>응답 시간(95%)</th>
+              <th className={s.num}>2초 넘은 요청</th>
+              <th className={s.num}>서버 오류 비율</th>
+              <th className={s.num}>CPU</th>
+              <th className={s.num}>힙 메모리</th>
+              <th className={s.num}>DB 연결(사용 / 최대)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortByIssues(services).map((r) => (
+              <tr key={r.job}>
+                <td>{r.name}</td>
+                <td className={bad(!r.up)}>{upText(r.up)}</td>
+                <td className={s.num}>
+                  {rpsText(r.rps)} / {rpsText(r.rpsPeak)}
+                </td>
+                <td className={`${s.num} ${bad(isSlow(r.p95Seconds)) ?? ''}`}>
+                  {msText(r.p95Seconds)}
+                  <Flag
+                    on={isSlow(r.p95Seconds)}
+                    text={latencyGrade(r.p95Seconds) === 'fail' ? '실패' : '주의'}
+                  />
+                </td>
+                <td className={`${s.num} ${bad(isHighError(r.over2sRatio)) ?? ''}`}>
+                  {percentText(r.over2sRatio)}
+                  <Flag on={isHighError(r.over2sRatio)} />
+                </td>
+                <td className={`${s.num} ${bad(isHighError(r.errorRatio)) ?? ''}`}>
+                  {percentText(r.errorRatio)}
+                  <Flag on={isHighError(r.errorRatio)} />
+                </td>
+                <td className={`${s.num} ${bad(isHighCpu(r.cpu)) ?? ''}`}>
+                  {percentText(r.cpu)}
+                  <Flag on={isHighCpu(r.cpu)} />
+                </td>
+                <td className={`${s.num} ${bad(isHighHeap(r.heapRatio)) ?? ''}`}>
+                  {percentText(r.heapRatio)}
+                  <Flag on={isHighHeap(r.heapRatio)} />
+                  <div className={`${s.tSmall} text-muted`}>{mbText(r.heapBytes)}</div>
+                </td>
+                <td className={`${s.num} ${bad(isDbFull(r)) ?? ''}`}>
+                  {r.dbMax === null ? UNKNOWN : `${r.dbActive ?? UNKNOWN} / ${r.dbMax}`}
+                  <Flag on={isDbFull(r) && !isDbWaiting(r.dbPending)} />
+                  <Flag on={isDbWaiting(r.dbPending)} text={`대기 ${r.dbPending}`} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </ReportSection>
   )
 }
 
