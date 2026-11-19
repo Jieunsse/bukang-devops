@@ -67,7 +67,7 @@ export type TrendKind = keyof typeof TREND_QUERIES
 export type Trends = Record<TrendKind, TrendSeries[] | null>
 
 /**
- * 브리핑 질의(2분 구간 rate). 응답 시간 카드는 추이의 응답 시간(95%)을 그대로 쓴다.
+ * 브리핑 질의(2분 구간 rate). 응답 시간 카드만 추이의 응답 시간(95%, 5분 구간·서비스만)을 그대로 쓴다.
  * 히스토그램 질의가 가장 무거워서(7일에 3초 넘게) 같은 질의를 두 번 보내지 않는다
  */
 const BRIEF_QUERIES: Record<Exclude<BriefKey, 'latency'>, string> = {

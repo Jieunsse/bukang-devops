@@ -54,7 +54,7 @@ describe('시간 범위', () => {
     expect(rangeEnd('7d', now)).toBe(Date.UTC(2026, 10, 18, 12, 5) / 1000)
   })
 
-  it('24시간이 넘는 그래프는 시각에 날짜를 붙인다(한국 시간)', () => {
+  it('24시간 이상인 그래프는 시각에 날짜를 붙인다(한국 시간)', () => {
     const t = Date.UTC(2026, 10, 18, 11, 56) / 1000 // 20:56 KST
     expect(clockText(t)).toBe('20:56')
     expect(clockText(t, true)).toBe('11/18 20:56')
@@ -62,7 +62,8 @@ describe('시간 범위', () => {
       [t - span, 1],
       [t, 2],
     ]
-    expect(spansOverDay(series(24 * 3600))).toBe(false)
+    expect(spansOverDay(series(23 * 3600))).toBe(false)
+    expect(spansOverDay(series(24 * 3600))).toBe(true)
     expect(spansOverDay(series(2 * 24 * 3600))).toBe(true)
     expect(spansOverDay([])).toBe(false)
   })

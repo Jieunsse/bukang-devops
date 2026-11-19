@@ -12,13 +12,12 @@ export function RangeSelect() {
   const pathname = usePathname()
   const search = useSearchParams()
   const range = parseRange(search.get('range'))
-  // 서버가 새 기간으로 그리는 동안 지금 화면을 그대로 둔다
-  const [pending, startTransition] = useTransition()
+  // 서버가 새 기간으로 그리는 동안 지금 화면을 그대로 둔다. 선택 상자는 끄지 않는다(끄면 키보드 포커스가 빠진다)
+  const [, startTransition] = useTransition()
   return (
     <Select
       className="w-32 text-base"
       value={range}
-      isDisabled={pending}
       onChange={(v) =>
         v !== null &&
         startTransition(() =>

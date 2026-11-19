@@ -69,6 +69,6 @@ export const clockText = (unixSeconds: number, withDate = false) => {
   return withDate ? `${DATE.format(d)} ${TIME.format(d)}` : TIME.format(d)
 }
 
-/** 그래프가 24시간보다 길면 시각에 날짜를 붙인다 */
+/** 그래프가 24시간 이상이면 시각에 날짜를 붙인다(자정을 넘으면 어제·오늘을 구분할 수 없어서) */
 export const spansOverDay = (points: readonly (readonly [number, unknown])[]) =>
-  points.length > 1 && points[points.length - 1]![0] - points[0]![0] > DAY
+  points.length > 1 && points[points.length - 1]![0] - points[0]![0] >= DAY
