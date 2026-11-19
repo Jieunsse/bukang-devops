@@ -99,7 +99,7 @@ describe('AI 리포트', () => {
       },
     })
     expect(screen.getByText('주문 응답 시간이 잠깐 1초를 넘었어요.')).toBeInTheDocument()
-    expect(screen.getByText(/21:05 기준 · \d+분 전/)).toBeInTheDocument()
+    expect(screen.getByText(/최근 1시간 기준 · 21:05 작성 · \d+분 전/)).toBeInTheDocument()
     const card = screen.getByRole('article', { name: '주문 응답 시간' })
     expect(within(card).getByText('1.2초').closest('span')).toHaveClass('text-danger')
     expect(within(card).getByRole('img', { name: /그래프/ })).toBeInTheDocument()

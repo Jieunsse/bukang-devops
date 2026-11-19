@@ -67,7 +67,7 @@ export function ReportTime({ explanation }: { explanation: Result }) {
   const minutesAgo = Math.max(0, Math.floor((now - created) / 60_000))
   return (
     <span className={s.tSmall}>
-      {hhmm(created / 1000)} 기준 · {minutesAgo ? `${minutesAgo}분 전` : '방금'}
+      최근 1시간 기준 · {hhmm(created / 1000)} 작성 · {minutesAgo ? `${minutesAgo}분 전` : '방금'}
     </span>
   )
 }

@@ -15,6 +15,7 @@ import {
   queryPrometheusRange,
   type GrafanaConfig,
 } from '@/shared/api/grafana/server'
+import { cacheSecondsOf, rangeEnd, SCRAPE_SECONDS } from '@/shared/lib/time-range'
 
 import {
   RANGES,
@@ -27,8 +28,6 @@ import {
 // 그라파나 대시보드를 읽고, 변수 값을 풀고, 패널 하나의 질의를 실행한다.
 // 브라우저는 PromQL을 보내지 않는다. 대시보드·패널 번호와 변수 값만 보내고, 값은 실제 목록에 있을 때만 쓴다.
 
-/** 프로메테우스 수집 주기(운영 prometheus.yml의 scrape_interval) */
-const SCRAPE_SECONDS = 15
 /** 한 그래프에 그리는 시계열 수 상한. 넘는 시계열은 표에만 남긴다 */
 const MAX_SERIES = 50
 
@@ -43,7 +42,7 @@ export async function resolveVariables(
   selected: SelectedValues,
   range: RangeKey,
 ): Promise<{ states: VariableState[]; values: VariableValues }> {
-  const end = Math.floor(Date.now() / 1000 / 60) * 60
+  const end = rangeEnd(range)
   const window = { start: end - RANGES[range].seconds, end }
   const time = timeMacros(range)
   const values: VariableValues = {}
@@ -118,16 +117,21 @@ export async function queryPanel(
   range: RangeKey,
 ): Promise<SeriesData> {
   const { seconds, step } = RANGES[range]
-  const end = Math.floor(Date.now() / 1000 / step) * step
+  const end = rangeEnd(range)
   const time = timeMacros(range)
   const results = await Promise.all(
     panel.targets.map(async (t) => {
       try {
-        const rows = await queryPrometheusRange(config, interpolate(t.expr, values, time), {
-          start: end - seconds,
-          end,
-          step,
-        })
+        const rows = await queryPrometheusRange(
+          config,
+          interpolate(t.expr, values, time),
+          {
+            start: end - seconds,
+            end,
+            step,
+          },
+          cacheSecondsOf(range),
+        )
         return rows.map((r) => ({
           name: legendName(t.legend, r.labels),
           labels: r.labels,

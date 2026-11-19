@@ -8,6 +8,13 @@ import {
   type Sample,
 } from '@/shared/api/grafana/server'
 import type { Series } from '@/shared/lib/chart'
+import {
+  cacheSecondsOf,
+  DEFAULT_RANGE,
+  RANGES,
+  rangeEnd,
+  type RangeKey,
+} from '@/shared/lib/time-range'
 
 import { BRIEF_FORMAT } from './format'
 import { buildBrief, nameOf, type BriefCard, type BriefKey } from './brief'
@@ -49,9 +56,6 @@ const QUERIES = {
   swap: 'max by (instance) (1 - node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes)',
 } as const
 
-/** 추이 그래프는 최근 1시간을 1분 간격으로 받는다 */
-const TREND_WINDOW_SECONDS = 60 * 60
-const TREND_STEP_SECONDS = 60
 const TREND_QUERIES = {
   // 5xx가 한 번도 없는 서비스는 분자 시계열이 없어서, 요청 수 × 0 으로 0을 채운다
   errors: `(${QUERIES.errors} or ${QUERIES.rps} * 0) / ${QUERIES.rps}`,
@@ -62,12 +66,13 @@ const TREND_QUERIES = {
 export type TrendKind = keyof typeof TREND_QUERIES
 export type Trends = Record<TrendKind, TrendSeries[] | null>
 
-/** 브리핑 질의. 2분 구간 rate로 1분 간격 그래프를 그린다 */
-const BRIEF_QUERIES: Record<BriefKey, string> = {
+/**
+ * 브리핑 질의(2분 구간 rate). 응답 시간 카드만 추이의 응답 시간(95%, 5분 구간·서비스만)을 그대로 쓴다.
+ * 히스토그램 질의가 가장 무거워서(7일에 3초 넘게) 같은 질의를 두 번 보내지 않는다
+ */
+const BRIEF_QUERIES: Record<Exclude<BriefKey, 'latency'>, string> = {
   throughput: 'sum(rate(http_server_requests_seconds_count{job=~"gateway|.*-service"}[2m]))',
   cpu: '1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[2m]))',
-  latency:
-    'histogram_quantile(0.95, sum by (job, le) (rate(http_server_requests_seconds_bucket[2m])))',
   dbConn: 'sum by (job) (hikaricp_connections_active) / sum by (job) (hikaricp_connections_max)',
   pending: 'sum by (job) (hikaricp_connections_pending)',
   lock: 'rate(mysql_global_status_innodb_row_lock_waits[2m])',
@@ -95,56 +100,79 @@ export type MonitoringData =
       fetchedAt: string
     }
 
+type Window = { start: number; end: number; step: number; cache: number }
+
+/** 고른 기간의 추이·병목 그래프. 브라우저가 기간을 바꿀 때 이것만 다시 받는다 */
+export type RangedMetrics = {
+  range: RangeKey
+  trends: Trends
+  brief: BriefCard[]
+  partial: boolean
+}
+
+export async function loadRanged(config: GrafanaConfig, range: RangeKey): Promise<RangedMetrics> {
+  const end = rangeEnd(range)
+  const win: Window = {
+    start: end - RANGES[range].seconds,
+    end,
+    step: RANGES[range].step,
+    cache: cacheSecondsOf(range),
+  }
+  const keys = Object.keys(BRIEF_QUERIES) as Exclude<BriefKey, 'latency'>[]
+  const [[errors, rps, p95, heap], briefSeries] = await Promise.all([
+    Promise.all(
+      (['errors', 'rps', 'p95', 'heap'] as const).map((kind) => settleTrend(config, kind, win)),
+    ),
+    Promise.all(keys.map((key) => settleBrief(config, key, win))),
+  ])
+  const brief = buildBrief(
+    {
+      ...(Object.fromEntries(keys.map((k, i) => [k, briefSeries[i] ?? null])) as Record<
+        Exclude<BriefKey, 'latency'>,
+        Series[] | null
+      >),
+      latency: p95?.map(({ name, points }) => ({ name, points })) ?? null,
+    },
+    BRIEF_FORMAT,
+  )
+  const trends: Trends = {
+    errors: errors ?? null,
+    rps: rps ?? null,
+    p95: p95 ?? null,
+    heap: heap ?? null,
+  }
+  return { range, trends, brief, partial: Object.values(trends).some((r) => r === null) }
+}
+
+/** 지금 상태(판정·서비스 표·상태판·자원)와 기간 그래프를 함께 받는다. 화면은 1시간으로 먼저 그린다 */
 export async function loadMonitoring(
   env: Record<string, string | undefined> = process.env,
+  range: RangeKey = DEFAULT_RANGE,
 ): Promise<MonitoringData> {
   const config = readGrafanaConfig(env)
   if (!config) return { status: 'notConfigured' }
 
   const names = Object.keys(QUERIES) as (keyof typeof QUERIES)[]
-  const m = Object.fromEntries(
-    await Promise.all(names.map(async (name) => [name, await settle(config, name)] as const)),
-  ) as Record<keyof typeof QUERIES, Sample[] | null>
-  const { up, memory, disk, swap } = m
-  // 끝 시각을 1분 단위로 맞춰야 1분 동안 질의 주소가 같아 fetch 캐시를 다시 쓴다
-  const end = Math.floor(Date.now() / 1000 / TREND_STEP_SECONDS) * TREND_STEP_SECONDS
-  const range = { start: end - TREND_WINDOW_SECONDS, end, step: TREND_STEP_SECONDS }
-  const keys = Object.keys(BRIEF_QUERIES) as BriefKey[]
-  const [[errorsTrend, rpsTrend, p95Trend, heapTrend], briefSeries] = await Promise.all([
-    Promise.all(
-      (['errors', 'rps', 'p95', 'heap'] as const).map((kind) => settleTrend(config, kind, range)),
+  const [m, ranged] = await Promise.all([
+    Promise.all(names.map(async (name) => [name, await settle(config, name)] as const)).then(
+      (entries) => Object.fromEntries(entries) as Record<keyof typeof QUERIES, Sample[] | null>,
     ),
-    Promise.all(keys.map((key) => settleBrief(config, key, range))),
+    loadRanged(config, range),
   ])
-  const brief = buildBrief(
-    Object.fromEntries(keys.map((k, i) => [k, briefSeries[i] ?? null])) as Record<
-      BriefKey,
-      Series[] | null
-    >,
-    BRIEF_FORMAT,
-  )
+  const { up, memory, disk, swap } = m
   if (!up) return { status: 'failed' }
   const targets = toTargets(up)
   return {
     status: 'ok',
     targets,
     services: toServiceRows(targets, m),
-    trends: {
-      errors: errorsTrend ?? null,
-      rps: rpsTrend ?? null,
-      p95: p95Trend ?? null,
-      heap: heapTrend ?? null,
-    },
-    brief,
+    trends: ranged.trends,
+    brief: ranged.brief,
     resources: toResources({ memory, disk, swap }),
-    partial: [
+    partial:
+      ranged.partial ||
       // 서버 자원(메모리·디스크·스왑)은 따로 「-」로 보여서 일부 지표 모름에 넣지 않는다
-      ...names.filter((n) => !['up', 'memory', 'disk', 'swap'].includes(n)).map((n) => m[n]),
-      errorsTrend,
-      rpsTrend,
-      p95Trend,
-      heapTrend,
-    ].some((r) => r === null),
+      names.filter((n) => !['up', 'memory', 'disk', 'swap'].includes(n)).some((n) => m[n] === null),
     fetchedAt: new Date().toISOString(),
   }
 }
@@ -159,13 +187,16 @@ async function settle(config: GrafanaConfig, name: keyof typeof QUERIES) {
   }
 }
 
-async function settleTrend(
-  config: GrafanaConfig,
-  kind: TrendKind,
-  range: { start: number; end: number; step: number },
-) {
+// shortcut: rate 구간은 기간과 상관없이 [2m]·[5m]이라, 긴 기간에서는 점 사이(최대 42분)의 순간 변화를 놓친다.
+// 구간을 그래프 간격만큼 늘리면 7일 응답 시간 질의가 12초 넘게 걸려서 두었다. 기록 규칙(recording rule)을 만들면 늘린다
+function queryWindow(config: GrafanaConfig, promql: string, win: Window) {
+  const { cache, ...range } = win
+  return queryPrometheusRange(config, promql, range, cache)
+}
+
+async function settleTrend(config: GrafanaConfig, kind: TrendKind, win: Window) {
   try {
-    return toTrends(await queryPrometheusRange(config, TREND_QUERIES[kind], range))
+    return toTrends(await queryWindow(config, TREND_QUERIES[kind], win))
   } catch (e) {
     console.error(
       `[grafana] ${kind} 추이 불러오기 실패: ${e instanceof Error ? e.message : String(e)}`,
@@ -176,11 +207,11 @@ async function settleTrend(
 
 async function settleBrief(
   config: GrafanaConfig,
-  key: BriefKey,
-  range: { start: number; end: number; step: number },
+  key: Exclude<BriefKey, 'latency'>,
+  win: Window,
 ): Promise<Series[] | null> {
   try {
-    const rows = await queryPrometheusRange(config, BRIEF_QUERIES[key], range)
+    const rows = await queryWindow(config, BRIEF_QUERIES[key], win)
     return rows.map((r) => ({
       name: key === 'lock' ? 'MySQL' : nameOf(r.labels),
       points: r.points.map(([t, v]): [number, number | null] => [t, Number.isFinite(v) ? v : null]),

@@ -48,10 +48,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
           persister,
           maxAge: ONE_DAY,
           buster: 'snapshot-v8',
-          // 그라파나 패널 값은 크고 1분마다 바뀌어서 저장하지 않는다(저장소 한도를 넘지 않게)
+          // 그라파나 패널·모니터링 기간 그래프는 크고 자주 바뀌어서 저장하지 않는다(저장소 한도를 넘지 않게)
           dehydrateOptions: {
             shouldDehydrateQuery: (q) =>
-              q.state.status === 'success' && q.queryKey[0] !== 'grafana-panel',
+              q.state.status === 'success' &&
+              q.queryKey[0] !== 'grafana-panel' &&
+              q.queryKey[0] !== 'monitoring',
           },
         }}
       >

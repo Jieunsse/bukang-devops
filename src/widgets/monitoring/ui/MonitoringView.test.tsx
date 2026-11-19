@@ -1,7 +1,72 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import {
+  act,
+  fireEvent,
+  render as rtlRender,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { describe, expect, it, vi } from 'vitest'
 
-import { MonitoringView, ServicesSection } from './MonitoringView'
+let search = new URLSearchParams()
+vi.mock('next/navigation', () => ({ useSearchParams: () => search }))
+
+const { MonitoringView, ServicesSection } = await import('./MonitoringView')
+const { RangedSections } = await import('./RangedSections')
+
+const render = (ui: ReactNode) =>
+  rtlRender(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+    ),
+  })
+
+describe('기간 그래프', () => {
+  const series = (v: number) => [
+    {
+      job: 'member-service',
+      name: '회원',
+      points: [
+        [0, v],
+        [60, v],
+      ] as [number, number][],
+    },
+  ]
+  const metrics = (range: '1h' | '7d', v: number) => ({
+    range,
+    brief: [],
+    partial: false,
+    trends: { errors: series(0), rps: series(v), p95: null, heap: null },
+  })
+
+  it('기본 기간은 서버가 함께 준 값을 쓰고, 기간을 바꾸면 새 값이 올 때까지 이전 그래프를 둔다', async () => {
+    search = new URLSearchParams()
+    let resolve: (r: Response) => void = () => {}
+    const fetchMock = vi.fn(() => new Promise<Response>((r) => (resolve = r)))
+    vi.stubGlobal('fetch', fetchMock)
+    const client = new QueryClient()
+    // 같은 요소를 다시 넘기면 React가 다시 그리지 않아서 매번 새로 만든다
+    const view = () => (
+      <QueryClientProvider client={client}>
+        <RangedSections initial={metrics('1h', 1)} initialAt={new Date().toISOString()} />
+      </QueryClientProvider>
+    )
+    const { rerender } = rtlRender(view())
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(screen.getByText(/최근 1시간 · 15초 간격/)).toBeInTheDocument()
+
+    search = new URLSearchParams('range=7d')
+    rerender(view())
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/monitoring/range?range=7d'))
+    // 받는 동안 이전(1시간) 그래프가 그대로 보인다
+    expect(screen.getByText(/최근 1시간 · 15초 간격/)).toBeInTheDocument()
+    await act(async () => resolve(Response.json(metrics('7d', 5))))
+    expect(await screen.findByText(/최근 7일 · 42분 간격/)).toBeInTheDocument()
+    vi.unstubAllGlobals()
+  })
+})
 
 describe('모니터링', () => {
   it('그라파나 연결 정보가 없으면 안내만 보인다', () => {
@@ -101,7 +166,7 @@ describe('모니터링', () => {
     expect(screen.getByText('모두 정상')).toBeInTheDocument()
     // 기본은 서버 오류 비율이고, 맨 위 큰 그래프는 요청 수로 가중한 전체 오류 비율이다
     expect(screen.getByText('지금 3.0%')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /^전체 서버 오류 비율 최근 1시간/ })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /^전체 서버 오류 비율 추이/ })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '초당 요청' }))
     expect(screen.getByText('지금 2.00')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '응답 시간(95%)' }))

@@ -1,7 +1,6 @@
 'use client'
 
 import { Disclosure, Label, ListBox, Select } from '@heroui/react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useState, type CSSProperties, type ReactNode } from 'react'
 
@@ -13,6 +12,7 @@ import {
   type Dashboard,
   type Panel,
 } from '@/entities/grafana-dashboard'
+import { cacheSecondsOf } from '@/shared/lib/time-range'
 import { report as s, ReportHeader } from '@/shared/ui'
 
 import { isCoreSection, type DashboardLink } from '../model/dashboards'
@@ -103,20 +103,7 @@ export function DashboardView({ data }: { data: DashboardViewData }) {
           <MonitoringTabs links={data.links} current={dashboard.uid} />
           <ReportHeader
             title={data.name}
-            sub={`그라파나 「${dashboard.title}」 · 1분마다 갱신`}
-            actions={
-              <nav aria-label="기간" className={s.seg}>
-                {(Object.keys(RANGES) as RangeKey[]).map((r) => (
-                  <Link
-                    key={r}
-                    href={`/monitoring/${dashboard.uid}?${panelQuery(variables, r)}`}
-                    aria-current={r === range ? 'page' : undefined}
-                  >
-                    {RANGES[r].label}
-                  </Link>
-                ))}
-              </nav>
-            }
+            sub={`그라파나 「${dashboard.title}」 · 최근 ${RANGES[range].label} · ${cacheSecondsOf(range) / 60}분마다 갱신`}
           />
 
           {variables.length > 0 && (
@@ -294,9 +281,7 @@ function VerdictCard({
                 href={`#panel-${r.id}`}
                 className="flex items-baseline gap-2 rounded-md hover:underline focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
               >
-                <span
-                  className={`${s.tLabel} shrink-0 ${r.level === 'bad' ? 'text-danger' : ''}`}
-                >
+                <span className={`${s.tLabel} shrink-0 ${r.level === 'bad' ? 'text-danger' : ''}`}>
                   {LEVEL_TEXT[r.level]}
                 </span>
                 <span className="min-w-0 truncate">{r.name}</span>

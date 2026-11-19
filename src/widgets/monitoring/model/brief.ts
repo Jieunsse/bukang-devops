@@ -1,9 +1,11 @@
 import { seriesStats, type Series } from '@/shared/lib/chart'
 
+import { clockText, spansOverDay } from '@/shared/lib/time-range'
+
 import { hhmm } from './format'
 import { JOB_NAMES } from './rows'
 
-// 자동 브리핑. 최근 1시간 지표로 카드마다 한 줄 설명과 주의 문장을 숫자로 만든다.
+// 자동 브리핑. 고른 기간(기본 1시간) 지표로 카드마다 한 줄 설명과 주의 문장을 숫자로 만든다.
 // 병목은 보통 「요청 증가 → CPU → 응답 시간 → DB 연결 → 연결 대기 → 락 대기」 순서로 번지므로 그 순서로 보여 준다.
 
 export type BriefKey = 'throughput' | 'cpu' | 'latency' | 'dbConn' | 'pending' | 'lock'
@@ -71,17 +73,20 @@ export function topByPeak(series: Series[], n: number): Series[] {
 }
 
 /** 「시작 값 → 최대 값(시각)」. unit은 숫자 바로 뒤에 붙는 말(건, 회) */
-const startToPeak = (s: Series, f: Fmt, unit = '') => {
+const startToPeak = (s: Series, f: Fmt, clock: (t: number) => string, unit = '') => {
   const first = s.points.find(([, v]) => v !== null)?.[1]
   const peak = peakOf(s)
   if (first === undefined || first === null || !peak) return '기록 없음'
-  return `${f(first)}${unit} → 최대 ${f(peak.value)}${unit}(${hhmm(peak.at)})`
+  return `${f(first)}${unit} → 최대 ${f(peak.value)}${unit}(${clock(peak.at)})`
 }
 
 export function buildBrief(
   input: Record<BriefKey, Series[] | null>,
   f: Record<BriefUnit, Fmt>,
 ): BriefCard[] {
+  // 한 기간 안의 시각은 같은 모양으로 쓴다. 하루 이상인 시계열이 하나라도 있으면 모두 날짜를 붙인다
+  const withDate = Object.values(input).some((ss) => ss?.some((s) => spansOverDay(s.points)))
+  const clock = (t: number) => clockText(t, withDate)
   const cards: BriefCard[] = []
   const missing = (key: BriefKey, title: string, unit: BriefUnit) =>
     cards.push({ key, title, unit, series: [], caption: '지표를 받지 못했어요', alert: null })
@@ -94,7 +99,7 @@ export function buildBrief(
       title: '처리량',
       unit: 'reqps',
       series: input.throughput,
-      caption: s ? `초당 ${startToPeak(s, f.reqps)}` : '요청 기록 없음',
+      caption: s ? `초당 ${startToPeak(s, f.reqps, clock)}` : '요청 기록 없음',
       alert: null,
     })
   } else missing('throughput', '처리량', 'reqps')
@@ -115,7 +120,7 @@ export function buildBrief(
         ? hot
             .map(
               (x) =>
-                `${x.s.name} CPU가 ${hhmm(x.at!)}부터 ${f.percentunit(THRESHOLDS.cpu)}를 넘었어요(최대 ${f.percentunit(x.peak!.value)}).`,
+                `${x.s.name} CPU가 ${clock(x.at!)}부터 ${f.percentunit(THRESHOLDS.cpu)}를 넘었어요(최대 ${f.percentunit(x.peak!.value)}).`,
             )
             .join(' ')
         : null,
@@ -132,10 +137,12 @@ export function buildBrief(
       title: '응답 시간(95%)',
       unit: 's',
       series: top,
-      caption: worst ? `가장 느린 곳 ${worst.name}: ${startToPeak(worst, f.s)}` : '기록 없음',
+      caption: worst
+        ? `가장 느린 곳 ${worst.name}: ${startToPeak(worst, f.s, clock)}`
+        : '기록 없음',
       alert:
         worst && peak && peak.value > THRESHOLDS.latencySeconds
-          ? `${worst.name} 응답 시간이 ${hhmm(peak.at)}에 ${f.s(peak.value)}까지 늘었어요.`
+          ? `${worst.name} 응답 시간이 ${clock(peak.at)}에 ${f.s(peak.value)}까지 늘었어요.`
           : null,
     })
   } else missing('latency', '응답 시간(95%)', 's')
@@ -152,12 +159,12 @@ export function buildBrief(
       series: top,
       caption: worst
         ? fullAt !== null
-          ? `${worst.name}: ${hhmm(fullAt)}부터 연결을 모두 사용`
+          ? `${worst.name}: ${clock(fullAt)}부터 연결을 모두 사용`
           : `가장 많이 쓴 곳 ${worst.name} 최대 ${f.percentunit(peakOf(worst)?.value ?? 0)}`
         : '기록 없음',
       alert:
         worst && fullAt !== null
-          ? `${worst.name} 서비스가 ${hhmm(fullAt)}부터 DB 연결을 모두 썼어요.`
+          ? `${worst.name} 서비스가 ${clock(fullAt)}부터 DB 연결을 모두 썼어요.`
           : null,
     })
   } else missing('dbConn', 'DB 연결 사용률', 'percentunit')
@@ -173,9 +180,11 @@ export function buildBrief(
       title: 'DB 연결 대기',
       unit: 'short',
       series: top,
-      caption: waiting ? `${worst!.name}: ${startToPeak(worst!, f.short, '건')}` : '대기 없음',
+      caption: waiting
+        ? `${worst!.name}: ${startToPeak(worst!, f.short, clock, '건')}`
+        : '대기 없음',
       alert: waiting
-        ? `${worst!.name}에서 DB 연결을 기다리는 요청이 ${hhmm(peak!.at)}에 ${f.short(peak!.value)}건까지 쌓였어요.`
+        ? `${worst!.name}에서 DB 연결을 기다리는 요청이 ${clock(peak!.at)}에 ${f.short(peak!.value)}건까지 쌓였어요.`
         : null,
     })
   } else missing('pending', 'DB 연결 대기', 'short')
@@ -192,11 +201,11 @@ export function buildBrief(
       caption: !s
         ? '기록 없음'
         : peak && peak.value > 0
-          ? `초당 ${startToPeak(s, f.short, '회')}`
+          ? `초당 ${startToPeak(s, f.short, clock, '회')}`
           : '락 대기 없음',
       alert:
         peak && peak.value >= THRESHOLDS.lockPerSecond
-          ? `MySQL 행 락 대기가 ${hhmm(peak.at)}에 초당 ${f.short(peak.value)}회까지 늘었어요.`
+          ? `MySQL 행 락 대기가 ${clock(peak.at)}에 초당 ${f.short(peak.value)}회까지 늘었어요.`
           : null,
     })
   } else missing('lock', 'DB 행 락 대기', 'short')

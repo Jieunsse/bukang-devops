@@ -1,5 +1,6 @@
 'use client'
 
+import { DEFAULT_RANGE, RANGES, type RangeKey } from '@/shared/lib/time-range'
 import { report as s, ReportSection } from '@/shared/ui'
 import { MultiLineChart } from '@/shared/ui/chart/MultiLineChart'
 
@@ -12,9 +13,18 @@ import { BRIEF_FORMAT } from '../model/format'
 const FORMAT: Record<BriefUnit, (v: number) => string> = BRIEF_FORMAT
 const NUMBERS = ['①', '②', '③', '④', '⑤', '⑥']
 
-export function BriefSection({ cards }: { cards: BriefCard[] }) {
+export function BriefSection({
+  cards,
+  range = DEFAULT_RANGE,
+}: {
+  cards: BriefCard[]
+  range?: RangeKey
+}) {
   return (
-    <ReportSection title="병목 흐름" description="최근 1시간 · 요청에서 DB까지 번지는 순서">
+    <ReportSection
+      title="병목 흐름"
+      description={`최근 ${RANGES[range].label} · 요청에서 DB까지 번지는 순서`}
+    >
       <div className="flex flex-col gap-3">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {cards.map((c, i) => (
