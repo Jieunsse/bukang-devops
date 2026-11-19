@@ -4,6 +4,15 @@ import { sumTrends, toServiceRows, toTargets, toTrends } from './rows'
 
 const up = (job: string, value: number, instance = 'i') => ({ labels: { job, instance }, value })
 const v = (job: string, value: number) => ({ labels: { job }, value })
+const NO_EXTRA = {
+  rpsPeak: null,
+  over2s: null,
+  cpu: null,
+  heapRatio: null,
+  dbActive: null,
+  dbMax: null,
+  dbPending: null,
+}
 
 describe('모니터링 행 만들기', () => {
   it('멈춘 대상이 먼저 오고, job 이름은 화면 이름으로 바뀐다', () => {
@@ -22,6 +31,7 @@ describe('모니터링 행 만들기', () => {
       errors: [v('gateway', 1)],
       p95: [v('member-service', 0.3)],
       heap: null,
+      ...NO_EXTRA,
     })
     expect(rows.map((r) => r.name)).toEqual(['게이트웨이', '회원'])
     expect(rows[0]).toMatchObject({ errorRatio: 0.25, p95Seconds: null, heapBytes: null })
@@ -35,9 +45,43 @@ describe('모니터링 행 만들기', () => {
       errors: null,
       p95: [v('ai-service', Number.NaN)],
       heap: null,
+      ...NO_EXTRA,
     })
     expect(rows.find((r) => r.job === 'file-service')?.errorRatio).toBeNull()
     expect(rows.find((r) => r.job === 'ai-service')).toMatchObject({ rps: null, p95Seconds: null })
+  })
+
+  it('서비스별 최대 초당 요청·2초 넘은 비율·CPU·힙 사용률·DB 연결을 붙이고, 없는 값은 모른다', () => {
+    const targets = toTargets([up('member-service', 1), up('gateway', 1)])
+    const rows = toServiceRows(targets, {
+      rps: [v('member-service', 2)],
+      errors: null,
+      p95: null,
+      heap: null,
+      rpsPeak: [v('member-service', 9)],
+      over2s: [v('member-service', 0.03)],
+      cpu: [v('member-service', 0.42), v('gateway', 0.1)],
+      heapRatio: [v('member-service', 0.5)],
+      dbActive: [v('member-service', 10)],
+      dbMax: [v('member-service', 10)],
+      dbPending: [v('member-service', 4)],
+    })
+    expect(rows.find((r) => r.job === 'member-service')).toMatchObject({
+      rpsPeak: 9,
+      over2sRatio: 0.03,
+      cpu: 0.42,
+      heapRatio: 0.5,
+      dbActive: 10,
+      dbMax: 10,
+      dbPending: 4,
+    })
+    // 게이트웨이는 DB를 쓰지 않아 연결 지표가 없다
+    expect(rows.find((r) => r.job === 'gateway')).toMatchObject({
+      cpu: 0.1,
+      dbActive: null,
+      dbMax: null,
+      over2sRatio: null,
+    })
   })
 })
 

@@ -37,6 +37,13 @@ const row = (o: Partial<ServiceRow>): ServiceRow => ({
   errorRatio: 0,
   p95Seconds: 0.2,
   heapBytes: 100 * 1024 * 1024,
+  rpsPeak: null,
+  over2sRatio: null,
+  cpu: null,
+  heapRatio: null,
+  dbActive: null,
+  dbMax: null,
+  dbPending: null,
   ...o,
 })
 const targets: Target[] = [
@@ -138,7 +145,7 @@ describe('AI에 보낼 입력', () => {
     expect(input.resources).toEqual([
       { server: '앱 서버', memory: '80.4%', disk: '78.0%', swap: '-' },
     ])
-    expect(input.thresholds).toMatchObject({ memory: '90%', latency: '1초', errorRatio: '1%' })
+    expect(input.thresholds).toMatchObject({ memory: '90%', latency: '500ms', errorRatio: '1%' })
     // 주소·토큰 같은 값은 보내지 않는다
     expect(JSON.stringify(input)).not.toMatch(/instance|http|token/i)
   })
