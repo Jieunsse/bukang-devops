@@ -24,8 +24,10 @@ export const THRESHOLDS = {
   /** 서버 오류(5xx) 비율. 1%를 넘으면 문제. 부하 테스트로 평소 값을 재면 바꾼다 */
   errorRatio: 0.01,
   cpu: 0.8,
-  /** 응답 시간 95번째 백분위. 1초를 넘으면 문제. 부하 테스트로 평소 값을 재면 바꾼다 */
-  latencySeconds: 1,
+  /** 응답 시간 95번째 백분위. 500ms를 넘으면 문제(팀 성능 기준) */
+  latencySeconds: 0.5,
+  /** 이 시간 이상 걸린 요청은 실패로 본다(팀 성능 기준) */
+  failSeconds: 2,
   dbConnRatio: 1,
   pending: 1,
   lockPerSecond: 1,

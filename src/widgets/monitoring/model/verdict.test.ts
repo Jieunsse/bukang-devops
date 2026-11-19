@@ -26,9 +26,7 @@ describe('요약 판정', () => {
     expect(
       issuesOf(row('a', { up: false, errorRatio: 0.02, p95Seconds: 0.6, over2sRatio: 0.02 })),
     ).toEqual(['down', 'errors', 'slow', 'over2s'])
-    expect(issuesOf(row('b', { errorRatio: 0.01, p95Seconds: 0.5, over2sRatio: 0.01 }))).toEqual(
-      [],
-    )
+    expect(issuesOf(row('b', { errorRatio: 0.01, p95Seconds: 0.5, over2sRatio: 0.01 }))).toEqual([])
     expect(issuesOf(row('c', { errorRatio: null, p95Seconds: null }))).toEqual([])
   })
 
@@ -52,6 +50,18 @@ describe('요약 판정', () => {
 
   it('요청이 없으면 전체 오류 비율을 모른다', () => {
     expect(verdictOf([row('a', { rps: null })], []).totalErrorRatio).toBeNull()
+  })
+})
+
+describe('자원 문제', () => {
+  it('CPU 80% 이상, 힙 90% 이상, DB 연결을 모두 쓰거나 대기가 있으면 문제로 본다', () => {
+    expect(issuesOf(row('a', { cpu: 0.8, heapRatio: 0.9, dbActive: 10, dbMax: 10 }))).toEqual([
+      'cpu',
+      'memory',
+      'db',
+    ])
+    expect(issuesOf(row('b', { dbActive: 3, dbMax: 10, dbPending: 1 }))).toEqual(['db'])
+    expect(issuesOf(row('c', { cpu: 0.79, heapRatio: 0.89, dbActive: 9, dbMax: 10 }))).toEqual([])
   })
 })
 
